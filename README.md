@@ -4,7 +4,7 @@
 
 ChapterScript is a Swift package containing only `Codable` value types. It has zero dependencies on RealityKit, UIKit, AppKit, or AVFoundation. The package builds on macOS, iOS, visionOS, tvOS, watchOS, and Linux.
 
-The format is the public contract between authoring tools (e.g., the [Maestro](https://github.com/Shared-Visions/maestro) macOS editor) and players (e.g., the [SharedVisions](https://github.com/Shared-Visions/sharedvisions) visionOS reference player). Either side can be reimplemented — including in a different language — by following the JSON schema this package defines.
+The format is the public contract between authoring tools (e.g., the **Maestro** macOS editor) and players (e.g., the [SharedVisions](https://github.com/Shared-Visions/SharedVisionsProject) visionOS reference player). Either side can be reimplemented — including in a different language — by following the JSON schema this package defines.
 
 ---
 
@@ -93,7 +93,7 @@ Action variants are externally-tagged: each `actions[i]` carries a `"kind"` key 
 `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/Shared-Visions/chapterscript.git", from: "0.1.0")
+.package(url: "https://github.com/mike-bundy/ChapterScript.git", from: "0.2.0")
 ```
 
 Or as a sibling local package:
