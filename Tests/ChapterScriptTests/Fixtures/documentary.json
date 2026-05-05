@@ -28,7 +28,8 @@
                 "channel": "skybox",
                 "volume": 1.0,
                 "loop": false,
-                "presentation": { "kind": "entity", "name": "skybox", "width": 0, "height": 0 }
+                "presentation": { "kind": "immersive", "radius": 1000, "field": "equirect360" },
+                "layout": "mono"
               }
             },
             {
