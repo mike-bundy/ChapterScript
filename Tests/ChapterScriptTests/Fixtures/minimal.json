@@ -1,0 +1,61 @@
+{
+  "formatVersion": 1,
+  "id": "minimal",
+  "displayName": "Minimal Experience",
+  "entities": [
+    {
+      "id": "orb",
+      "kind": "primitive",
+      "transform": {
+        "position": { "x": 0, "y": 0, "z": 0 },
+        "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+        "scale": { "x": 1, "y": 1, "z": 1 }
+      },
+      "initiallyEnabled": false,
+      "gestureEnabled": false,
+      "primitive": {
+        "shape": "sphere",
+        "size": { "x": 0.15, "y": 0.15, "z": 0.15 },
+        "material": {
+          "baseColor": { "r": 1, "g": 0.2, "b": 0.2, "a": 1 },
+          "metallic": 0,
+          "roughness": 0.4,
+          "emissiveColor": { "r": 0, "g": 0, "b": 0, "a": 1 },
+          "emissiveIntensity": 0,
+          "blending": "opaque"
+        }
+      }
+    }
+  ],
+  "chapters": [
+    {
+      "id": "only",
+      "name": "Only Chapter",
+      "phase": "immersive",
+      "steps": [
+        {
+          "id": "step1",
+          "name": "Reveal orb",
+          "duration": 2.0,
+          "actions": [
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "orb",
+                "headRelativePosition": { "x": 0, "y": 1.6, "z": -1.5 },
+                "headYOnly": true,
+                "fadeIn": 0.5
+              }
+            }
+          ],
+          "scheduledActions": []
+        }
+      ],
+      "visibility": { "orb": true },
+      "onComplete": { "kind": "holdOnLastStep" }
+    }
+  ],
+  "particlePresets": [],
+  "manifest": { "entries": [] },
+  "defaultChapterId": "only"
+}

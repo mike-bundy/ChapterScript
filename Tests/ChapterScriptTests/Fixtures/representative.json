@@ -1,0 +1,275 @@
+{
+  "formatVersion": 1,
+  "id": "voyage-prologue",
+  "displayName": "Voyage — Prologue",
+  "description": "Two-chapter sample exercising most StepAction cases.",
+  "entities": [
+    {
+      "id": "orb",
+      "kind": "primitive",
+      "transform": {
+        "position": { "x": 0, "y": 0, "z": 0 },
+        "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+        "scale": { "x": 1, "y": 1, "z": 1 }
+      },
+      "initiallyEnabled": false,
+      "gestureEnabled": false,
+      "primitive": {
+        "shape": "sphere",
+        "size": { "x": 0.15, "y": 0.15, "z": 0.15 },
+        "material": {
+          "baseColor": { "r": 0.9, "g": 0.2, "b": 0.2, "a": 1 },
+          "metallic": 0.1,
+          "roughness": 0.35,
+          "emissiveColor": { "r": 0.4, "g": 0.0, "b": 0.0, "a": 1 },
+          "emissiveIntensity": 0.5,
+          "blending": "opaque"
+        }
+      }
+    },
+    {
+      "id": "cube",
+      "kind": "primitive",
+      "transform": {
+        "position": { "x": 0, "y": 0, "z": 0 },
+        "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+        "scale": { "x": 1, "y": 1, "z": 1 }
+      },
+      "initiallyEnabled": false,
+      "gestureEnabled": false,
+      "primitive": {
+        "shape": "box",
+        "size": { "x": 0.2, "y": 0.2, "z": 0.2 },
+        "material": {
+          "baseColor": { "r": 0.2, "g": 0.4, "b": 0.95, "a": 1 },
+          "metallic": 0,
+          "roughness": 0.5,
+          "emissiveColor": { "r": 0, "g": 0, "b": 0, "a": 1 },
+          "emissiveIntensity": 0,
+          "blending": "opaque"
+        }
+      }
+    },
+    {
+      "id": "skybox",
+      "kind": "videoPanel",
+      "transform": {
+        "position": { "x": 0, "y": 1.6, "z": -8 },
+        "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+        "scale": { "x": 1, "y": 1, "z": 1 }
+      },
+      "initiallyEnabled": true,
+      "gestureEnabled": false,
+      "videoPanel": {
+        "width": 16,
+        "height": 9
+      }
+    }
+  ],
+  "chapters": [
+    {
+      "id": "voyage-prologue.intro",
+      "name": "Intro",
+      "phase": "immersive",
+      "steps": [
+        {
+          "id": "wake",
+          "name": "Wake",
+          "duration": 6.0,
+          "actions": [
+            {
+              "kind": "playAudio",
+              "audio": {
+                "file": "ambience/intro-wind",
+                "channel": "ambient",
+                "scope": "ambient",
+                "volume": 0.7,
+                "loop": true,
+                "fadeIn": 2.0
+              }
+            },
+            {
+              "kind": "playVideo",
+              "video": {
+                "file": "skybox/sky",
+                "channel": "skybox",
+                "volume": 1,
+                "loop": true,
+                "presentation": {
+                  "kind": "entity",
+                  "name": "skybox",
+                  "width": 16,
+                  "height": 9
+                }
+              }
+            },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "orb",
+                "headRelativePosition": { "x": 0, "y": 1.55, "z": -1.5 },
+                "headYOnly": true,
+                "scale": { "x": 0.3, "y": 0.3, "z": 0.3 },
+                "fadeIn": 1.2
+              }
+            }
+          ],
+          "scheduledActions": [
+            {
+              "at": 3.0,
+              "action": {
+                "kind": "showPulseRing",
+                "config": {
+                  "radius": 1.5,
+                  "height": 1.2,
+                  "ringCount": 24,
+                  "baseIntensity": 0.4,
+                  "peakIntensity": 1.6,
+                  "pulseSpeed": 0.5,
+                  "discRadius": 0.04,
+                  "color": { "r": 0.3, "g": 0.85, "b": 1.0, "a": 1 }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "drift",
+          "name": "Drift",
+          "duration": 8.0,
+          "actions": [
+            {
+              "kind": "animateMotion",
+              "motion": {
+                "entity": "orb",
+                "position": {
+                  "kind": "orbit",
+                  "payload": {
+                    "center": { "x": 0, "y": 1.55, "z": -2 },
+                    "radius": 0.6,
+                    "axis": { "x": 0, "y": 1, "z": 0 },
+                    "revolutions": 1,
+                    "phase": 0
+                  }
+                },
+                "duration": 8.0
+              }
+            }
+          ],
+          "scheduledActions": []
+        }
+      ],
+      "visibility": { "orb": true, "skybox": true },
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "voyage-prologue.act-one" }
+    },
+    {
+      "id": "voyage-prologue.act-one",
+      "name": "Act One",
+      "phase": "immersive",
+      "steps": [
+        {
+          "id": "cube-arrives",
+          "name": "Cube arrives",
+          "duration": 5.0,
+          "actions": [
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cube",
+                "headRelativePosition": { "x": 0.6, "y": 1.4, "z": -1.8 },
+                "headYOnly": true,
+                "scale": { "x": 0.25, "y": 0.25, "z": 0.25 },
+                "fadeIn": 0.8
+              }
+            },
+            {
+              "kind": "moveEntity",
+              "move": {
+                "entity": "orb",
+                "absolutePosition": { "x": -0.6, "y": 1.55, "z": -1.8 },
+                "headYOnly": false,
+                "duration": 2.0,
+                "timing": "easeInOut"
+              }
+            },
+            {
+              "kind": "setBusEffect",
+              "busId": "narration",
+              "effect": { "kind": "reverb", "wetDryMix": 0.25 }
+            }
+          ],
+          "scheduledActions": [],
+          "gate": {
+            "type": "tap",
+            "timeout": 30,
+            "prompt": "Tap to continue"
+          }
+        },
+        {
+          "id": "fade-out",
+          "name": "Fade out",
+          "duration": 4.0,
+          "actions": [
+            {
+              "kind": "fadeEntity",
+              "fade": { "entity": "orb", "opacity": 0, "duration": 2.0, "timing": "easeOut" }
+            },
+            {
+              "kind": "fadeEntity",
+              "fade": { "entity": "cube", "opacity": 0, "duration": 2.0, "timing": "easeOut" }
+            },
+            {
+              "kind": "fadeAudio",
+              "channel": "ambient",
+              "to": 0,
+              "duration": 3.0
+            }
+          ],
+          "scheduledActions": []
+        }
+      ],
+      "visibility": { "orb": false, "cube": false },
+      "onComplete": { "kind": "dismissToHome" }
+    }
+  ],
+  "particlePresets": [
+    {
+      "id": "spark.warm",
+      "displayName": "Warm Sparks",
+      "birthRate": 200,
+      "lifeSpan": 1.4,
+      "speed": 0.6,
+      "emitterShape": "sphere",
+      "spreadAngle": 45,
+      "color": { "r": 1, "g": 0.7, "b": 0.2, "a": 1 },
+      "startSize": 0.025,
+      "endSize": 0,
+      "startOpacity": 1,
+      "endOpacity": 0,
+      "blending": "additive",
+      "gravity": { "x": 0, "y": -0.05, "z": 0 },
+      "loops": false
+    }
+  ],
+  "manifest": {
+    "entries": [
+      {
+        "id": "ambience/intro-wind",
+        "relativePath": "audio/ambient/intro-wind.m4a",
+        "kind": "audio",
+        "byteSize": 1240432,
+        "durationMs": 60000
+      },
+      {
+        "id": "skybox/sky",
+        "relativePath": "video/skybox/sky.mp4",
+        "kind": "video",
+        "byteSize": 482000000,
+        "durationMs": 180000,
+        "width": 4096,
+        "height": 2048
+      }
+    ]
+  },
+  "defaultChapterId": "voyage-prologue.intro"
+}
