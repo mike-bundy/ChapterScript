@@ -1,0 +1,884 @@
+{
+  "formatVersion": 1,
+  "id": "shared-visions-documentary",
+  "displayName": "Shared Visions: The Documentary",
+  "description": "Eight chapters of declarative immersive choreography. Phase 3 of the ChapterScript pivot — the entire SharedVisions documentary expressed as one ChapterScript JSON document.",
+  "entities": [],
+  "particlePresets": [],
+  "manifest": { "entries": [] },
+  "defaultChapterId": "chapter_01_primitives",
+  "chapters": [
+    {
+      "id": "chapter_01_primitives",
+      "name": "Primitive Showcase",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_02_color_drift" },
+      "steps": [
+        {
+          "id": "orb",
+          "name": "Red Orb",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            {
+              "kind": "playVideo",
+              "video": {
+                "file": "test",
+                "channel": "skybox",
+                "volume": 1.0,
+                "loop": false,
+                "presentation": { "kind": "entity", "name": "skybox", "width": 0, "height": 0 }
+              }
+            },
+            {
+              "kind": "showPulseRing",
+              "config": {
+                "radius": 1.5, "height": 1.2, "ringCount": 24,
+                "baseIntensity": 0.4, "peakIntensity": 1.6, "pulseSpeed": 0.5,
+                "discRadius": 0.04,
+                "color": { "r": 0.3, "g": 0.85, "b": 1.0, "a": 1 }
+              }
+            },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "orb",
+                "position": { "x": 0, "y": -0.5, "z": -3 },
+                "headYOnly": false,
+                "scale": { "x": 0.3, "y": 0.3, "z": 0.3 },
+                "fadeIn": 0.5
+              }
+            },
+            {
+              "kind": "animateMotion",
+              "motion": {
+                "entity": "orb",
+                "duration": 10.0,
+                "position": {
+                  "kind": "linear",
+                  "payload": {
+                    "from": { "x": 0, "y": -0.5, "z": -3.0 },
+                    "to":   { "x": 0, "y":  1.5, "z": -1.0 }
+                  }
+                },
+                "scale": {
+                  "kind": "sum",
+                  "payload": [
+                    { "kind": "constant", "payload": { "x": 0.3, "y": 0.3, "z": 0.3 } },
+                    {
+                      "kind": "oscillate",
+                      "payload": {
+                        "axis": { "x": 1, "y": 1, "z": 1 },
+                        "amplitude": 0.03, "frequency": 0.4775, "waveform": "sine"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "cube",
+          "name": "Blue Cube",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "orb" },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cube",
+                "position": { "x": 0, "y": 0.5, "z": -2 },
+                "headYOnly": false,
+                "scale": { "x": 1.0, "y": 1.0, "z": 1.0 },
+                "fadeIn": 0.5
+              }
+            },
+            {
+              "kind": "animateMotion",
+              "motion": {
+                "entity": "cube",
+                "duration": 10.0,
+                "position": {
+                  "kind": "sum",
+                  "payload": [
+                    {
+                      "kind": "orbit",
+                      "payload": {
+                        "center": { "x": 0, "y": 0, "z": 0 },
+                        "radius": 2.0,
+                        "axis":   { "x": 0, "y": 1, "z": 0 },
+                        "revolutions": 2, "phase": 0
+                      }
+                    },
+                    { "kind": "constant", "payload": { "x": 0, "y": 0.5, "z": 0 } },
+                    {
+                      "kind": "oscillate",
+                      "payload": {
+                        "axis": { "x": 0, "y": 1, "z": 0 },
+                        "amplitude": 0.3, "frequency": 0.3, "waveform": "sine"
+                      }
+                    }
+                  ]
+                },
+                "rotation": {
+                  "kind": "rotate",
+                  "payload": { "axis": { "x": 1, "y": 1, "z": 0 }, "revolutions": 4 }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "cylinder",
+          "name": "Green Cylinder",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "cube" },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cylinder",
+                "position": { "x": 0, "y": 0.5, "z": -2.5 },
+                "headYOnly": false,
+                "scale": { "x": 0.4, "y": 0.4, "z": 0.4 },
+                "fadeIn": 0.5
+              }
+            },
+            {
+              "kind": "animateMotion",
+              "motion": {
+                "entity": "cylinder",
+                "duration": 10.0,
+                "position": {
+                  "kind": "sum",
+                  "payload": [
+                    { "kind": "constant", "payload": { "x": 0, "y": 0, "z": -2.5 } },
+                    {
+                      "kind": "oscillate",
+                      "payload": {
+                        "axis": { "x": 0, "y": 1, "z": 0 },
+                        "amplitude": 1.5, "frequency": 0.25, "waveform": "absSine"
+                      }
+                    }
+                  ]
+                },
+                "scale": {
+                  "kind": "sum",
+                  "payload": [
+                    { "kind": "constant", "payload": { "x": 0.4, "y": 0.4, "z": 0.4 } },
+                    {
+                      "kind": "oscillate",
+                      "payload": {
+                        "axis": { "x": 1, "y": 1, "z": 1 },
+                        "amplitude": 0.15, "frequency": 0.4, "waveform": "sine"
+                      }
+                    }
+                  ]
+                },
+                "rotation": {
+                  "kind": "rotate",
+                  "payload": { "axis": { "x": 0, "y": 1, "z": 0 }, "revolutions": 2 }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "cone_in",
+          "name": "Cone: Spiral In",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "cylinder" },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cone",
+                "position": { "x": 0, "y": 0.5, "z": -0.5 },
+                "headYOnly": false,
+                "scale": { "x": 1.0, "y": 1.0, "z": 1.0 },
+                "fadeIn": 0.5
+              }
+            },
+            {
+              "kind": "animateMotion",
+              "motion": {
+                "entity": "cone",
+                "duration": 10.0,
+                "position": {
+                  "kind": "spiral",
+                  "payload": {
+                    "center": { "x": 0, "y": 0.5, "z": 0 },
+                    "startRadius": 3.0, "endRadius": 0.5,
+                    "axis": { "x": 0, "y": 1, "z": 0 },
+                    "revolutions": 3, "yRise": 1.0
+                  }
+                },
+                "rotation": {
+                  "kind": "rotate",
+                  "payload": { "axis": { "x": 0, "y": 1, "z": 1 }, "revolutions": 4 }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "cone_hold",
+          "name": "Cone: Hold",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            {
+              "kind": "animateMotion",
+              "motion": {
+                "entity": "cone",
+                "duration": 10.0,
+                "position": { "kind": "constant", "payload": { "x": 0, "y": 1.5, "z": -0.5 } },
+                "rotation": { "kind": "constant", "payload": { "x": 0, "y": 17.7715, "z": 17.7715 } }
+              }
+            }
+          ]
+        },
+        {
+          "id": "cone_out",
+          "name": "Cone: Tumble",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            {
+              "kind": "startSparkBurst",
+              "config": {
+                "position": { "x": 0, "y": 1.4, "z": -0.5 },
+                "burstRadius": 0.4,
+                "particleBirthRate": 300, "particleLifeSpan": 1.2,
+                "duration": 2.5, "particleSize": 0.02,
+                "tint": { "r": 1.0, "g": 0.7, "b": 0.2, "a": 1 }
+              }
+            },
+            {
+              "kind": "animateMotion",
+              "motion": {
+                "entity": "cone",
+                "duration": 10.0,
+                "position": { "kind": "constant", "payload": { "x": 0, "y": 1.5, "z": -0.5 } },
+                "rotation": {
+                  "kind": "rotate",
+                  "payload": { "axis": { "x": 1, "y": 0, "z": 0 }, "revolutions": 2 }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_02_color_drift",
+      "name": "Color Drift",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_03_geometric_dance" },
+      "steps": [
+        {
+          "id": "warm",
+          "name": "Warm (Red)",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "cone" },
+            { "kind": "hidePulseRing" },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "orb",
+                "position": { "x": -1.2, "y": 1.1, "z": -2.0 },
+                "headYOnly": false,
+                "scale": { "x": 1.2, "y": 1.2, "z": 1.2 },
+                "fadeIn": 0.6
+              }
+            },
+            {
+              "kind": "moveEntity",
+              "move": {
+                "entity": "orb",
+                "absolutePosition": { "x": 1.2, "y": 1.3, "z": -2.0 },
+                "headYOnly": false, "duration": 10.0, "timing": "easeInOut"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cool",
+          "name": "Cool (Blue)",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "orb" },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cube",
+                "position": { "x": 1.2, "y": 1.1, "z": -2.0 },
+                "headYOnly": false,
+                "scale": { "x": 1.0, "y": 1.0, "z": 1.0 },
+                "fadeIn": 0.6
+              }
+            },
+            {
+              "kind": "moveEntity",
+              "move": {
+                "entity": "cube",
+                "absolutePosition": { "x": -1.2, "y": 1.3, "z": -2.0 },
+                "headYOnly": false, "duration": 10.0, "timing": "easeInOut"
+              }
+            }
+          ]
+        },
+        {
+          "id": "earth",
+          "name": "Earth (Green)",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "cube" },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cylinder",
+                "position": { "x": 0, "y": 0.2, "z": -2.2 },
+                "headYOnly": false,
+                "scale": { "x": 1.3, "y": 1.3, "z": 1.3 },
+                "fadeIn": 0.6
+              }
+            },
+            {
+              "kind": "moveEntity",
+              "move": {
+                "entity": "cylinder",
+                "absolutePosition": { "x": 0, "y": 2.0, "z": -2.2 },
+                "headYOnly": false, "duration": 10.0, "timing": "easeInOut"
+              }
+            }
+          ]
+        },
+        {
+          "id": "royal",
+          "name": "Royal (Purple)",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "cylinder" },
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cone",
+                "position": { "x": 0, "y": 2.2, "z": -2.2 },
+                "headYOnly": false,
+                "scale": { "x": 1.5, "y": 1.5, "z": 1.5 },
+                "fadeIn": 0.6
+              }
+            },
+            {
+              "kind": "moveEntity",
+              "move": {
+                "entity": "cone",
+                "absolutePosition": { "x": 0, "y": 0.2, "z": -2.2 },
+                "headYOnly": false, "duration": 10.0, "timing": "easeInOut"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_03_geometric_dance",
+      "name": "Geometric Dance",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_04_particle_symphony" },
+      "steps": [
+        {
+          "id": "trio",
+          "name": "Trio Appears",
+          "duration": 8.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "cone" },
+            { "kind": "revealEntity", "reveal": { "entity": "orb",      "position": { "x": -1.5, "y": 1.2, "z": -2.5 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } },
+            { "kind": "revealEntity", "reveal": { "entity": "cube",     "position": { "x":  0.0, "y": 1.2, "z": -2.5 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } },
+            { "kind": "revealEntity", "reveal": { "entity": "cylinder", "position": { "x":  1.5, "y": 1.2, "z": -2.5 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } }
+          ]
+        },
+        {
+          "id": "stack",
+          "name": "Vertical Stack",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "moveEntity", "move": { "entity": "orb",      "absolutePosition": { "x": 0, "y": 0.6, "z": -2.5 }, "headYOnly": false, "duration": 3.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cube",     "absolutePosition": { "x": 0, "y": 1.4, "z": -2.5 }, "headYOnly": false, "duration": 3.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cylinder", "absolutePosition": { "x": 0, "y": 2.2, "z": -2.5 }, "headYOnly": false, "duration": 3.0, "timing": "easeInOut" } }
+          ]
+        },
+        {
+          "id": "scatter",
+          "name": "Scatter",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "moveEntity", "move": { "entity": "orb",      "absolutePosition": { "x": -2.0, "y": 0.4, "z": -1.8 }, "headYOnly": false, "duration": 4.0, "timing": "easeOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cube",     "absolutePosition": { "x":  2.2, "y": 1.8, "z": -3.2 }, "headYOnly": false, "duration": 4.0, "timing": "easeOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cylinder", "absolutePosition": { "x":  0.8, "y": 2.6, "z": -1.6 }, "headYOnly": false, "duration": 4.0, "timing": "easeOut" } },
+            {
+              "kind": "startSparkBurst",
+              "config": {
+                "position": { "x": 0, "y": 1.6, "z": -2.0 },
+                "burstRadius": 0.6,
+                "particleBirthRate": 300, "particleLifeSpan": 1.2,
+                "duration": 2.0, "particleSize": 0.02,
+                "tint": { "r": 1.0, "g": 0.7, "b": 0.2, "a": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "id": "regather",
+          "name": "Regather",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "moveEntity", "move": { "entity": "orb",      "absolutePosition": { "x": -0.5, "y": 1.4, "z": -2.3 }, "headYOnly": false, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cube",     "absolutePosition": { "x":  0.0, "y": 1.4, "z": -2.3 }, "headYOnly": false, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cylinder", "absolutePosition": { "x":  0.5, "y": 1.4, "z": -2.3 }, "headYOnly": false, "duration": 5.0, "timing": "easeInOut" } }
+          ]
+        },
+        {
+          "id": "dissolve",
+          "name": "Dissolve",
+          "duration": 6.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "fadeEntity", "fade": { "entity": "orb",      "opacity": 0.0, "duration": 3.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cube",     "opacity": 0.0, "duration": 3.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cylinder", "opacity": 0.0, "duration": 3.0, "timing": "easeInOut" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_04_particle_symphony",
+      "name": "Particle Symphony",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_05_scale_study" },
+      "steps": [
+        {
+          "id": "ring_soft",
+          "name": "Soft Ring",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "orb" },
+            { "kind": "hideEntity", "name": "cube" },
+            { "kind": "hideEntity", "name": "cylinder" },
+            {
+              "kind": "showPulseRing",
+              "config": {
+                "radius": 2.0, "height": 1.3, "ringCount": 18,
+                "baseIntensity": 0.2, "peakIntensity": 0.8, "pulseSpeed": 0.3,
+                "discRadius": 0.04,
+                "color": { "r": 0.3, "g": 0.6, "b": 1.0, "a": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "id": "ring_intense",
+          "name": "Intense Ring",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            {
+              "kind": "showPulseRing",
+              "config": {
+                "radius": 1.3, "height": 1.2, "ringCount": 32,
+                "baseIntensity": 0.6, "peakIntensity": 2.4, "pulseSpeed": 1.2,
+                "discRadius": 0.04,
+                "color": { "r": 1.0, "g": 0.3, "b": 0.1, "a": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "id": "bursts",
+          "name": "Burst Finale",
+          "duration": 12.0,
+          "scheduledActions": [
+            {
+              "at": 2.0,
+              "action": {
+                "kind": "startSparkBurst",
+                "config": {
+                  "position": { "x": -1.2, "y": 1.4, "z": -2.0 },
+                  "burstRadius": 0.5,
+                  "particleBirthRate": 300, "particleLifeSpan": 1.2,
+                  "duration": 3.0, "particleSize": 0.02,
+                  "tint": { "r": 0.3, "g": 0.9, "b": 1.0, "a": 1 }
+                }
+              }
+            },
+            {
+              "at": 5.0,
+              "action": {
+                "kind": "startSparkBurst",
+                "config": {
+                  "position": { "x": 1.3, "y": 1.4, "z": -2.0 },
+                  "burstRadius": 0.5,
+                  "particleBirthRate": 300, "particleLifeSpan": 1.2,
+                  "duration": 3.0, "particleSize": 0.02,
+                  "tint": { "r": 1.0, "g": 0.4, "b": 0.9, "a": 1 }
+                }
+              }
+            }
+          ],
+          "actions": [
+            {
+              "kind": "startSparkBurst",
+              "config": {
+                "position": { "x": 0.0, "y": 1.6, "z": -1.5 },
+                "burstRadius": 0.8,
+                "particleBirthRate": 600, "particleLifeSpan": 1.2,
+                "duration": 4.0, "particleSize": 0.02,
+                "tint": { "r": 1.0, "g": 0.8, "b": 0.2, "a": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "id": "silence",
+          "name": "Silence",
+          "duration": 6.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hidePulseRing" },
+            { "kind": "stopSparkBurst" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_05_scale_study",
+      "name": "Scale Study",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_06_orbital_ballet" },
+      "steps": [
+        {
+          "id": "tiny",
+          "name": "Tiny Cone",
+          "duration": 8.0,
+          "scheduledActions": [],
+          "actions": [
+            {
+              "kind": "revealEntity",
+              "reveal": {
+                "entity": "cone",
+                "position": { "x": 0, "y": 1.3, "z": -1.5 },
+                "headYOnly": false,
+                "scale": { "x": 0.2, "y": 0.2, "z": 0.2 },
+                "fadeIn": 0.6
+              }
+            }
+          ]
+        },
+        {
+          "id": "normal",
+          "name": "Normal Size",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            {
+              "kind": "scaleEntity",
+              "name": "cone", "multiplier": 6.0, "duration": 6.0, "timing": "easeInOut"
+            }
+          ]
+        },
+        {
+          "id": "huge",
+          "name": "Huge",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            {
+              "kind": "scaleEntity",
+              "name": "cone", "multiplier": 3.5, "duration": 8.0, "timing": "easeInOut"
+            },
+            {
+              "kind": "moveEntity",
+              "move": {
+                "entity": "cone",
+                "absolutePosition": { "x": 0, "y": 1.8, "z": -4.0 },
+                "headYOnly": false, "duration": 8.0, "timing": "easeInOut"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_06_orbital_ballet",
+      "name": "Orbital Ballet",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_07_video_gallery" },
+      "steps": [
+        {
+          "id": "enter_one",
+          "name": "One Orbits",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "cone" },
+            { "kind": "revealEntity", "reveal": { "entity": "orb", "position": { "x": 2.0, "y": 1.3, "z": -0.5 }, "headYOnly": false, "scale": { "x": 0.8, "y": 0.8, "z": 0.8 }, "fadeIn": 0.6 } }
+          ]
+        },
+        {
+          "id": "enter_two",
+          "name": "Two Orbit",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "revealEntity", "reveal": { "entity": "cube", "position": { "x": -2.0, "y": 1.3, "z": -0.5 }, "headYOnly": false, "scale": { "x": 0.7, "y": 0.7, "z": 0.7 }, "fadeIn": 0.6 } }
+          ]
+        },
+        {
+          "id": "enter_three",
+          "name": "Three Orbit",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "revealEntity", "reveal": { "entity": "cylinder", "position": { "x": 0.0, "y": 1.3, "z": 1.8 }, "headYOnly": false, "scale": { "x": 0.6, "y": 0.6, "z": 0.6 }, "fadeIn": 0.6 } }
+          ]
+        },
+        {
+          "id": "enter_four",
+          "name": "Four Orbit",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "revealEntity", "reveal": { "entity": "cone", "position": { "x": 0.0, "y": 1.3, "z": -2.5 }, "headYOnly": false, "scale": { "x": 0.9, "y": 0.9, "z": 0.9 }, "fadeIn": 0.6 } }
+          ]
+        },
+        {
+          "id": "formation",
+          "name": "Formation",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "moveEntity", "move": { "entity": "orb",      "absolutePosition": { "x":  1.6, "y": 1.9, "z": -1.6 }, "headYOnly": false, "duration": 6.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cube",     "absolutePosition": { "x": -1.6, "y": 1.9, "z": -1.6 }, "headYOnly": false, "duration": 6.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cylinder", "absolutePosition": { "x":  0.0, "y": 2.4, "z": -1.6 }, "headYOnly": false, "duration": 6.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "cone",     "absolutePosition": { "x":  0.0, "y": 0.6, "z": -1.6 }, "headYOnly": false, "duration": 6.0, "timing": "easeInOut" } }
+          ]
+        },
+        {
+          "id": "dissolve",
+          "name": "Dissolve",
+          "duration": 8.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "fadeEntity", "fade": { "entity": "orb",      "opacity": 0.0, "duration": 4.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cube",     "opacity": 0.0, "duration": 4.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cylinder", "opacity": 0.0, "duration": 4.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cone",     "opacity": 0.0, "duration": 4.0, "timing": "easeInOut" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_07_video_gallery",
+      "name": "Video Gallery",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_08_finale" },
+      "steps": [
+        {
+          "id": "panel_a",
+          "name": "Panel A",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "revealEntity", "reveal": { "entity": "videoPanelA", "position": { "x": 0, "y": 1.6, "z": -2.2 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } }
+          ]
+        },
+        {
+          "id": "panel_b",
+          "name": "Panel B",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "moveEntity", "move": { "entity": "videoPanelA", "absolutePosition": { "x": -1.6, "y": 1.6, "z": -2.2 }, "headYOnly": false, "duration": 2.0, "timing": "easeInOut" } },
+            { "kind": "revealEntity", "reveal": { "entity": "videoPanelB", "position": { "x": 1.4, "y": 1.5, "z": -2.2 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } }
+          ]
+        },
+        {
+          "id": "panel_c",
+          "name": "Panel C",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "moveEntity", "move": { "entity": "videoPanelA", "absolutePosition": { "x": -1.8, "y": 2.2, "z": -2.2 }, "headYOnly": false, "duration": 2.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity", "move": { "entity": "videoPanelB", "absolutePosition": { "x":  1.6, "y": 2.2, "z": -2.2 }, "headYOnly": false, "duration": 2.0, "timing": "easeInOut" } },
+            { "kind": "revealEntity", "reveal": { "entity": "videoPanelC", "position": { "x": 0, "y": 0.8, "z": -2.2 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } }
+          ]
+        },
+        {
+          "id": "feature",
+          "name": "Feature Panel",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelA", "opacity": 0.2, "duration": 2.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelB", "opacity": 0.2, "duration": 2.0, "timing": "easeInOut" } },
+            {
+              "kind": "moveEntity",
+              "move": {
+                "entity": "videoPanelC",
+                "absolutePosition": { "x": 0, "y": 1.6, "z": -2.0 },
+                "headYOnly": false,
+                "scaleMultiplier": 1.4,
+                "duration": 4.0, "timing": "easeInOut"
+              }
+            }
+          ]
+        },
+        {
+          "id": "close",
+          "name": "Close Gallery",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelA", "opacity": 0.0, "duration": 4.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelB", "opacity": 0.0, "duration": 4.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelC", "opacity": 0.0, "duration": 4.0, "timing": "easeInOut" } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_08_finale",
+      "name": "Finale",
+      "phase": "immersive",
+      "visibility": {},
+      "onComplete": { "kind": "holdOnLastStep" },
+      "steps": [
+        {
+          "id": "begin",
+          "name": "Begin",
+          "duration": 8.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hideEntity", "name": "videoPanelA" },
+            { "kind": "hideEntity", "name": "videoPanelB" },
+            { "kind": "hideEntity", "name": "videoPanelC" },
+            {
+              "kind": "showPulseRing",
+              "config": {
+                "radius": 1.8, "height": 1.2, "ringCount": 36,
+                "baseIntensity": 0.3, "peakIntensity": 1.5, "pulseSpeed": 0.6,
+                "discRadius": 0.04,
+                "color": { "r": 0.6, "g": 0.9, "b": 1.0, "a": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "id": "primitives",
+          "name": "Primitives Rise",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "revealEntity", "reveal": { "entity": "orb",      "position": { "x": -1.8, "y": 0.5, "z": -2.2 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } },
+            { "kind": "revealEntity", "reveal": { "entity": "cube",     "position": { "x": -0.6, "y": 0.5, "z": -2.2 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } },
+            { "kind": "revealEntity", "reveal": { "entity": "cylinder", "position": { "x":  0.6, "y": 0.5, "z": -2.2 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } },
+            { "kind": "revealEntity", "reveal": { "entity": "cone",     "position": { "x":  1.8, "y": 0.5, "z": -2.2 }, "headYOnly": false, "scale": { "x": 1, "y": 1, "z": 1 }, "fadeIn": 0.8 } },
+            { "kind": "moveEntity",   "move":   { "entity": "orb",      "absolutePosition": { "x": -1.8, "y": 1.8, "z": -2.2 }, "headYOnly": false, "duration": 8.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity",   "move":   { "entity": "cube",     "absolutePosition": { "x": -0.6, "y": 1.8, "z": -2.2 }, "headYOnly": false, "duration": 8.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity",   "move":   { "entity": "cylinder", "absolutePosition": { "x":  0.6, "y": 1.8, "z": -2.2 }, "headYOnly": false, "duration": 8.0, "timing": "easeInOut" } },
+            { "kind": "moveEntity",   "move":   { "entity": "cone",     "absolutePosition": { "x":  1.8, "y": 1.8, "z": -2.2 }, "headYOnly": false, "duration": 8.0, "timing": "easeInOut" } }
+          ]
+        },
+        {
+          "id": "panels",
+          "name": "Screens Join",
+          "duration": 12.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "revealEntity", "reveal": { "entity": "videoPanelA", "position": { "x": -2.2, "y": 2.6, "z": -2.4 }, "headYOnly": false, "scale": { "x": 0.9, "y": 0.9, "z": 0.9 }, "fadeIn": 0.8 } },
+            { "kind": "revealEntity", "reveal": { "entity": "videoPanelB", "position": { "x":  0.0, "y": 2.8, "z": -2.4 }, "headYOnly": false, "scale": { "x": 0.9, "y": 0.9, "z": 0.9 }, "fadeIn": 0.8 } },
+            { "kind": "revealEntity", "reveal": { "entity": "videoPanelC", "position": { "x":  2.2, "y": 2.6, "z": -2.4 }, "headYOnly": false, "scale": { "x": 0.8, "y": 0.8, "z": 0.8 }, "fadeIn": 0.8 } }
+          ]
+        },
+        {
+          "id": "crescendo",
+          "name": "Crescendo",
+          "duration": 10.0,
+          "scheduledActions": [
+            {
+              "at": 1.5,
+              "action": {
+                "kind": "startSparkBurst",
+                "config": {
+                  "position": { "x": 0, "y": 2.0, "z": -2.0 },
+                  "burstRadius": 1.0,
+                  "particleBirthRate": 800, "particleLifeSpan": 1.2,
+                  "duration": 5.0, "particleSize": 0.02,
+                  "tint": { "r": 1.0, "g": 0.9, "b": 0.4, "a": 1 }
+                }
+              }
+            }
+          ],
+          "actions": [
+            {
+              "kind": "showPulseRing",
+              "config": {
+                "radius": 2.2, "height": 1.2, "ringCount": 48,
+                "baseIntensity": 0.7, "peakIntensity": 2.5, "pulseSpeed": 1.8,
+                "discRadius": 0.04,
+                "color": { "r": 1.0, "g": 0.8, "b": 0.3, "a": 1 }
+              }
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "name": "Release",
+          "duration": 10.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "stopSparkBurst" },
+            { "kind": "fadeEntity", "fade": { "entity": "orb",         "opacity": 0.0, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cube",        "opacity": 0.0, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cylinder",    "opacity": 0.0, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "cone",        "opacity": 0.0, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelA", "opacity": 0.0, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelB", "opacity": 0.0, "duration": 5.0, "timing": "easeInOut" } },
+            { "kind": "fadeEntity", "fade": { "entity": "videoPanelC", "opacity": 0.0, "duration": 5.0, "timing": "easeInOut" } }
+          ]
+        },
+        {
+          "id": "silence",
+          "name": "Silence",
+          "duration": 8.0,
+          "scheduledActions": [],
+          "actions": [
+            { "kind": "hidePulseRing" }
+          ]
+        }
+      ]
+    }
+  ]
+}
