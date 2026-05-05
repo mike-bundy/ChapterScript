@@ -14,7 +14,7 @@ public struct ExperienceDocument: Codable, Sendable, Equatable {
     public var defaultChapterId: String?
 
     public init(
-        formatVersion: Int = ChapterScript.currentFormatVersion,
+        formatVersion: Int = ChapterScriptFormat.currentFormatVersion,
         id: String,
         displayName: String,
         description: String? = nil,
@@ -152,7 +152,8 @@ public enum ParticleEmitterShape: String, Codable, Sendable, Equatable {
 // MARK: - Format constants
 
 /// Static format-level constants and helpers.
-public enum ChapterScript {
+/// Named distinctly from the `ChapterScript` module to avoid collision when the module is imported.
+public enum ChapterScriptFormat {
     /// Current schema version. Increment when emitting a breaking change; pair with a `Migrator` rule.
     public static let currentFormatVersion: Int = 1
 

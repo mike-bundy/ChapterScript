@@ -20,19 +20,19 @@ final class FixtureTests: XCTestCase {
 
     func testMinimalFixtureRoundTrips() throws {
         let raw = try loadFixture("minimal")
-        let doc = try ChapterScript.makeDecoder().decode(ExperienceDocument.self, from: raw)
+        let doc = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: raw)
         XCTAssertEqual(doc.id, "minimal")
-        XCTAssertEqual(doc.formatVersion, ChapterScript.currentFormatVersion)
+        XCTAssertEqual(doc.formatVersion, ChapterScriptFormat.currentFormatVersion)
         XCTAssertGreaterThanOrEqual(doc.chapters.count, 1)
 
-        let reencoded = try ChapterScript.makeEncoder().encode(doc)
-        let redecoded = try ChapterScript.makeDecoder().decode(ExperienceDocument.self, from: reencoded)
+        let reencoded = try ChapterScriptFormat.makeEncoder().encode(doc)
+        let redecoded = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: reencoded)
         XCTAssertEqual(doc, redecoded)
     }
 
     func testRepresentativeFixtureRoundTrips() throws {
         let raw = try loadFixture("representative")
-        let doc = try ChapterScript.makeDecoder().decode(ExperienceDocument.self, from: raw)
+        let doc = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: raw)
         XCTAssertEqual(doc.id, "voyage-prologue")
         XCTAssertGreaterThanOrEqual(doc.chapters.count, 2)
 
@@ -40,8 +40,8 @@ final class FixtureTests: XCTestCase {
         for chapter in doc.chapters {
             for step in chapter.steps {
                 for action in step.actions {
-                    let data = try ChapterScript.makeEncoder().encode(action)
-                    let back = try ChapterScript.makeDecoder().decode(StepActionDTO.self, from: data)
+                    let data = try ChapterScriptFormat.makeEncoder().encode(action)
+                    let back = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: data)
                     XCTAssertEqual(action, back, "action diverged: \(action)")
                 }
             }

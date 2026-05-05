@@ -4,7 +4,7 @@ import Foundation
 /// documents can be brought up to the current format without losing fields the typed model
 /// would otherwise reject.
 ///
-/// To add a new migration: bump `ChapterScript.currentFormatVersion`, then add a step
+/// To add a new migration: bump `ChapterScriptFormat.currentFormatVersion`, then add a step
 /// keyed at the previous version inside `Migrator.steps`.
 public enum Migrator {
     public enum MigrationError: Error {
@@ -29,7 +29,7 @@ public enum Migrator {
     /// Migrate the supplied JSON `Data` forward to `targetVersion`. Returns updated `Data`.
     public static func migrate(
         _ data: Data,
-        to targetVersion: Int = ChapterScript.currentFormatVersion
+        to targetVersion: Int = ChapterScriptFormat.currentFormatVersion
     ) throws -> Data {
         let sourceVersion = try readFormatVersion(from: data)
         guard sourceVersion <= targetVersion else {

@@ -6,8 +6,8 @@ final class RoundTripTests: XCTestCase {
     // MARK: - Helpers
 
     private func roundTrip<T: Codable & Equatable>(_ value: T, file: StaticString = #filePath, line: UInt = #line) throws {
-        let data = try ChapterScript.makeEncoder().encode(value)
-        let decoded = try ChapterScript.makeDecoder().decode(T.self, from: data)
+        let data = try ChapterScriptFormat.makeEncoder().encode(value)
+        let decoded = try ChapterScriptFormat.makeDecoder().decode(T.self, from: data)
         XCTAssertEqual(value, decoded, "round-trip diverged", file: file, line: line)
     }
 
@@ -126,7 +126,7 @@ final class RoundTripTests: XCTestCase {
         let json = """
         { "kind": "futureFeatureXYZ", "magic": 42, "label": "tomorrow" }
         """.data(using: .utf8)!
-        let decoded = try ChapterScript.makeDecoder().decode(StepActionDTO.self, from: json)
+        let decoded = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: json)
         if case .unknown(let name, let raw) = decoded {
             XCTAssertEqual(name, "futureFeatureXYZ")
             if case .object(let dict) = raw {
@@ -217,11 +217,11 @@ final class RoundTripTests: XCTestCase {
 
     func testMigratorIsIdentityForCurrentVersion() throws {
         let doc = ExperienceDocument(id: "x", displayName: "X")
-        let data = try ChapterScript.makeEncoder().encode(doc)
-        let migrated = try Migrator.migrate(data, to: ChapterScript.currentFormatVersion)
+        let data = try ChapterScriptFormat.makeEncoder().encode(doc)
+        let migrated = try Migrator.migrate(data, to: ChapterScriptFormat.currentFormatVersion)
         // Decoding both yields equal documents (data bytes may not be identical due to ordering).
-        let a = try ChapterScript.makeDecoder().decode(ExperienceDocument.self, from: data)
-        let b = try ChapterScript.makeDecoder().decode(ExperienceDocument.self, from: migrated)
+        let a = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: data)
+        let b = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: migrated)
         XCTAssertEqual(a, b)
     }
 
