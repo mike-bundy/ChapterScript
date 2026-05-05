@@ -106,6 +106,44 @@ final class RoundTripTests: XCTestCase {
         ]))
     }
 
+    // MARK: - VideoLayout / ImmersiveField (Phase 5.2B)
+
+    func testVideoLayoutVariants() throws {
+        for layout in [VideoLayout.mono, .sideBySide, .overUnder, .multiviewHEVC] {
+            try roundTrip(VideoActionDTO(
+                file: "spatial",
+                channel: "skybox",
+                layout: layout
+            ))
+        }
+    }
+
+    func testImmersiveVideoPresentation() throws {
+        try roundTrip(StepActionDTO.playVideo(VideoActionDTO(
+            file: "test",
+            channel: "skybox",
+            presentation: .immersive(radius: 1000, field: .equirect360),
+            layout: .mono
+        )))
+        try roundTrip(StepActionDTO.playVideo(VideoActionDTO(
+            file: "spatial-180",
+            channel: "skybox",
+            presentation: .immersive(radius: 50, field: .equirect180),
+            layout: .multiviewHEVC
+        )))
+    }
+
+    func testVideoActionBackwardsCompat() throws {
+        // Documents written before Phase 5.2B don't carry `layout`.
+        let legacy = """
+        { "file": "old", "channel": "skybox", "volume": 1, "loop": false,
+          "presentation": { "kind": "attachment", "id": "video" } }
+        """.data(using: .utf8)!
+        let decoded = try ChapterScriptFormat.makeDecoder().decode(VideoActionDTO.self, from: legacy)
+        XCTAssertEqual(decoded.layout, .mono)
+        XCTAssertEqual(decoded.file, "old")
+    }
+
     func testStepActionMixCases() throws {
         try roundTrip(StepActionDTO.setBusVolume(busId: "narration", volume: 0.6))
         try roundTrip(StepActionDTO.setBusEffect(busId: "narration", effect: .reverb(wetDryMix: 0.3)))

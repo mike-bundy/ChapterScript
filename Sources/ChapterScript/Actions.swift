@@ -257,28 +257,78 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     public var volume: Float
     public var loop: Bool
     public var presentation: VideoPresentation
+    /// Stereoscopic / immersive packing of the video file. Defaults to `.mono`.
+    /// Players use this hint to drive AVPlayer's stereo mode (MV-HEVC) or to
+    /// split a side-by-side / over-under stream into per-eye textures.
+    public var layout: VideoLayout
 
     public init(
         file: String,
         channel: String,
         volume: Float = 1.0,
         loop: Bool = false,
-        presentation: VideoPresentation = .attachment(id: "video")
+        presentation: VideoPresentation = .attachment(id: "video"),
+        layout: VideoLayout = .mono
     ) {
         self.file = file
         self.channel = channel
         self.volume = volume
         self.loop = loop
         self.presentation = presentation
+        self.layout = layout
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case file, channel, volume, loop, presentation, layout
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.file = try c.decode(String.self, forKey: .file)
+        self.channel = try c.decode(String.self, forKey: .channel)
+        self.volume = try c.decodeIfPresent(Float.self, forKey: .volume) ?? 1.0
+        self.loop = try c.decodeIfPresent(Bool.self, forKey: .loop) ?? false
+        self.presentation = try c.decodeIfPresent(VideoPresentation.self, forKey: .presentation)
+            ?? .attachment(id: "video")
+        self.layout = try c.decodeIfPresent(VideoLayout.self, forKey: .layout) ?? .mono
     }
 }
 
+/// How a video file packs its eye(s) on disk. The player consults this to know
+/// whether to render flat, route to AVPlayer's automatic stereoscopic decoder
+/// (MV-HEVC for Apple spatial video), or split a frame-packed image manually.
+public enum VideoLayout: String, Codable, Sendable, Equatable {
+    /// Standard 2D video — one eye, no stereo.
+    case mono
+    /// Frame-packed left-right side-by-side stereo. Player splits horizontally.
+    case sideBySide
+    /// Frame-packed top-bottom over-under stereo. Player splits vertically.
+    case overUnder
+    /// Apple's stereoscopic format (MV-HEVC). AVPlayer auto-detects per-eye
+    /// streams; the player just hands the URL to AVPlayer and binds the
+    /// resulting `AVStereoVideo`-aware material.
+    case multiviewHEVC
+}
+
 public enum VideoPresentation: Codable, Sendable, Equatable {
+    /// Flat video rendered into the player's SwiftUI attachment slot
+    /// identified by `id`. Typical for floating panel UI.
     case attachment(id: String)
+
+    /// Flat video rendered onto a named entity (a quad / panel in the scene).
+    /// `width` and `height` are in meters.
     case entity(name: String, width: Float, height: Float)
 
-    private enum CodingKeys: String, CodingKey { case kind, id, name, width, height }
-    private enum Kind: String, Codable { case attachment, entity }
+    /// Immersive 360°/180° video rendered onto a sphere of radius `radius`
+    /// centered around the user. The player applies the supplied `layout`
+    /// hint to swap in the stereo material when appropriate. `field` selects
+    /// between full equirectangular (360°) and front-half (180°) projections.
+    case immersive(radius: Float, field: ImmersiveField)
+
+    private enum CodingKeys: String, CodingKey {
+        case kind, id, name, width, height, radius, field
+    }
+    private enum Kind: String, Codable { case attachment, entity, immersive }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -291,6 +341,10 @@ public enum VideoPresentation: Codable, Sendable, Equatable {
             try c.encode(name, forKey: .name)
             try c.encode(width, forKey: .width)
             try c.encode(height, forKey: .height)
+        case .immersive(let radius, let field):
+            try c.encode(Kind.immersive, forKey: .kind)
+            try c.encode(radius, forKey: .radius)
+            try c.encode(field, forKey: .field)
         }
     }
 
@@ -305,8 +359,21 @@ public enum VideoPresentation: Codable, Sendable, Equatable {
                 width: try c.decode(Float.self, forKey: .width),
                 height: try c.decode(Float.self, forKey: .height)
             )
+        case .immersive:
+            self = .immersive(
+                radius: try c.decode(Float.self, forKey: .radius),
+                field: try c.decodeIfPresent(ImmersiveField.self, forKey: .field) ?? .equirect360
+            )
         }
     }
+}
+
+/// Spherical projection for immersive video.
+public enum ImmersiveField: String, Codable, Sendable, Equatable {
+    /// Full 360° equirectangular sphere — standard immersive video.
+    case equirect360
+    /// Front 180° hemisphere — typical VR180 / spatial video.
+    case equirect180
 }
 
 // MARK: - Effect Configs
