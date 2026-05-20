@@ -68,13 +68,32 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
     }
 }
 
-/// Whether a chapter expects the player in an immersive space or in a flat
-/// windowed scene. The current SharedVisions player has a single
-/// ImmersiveSpace + a utility window — `.immersive` opens the space,
-/// `.windowed` dismisses it so only the windowed content is visible.
+/// Whether a chapter expects the player in an immersive space, a mixed
+/// (passthrough) space, or a flat windowed scene. The SharedVisions
+/// player maps these to visionOS `ImmersionStyle` values:
+///
+///   • `.immersive` → `.full` — the user's real environment is hidden;
+///     ideal for skybox videos and fully-authored 3D backdrops.
+///   • `.mixed` → `.mixed` — passthrough stays visible while RealityKit
+///     content places into world space. Good for chapters that need
+///     3D depth (entities anchored in the user's room) without
+///     replacing the real environment.
+///   • `.windowed` — the immersive space is dismissed entirely, so
+///     only flat windowed UI remains.
+///
+/// Decode is tolerant: unknown raw values fall back to `.immersive` so
+/// a v0.3.1 doc containing `.mixed` loads on a v0.3.0 player as full
+/// immersive (the safest interpretation of "needs 3D space").
 public enum ChapterPresentation: String, Codable, Sendable, Equatable, CaseIterable {
     case immersive
+    case mixed
     case windowed
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        let raw = try c.decode(String.self)
+        self = ChapterPresentation(rawValue: raw) ?? .immersive
+    }
 }
 
 /// Ambient backdrop content for an immersive chapter. Either a flat video
