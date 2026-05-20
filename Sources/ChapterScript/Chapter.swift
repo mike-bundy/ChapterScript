@@ -4,6 +4,15 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
     public var id: String
     public var name: String
     public var phase: String
+    /// Whether this chapter expects the player to be in an immersive space
+    /// or in a flat / windowed presentation. Players consult this on chapter
+    /// start to open / dismiss the immersive space as the experience moves
+    /// between presentation modes.
+    public var presentation: ChapterPresentation
+    /// Optional immersive backdrop (skybox video or USDZ scene) shown while
+    /// this chapter plays. Only meaningful when `presentation == .immersive`;
+    /// players may ignore for `.windowed` chapters.
+    public var immersiveBackdrop: ImmersiveBackdropSpec?
     public var steps: [StepDefinitionDTO]
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
@@ -12,6 +21,8 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
         id: String,
         name: String,
         phase: String,
+        presentation: ChapterPresentation = .immersive,
+        immersiveBackdrop: ImmersiveBackdropSpec? = nil,
         steps: [StepDefinitionDTO],
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
         onComplete: CompletionActionDTO = .holdOnLastStep
@@ -19,6 +30,8 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
         self.id = id
         self.name = name
         self.phase = phase
+        self.presentation = presentation
+        self.immersiveBackdrop = immersiveBackdrop
         self.steps = steps
         self.visibility = visibility
         self.onComplete = onComplete
@@ -26,6 +39,93 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
 
     public var totalDuration: Double {
         steps.reduce(0) { $0 + $1.duration }
+    }
+
+    // Decode-if-present for `presentation` and `immersiveBackdrop` so docs
+    // authored before this format revision keep loading. `phase` is kept
+    // independent — it remains a free-form routing tag — but if a legacy
+    // doc explicitly used `phase == "windowed"`, fall back to that.
+    private enum CodingKeys: String, CodingKey {
+        case id, name, phase, presentation, immersiveBackdrop
+        case steps, visibility, onComplete
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        let phase = try c.decode(String.self, forKey: .phase)
+        self.phase = phase
+        if let decoded = try c.decodeIfPresent(ChapterPresentation.self, forKey: .presentation) {
+            self.presentation = decoded
+        } else {
+            self.presentation = phase == "windowed" ? .windowed : .immersive
+        }
+        self.immersiveBackdrop = try c.decodeIfPresent(ImmersiveBackdropSpec.self, forKey: .immersiveBackdrop)
+        self.steps = try c.decode([StepDefinitionDTO].self, forKey: .steps)
+        self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
+        self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
+    }
+}
+
+/// Whether a chapter expects the player in an immersive space or in a flat
+/// windowed scene. The current SharedVisions player has a single
+/// ImmersiveSpace + a utility window — `.immersive` opens the space,
+/// `.windowed` dismisses it so only the windowed content is visible.
+public enum ChapterPresentation: String, Codable, Sendable, Equatable, CaseIterable {
+    case immersive
+    case windowed
+}
+
+/// Ambient backdrop content for an immersive chapter. Either a flat video
+/// projected onto a sphere (360°/180°) or a USDZ scene loaded under the
+/// scene root. Players may ignore for `.windowed` chapters.
+public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
+    /// Immersive video. `file` references an entry in the asset manifest.
+    /// `layout` and `field` mirror the same hints used by `VideoActionDTO`
+    /// for skybox playback; `radius` controls the sphere size in meters.
+    case video(file: String, layout: VideoLayout, field: ImmersiveField, radius: Float, loop: Bool)
+    /// USDZ scene loaded under the immersive scene root. The asset id
+    /// must exist in the document's manifest. The player parents the
+    /// loaded entity under the immersive root before the first chapter
+    /// step runs.
+    case usdz(assetId: String)
+
+    private enum CodingKeys: String, CodingKey {
+        case kind, file, layout, field, radius, loop, assetId
+    }
+    private enum Kind: String, Codable { case video, usdz }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .video(let file, let layout, let field, let radius, let loop):
+            try c.encode(Kind.video, forKey: .kind)
+            try c.encode(file, forKey: .file)
+            try c.encode(layout, forKey: .layout)
+            try c.encode(field, forKey: .field)
+            try c.encode(radius, forKey: .radius)
+            try c.encode(loop, forKey: .loop)
+        case .usdz(let assetId):
+            try c.encode(Kind.usdz, forKey: .kind)
+            try c.encode(assetId, forKey: .assetId)
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        switch try c.decode(Kind.self, forKey: .kind) {
+        case .video:
+            self = .video(
+                file: try c.decode(String.self, forKey: .file),
+                layout: try c.decodeIfPresent(VideoLayout.self, forKey: .layout) ?? .mono,
+                field: try c.decodeIfPresent(ImmersiveField.self, forKey: .field) ?? .equirect360,
+                radius: try c.decodeIfPresent(Float.self, forKey: .radius) ?? 1000,
+                loop: try c.decodeIfPresent(Bool.self, forKey: .loop) ?? true
+            )
+        case .usdz:
+            self = .usdz(assetId: try c.decode(String.self, forKey: .assetId))
+        }
     }
 }
 
