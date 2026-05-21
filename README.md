@@ -11,15 +11,18 @@ The format is the public contract between authoring tools (e.g., the **Maestro**
 ## ✨ What's in here
 
 - **`ExperienceDocument`** — the top-level container with `formatVersion`, `id`, `displayName`, `entities`, `chapters`, `particlePresets`, `manifest`, `defaultChapterId`
-- **`ChapterDefinitionDTO`** — chapter id, name, ordered steps, on-complete action (`holdOnLastStep` / `autoAdvance` / `dismissToHome` / `transitionTo`)
+- **`ChapterDefinitionDTO`** — chapter id, name, ordered steps, on-complete action (`holdOnLastStep` / `autoAdvance` / `dismissToHome` / `transitionTo`), plus the v0.3.x additions:
+  - **`presentation: ChapterPresentation`** — `.immersive` / `.mixed` / `.windowed`. Tells the player whether to open the full immersive space, the mixed-reality space (passthrough + 3D), or stay in the flat windowed scene. Unknown raw values fall back to `.immersive` so newer docs degrade safely on older players.
+  - **`immersiveBackdrop: ImmersiveBackdropSpec?`** — optional ambient backdrop bound at chapter start. Either `.video(file, layout, field, radius, loop)` for a 360°/180° skybox or `.usdz(assetId)` for a USDZ scene parented under the immersive root.
 - **`StepDefinitionDTO`** — step id, name, duration, ordered actions, scheduled actions (time-offset within the step), optional `gate`
 - **`StepActionDTO`** — externally-tagged sum type covering ~30 action variants (entity reveal/move/fade/scale, attachments, audio play/stop/fade/zones/buses, video play/prepare/stop, effects, gestures, system flags, custom escape hatch)
+- **`VideoPresentation`** — `.attachment(id:)`, `.entity(name:, width:, height:)`, or `.immersive(radius:, field:)` for binding video onto a SwiftUI overlay, a scene panel, or a skybox sphere. Pairs with **`VideoLayout`** (`.mono`, `.sideBySide`, `.overUnder`, `.multiviewHEVC`) for stereo hints.
 - **`MotionCurve`** — composable parametric motion: `constant`, `linear`, `orbit`, `spiral`, `oscillate`, `rotate`, `keyframes`, `sum`, `scaled` (recursive)
 - **`EntityDefinition`** — declarative entity registry: primitive shapes, USDZ refs, text3D, lights, video panels, particle preset bindings, custom-factory escape hatch
 - **`AssetManifest`** — `[AssetEntry]` with relative paths, byte sizes, SHA-256 hashes, durations, dimensions
 - **`KeyframePoint`** + **`InterpolationMode`** — primitives reused inside `MotionCurve.keyframes`
 - **`Migrator`** — JSON-to-JSON schema migrators that run before typed decoding so older documents stay loadable
-- **Forward-compat** — unknown future `StepAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip
+- **Forward-compat** — unknown future `StepAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip. Unknown `ChapterPresentation` raw values fall back to `.immersive` for the same reason.
 
 ---
 
@@ -93,7 +96,7 @@ Action variants are externally-tagged: each `actions[i]` carries a `"kind"` key 
 `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/mike-bundy/ChapterScript.git", from: "0.2.0")
+.package(url: "https://github.com/mike-bundy/ChapterScript.git", from: "0.3.1")
 ```
 
 Or as a sibling local package:
@@ -185,6 +188,12 @@ ChapterScript/
 ## 📌 Status
 
 Pre-1.0. The schema may change. `formatVersion` is currently **1**. The first stable release will lock the wire format and start the strict back-compat regime.
+
+### Recent releases
+
+- **v0.3.1** — added `ChapterPresentation.mixed` case alongside `.immersive` and `.windowed`. Decoder tolerates unknown raw values (falls back to `.immersive`), so v0.3.1 docs containing `.mixed` still load on v0.3.0 players as full immersive.
+- **v0.3.0** — added `ChapterDefinitionDTO.presentation` and `ChapterDefinitionDTO.immersiveBackdrop`. Both decode-if-present, so v0.2 docs continue to load. Legacy `phase == "windowed"` is detected as `.windowed`.
+- **v0.2.0** — `VideoPresentation.immersive(radius:, field:)` + `VideoLayout` for stereo packing hints (MV-HEVC, side-by-side, over-under).
 
 ---
 
