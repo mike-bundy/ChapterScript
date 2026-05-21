@@ -96,14 +96,28 @@ public enum ChapterPresentation: String, Codable, Sendable, Equatable, CaseItera
     }
 }
 
-/// Ambient backdrop content for an immersive chapter. Either a flat video
-/// projected onto a sphere (360°/180°) or a USDZ scene loaded under the
-/// scene root. Players may ignore for `.windowed` chapters.
+/// Ambient backdrop content for an immersive chapter. The player binds
+/// one of these at chapter start (and tears down the previous one):
+///
+///   • `.video` — a flat video projected onto a sphere (360° / 180°)
+///     or a stereoscopic MV-HEVC / Apple Immersive Video file. Player
+///     uses `VideoPlayerComponent` for proper per-eye projection.
+///   • `.image` — a static equirectangular image (HEIC / JPG / PNG)
+///     wrapped onto a sphere mesh via an UnlitMaterial. Cheap, no
+///     stereo. Good for matte-painting style environments and
+///     360° photos.
+///   • `.usdz` — a USDZ scene loaded under the immersive scene root.
+///
+/// Players may ignore for `.windowed` chapters.
 public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     /// Immersive video. `file` references an entry in the asset manifest.
     /// `layout` and `field` mirror the same hints used by `VideoActionDTO`
     /// for skybox playback; `radius` controls the sphere size in meters.
     case video(file: String, layout: VideoLayout, field: ImmersiveField, radius: Float, loop: Bool)
+    /// Static equirectangular image skybox. `field` is `.equirect360` for
+    /// full-sphere panoramas, `.equirect180` for half-sphere captures.
+    /// `radius` is the sphere size in meters (Player default ~1000m).
+    case image(file: String, field: ImmersiveField, radius: Float)
     /// USDZ scene loaded under the immersive scene root. The asset id
     /// must exist in the document's manifest. The player parents the
     /// loaded entity under the immersive root before the first chapter
@@ -113,7 +127,7 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case kind, file, layout, field, radius, loop, assetId
     }
-    private enum Kind: String, Codable { case video, usdz }
+    private enum Kind: String, Codable { case video, image, usdz }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -125,6 +139,11 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
             try c.encode(field, forKey: .field)
             try c.encode(radius, forKey: .radius)
             try c.encode(loop, forKey: .loop)
+        case .image(let file, let field, let radius):
+            try c.encode(Kind.image, forKey: .kind)
+            try c.encode(file, forKey: .file)
+            try c.encode(field, forKey: .field)
+            try c.encode(radius, forKey: .radius)
         case .usdz(let assetId):
             try c.encode(Kind.usdz, forKey: .kind)
             try c.encode(assetId, forKey: .assetId)
@@ -141,6 +160,12 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
                 field: try c.decodeIfPresent(ImmersiveField.self, forKey: .field) ?? .equirect360,
                 radius: try c.decodeIfPresent(Float.self, forKey: .radius) ?? 1000,
                 loop: try c.decodeIfPresent(Bool.self, forKey: .loop) ?? true
+            )
+        case .image:
+            self = .image(
+                file: try c.decode(String.self, forKey: .file),
+                field: try c.decodeIfPresent(ImmersiveField.self, forKey: .field) ?? .equirect360,
+                radius: try c.decodeIfPresent(Float.self, forKey: .radius) ?? 1000
             )
         case .usdz:
             self = .usdz(assetId: try c.decode(String.self, forKey: .assetId))
