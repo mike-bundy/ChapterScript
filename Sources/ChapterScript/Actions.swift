@@ -10,6 +10,14 @@ public struct MoveActionDTO: Codable, Sendable, Equatable {
     public var headYOnly: Bool
     public var scaleMultiplier: Float?
     public var absoluteScale: Vec3?
+    /// Final orientation as Euler angles in DEGREES (YXZ order, matching
+    /// the editor's transform convention). When set, the entity animates
+    /// to this absolute orientation over `duration`.
+    public var absoluteRotation: Vec3?
+    /// Relative orientation change as Euler angles in DEGREES (YXZ),
+    /// composed onto the entity's current orientation. Mutually exclusive
+    /// with `absoluteRotation`; if both are set, absolute wins.
+    public var rotationOffset: Vec3?
     public var duration: Double
     public var timing: StepTimingFunction
 
@@ -21,6 +29,8 @@ public struct MoveActionDTO: Codable, Sendable, Equatable {
         headYOnly: Bool = false,
         scaleMultiplier: Float? = nil,
         absoluteScale: Vec3? = nil,
+        absoluteRotation: Vec3? = nil,
+        rotationOffset: Vec3? = nil,
         duration: Double = 1.0,
         timing: StepTimingFunction = .easeInOut
     ) {
@@ -31,6 +41,8 @@ public struct MoveActionDTO: Codable, Sendable, Equatable {
         self.headYOnly = headYOnly
         self.scaleMultiplier = scaleMultiplier
         self.absoluteScale = absoluteScale
+        self.absoluteRotation = absoluteRotation
+        self.rotationOffset = rotationOffset
         self.duration = duration
         self.timing = timing
     }
