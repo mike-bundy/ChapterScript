@@ -73,6 +73,11 @@ public struct RevealActionDTO: Codable, Sendable, Equatable {
     public var headYOnly: Bool
     public var scale: Vec3?
     public var fadeIn: Double
+    /// When true, the revealed entity becomes directly manipulable by the
+    /// viewer's hands on device (RealityKit `ManipulationComponent` —
+    /// grab / move / rotate / scale). Optional (nil == off) so older
+    /// documents decode unchanged and the key is omitted when unset.
+    public var manipulable: Bool?
 
     public init(
         entity: String,
@@ -80,7 +85,8 @@ public struct RevealActionDTO: Codable, Sendable, Equatable {
         headRelativePosition: Vec3? = nil,
         headYOnly: Bool = false,
         scale: Vec3? = nil,
-        fadeIn: Double = 0
+        fadeIn: Double = 0,
+        manipulable: Bool? = nil
     ) {
         self.entity = entity
         self.position = position
@@ -88,6 +94,7 @@ public struct RevealActionDTO: Codable, Sendable, Equatable {
         self.headYOnly = headYOnly
         self.scale = scale
         self.fadeIn = fadeIn
+        self.manipulable = manipulable
     }
 }
 
