@@ -280,6 +280,20 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// Players use this hint to drive AVPlayer's stereo mode (MV-HEVC) or to
     /// split a side-by-side / over-under stream into per-eye textures.
     public var layout: VideoLayout
+    /// Non-destructive source trim, seconds into the MASTER file where
+    /// playback begins. `nil` (default) plays from the file's start. The
+    /// master's bytes are never re-encoded or duplicated — a trim is pure
+    /// metadata, so asset hashes (and live-sync caches) stay stable.
+    public var sourceIn: Double?
+    /// Non-destructive source trim, exclusive end in master-file seconds.
+    /// `nil` (default) plays through the file's natural end. Looping loops
+    /// the `[sourceIn, sourceOut)` window. Multiple clips cut from one
+    /// master are just multiple playVideo actions with different windows
+    /// over the same `file`.
+    public var sourceOut: Double?
+    /// Optional normalized spatial crop of the video frame, applied by the
+    /// player at render time. `nil` shows the full frame.
+    public var crop: VideoCropRect?
 
     public init(
         file: String,
@@ -287,7 +301,10 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         volume: Float = 1.0,
         loop: Bool = false,
         presentation: VideoPresentation = .attachment(id: "video"),
-        layout: VideoLayout = .mono
+        layout: VideoLayout = .mono,
+        sourceIn: Double? = nil,
+        sourceOut: Double? = nil,
+        crop: VideoCropRect? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -295,10 +312,13 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.loop = loop
         self.presentation = presentation
         self.layout = layout
+        self.sourceIn = sourceIn
+        self.sourceOut = sourceOut
+        self.crop = crop
     }
 
     private enum CodingKeys: String, CodingKey {
-        case file, channel, volume, loop, presentation, layout
+        case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
     }
 
     public init(from decoder: Decoder) throws {
@@ -310,6 +330,31 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.presentation = try c.decodeIfPresent(VideoPresentation.self, forKey: .presentation)
             ?? .attachment(id: "video")
         self.layout = try c.decodeIfPresent(VideoLayout.self, forKey: .layout) ?? .mono
+        self.sourceIn = try c.decodeIfPresent(Double.self, forKey: .sourceIn)
+        self.sourceOut = try c.decodeIfPresent(Double.self, forKey: .sourceOut)
+        self.crop = try c.decodeIfPresent(VideoCropRect.self, forKey: .crop)
+    }
+
+    /// Duration of the trimmed source window when both endpoints are known.
+    public var sourceWindowDuration: Double? {
+        guard let out = sourceOut else { return nil }
+        return max(out - (sourceIn ?? 0), 0)
+    }
+}
+
+/// Normalized (0…1) crop rectangle over a video frame; origin is the
+/// frame's top-left. Pure metadata — the master file is untouched.
+public struct VideoCropRect: Codable, Sendable, Equatable, Hashable {
+    public var x: Float
+    public var y: Float
+    public var width: Float
+    public var height: Float
+
+    public init(x: Float, y: Float, width: Float, height: Float) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
     }
 }
 

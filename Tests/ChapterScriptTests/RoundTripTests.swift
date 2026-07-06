@@ -142,6 +142,36 @@ final class RoundTripTests: XCTestCase {
         let decoded = try ChapterScriptFormat.makeDecoder().decode(VideoActionDTO.self, from: legacy)
         XCTAssertEqual(decoded.layout, .mono)
         XCTAssertEqual(decoded.file, "old")
+        // Pre-trim documents carry no source window or crop.
+        XCTAssertNil(decoded.sourceIn)
+        XCTAssertNil(decoded.sourceOut)
+        XCTAssertNil(decoded.crop)
+    }
+
+    func testVideoActionSourceTrimRoundTrip() throws {
+        try roundTrip(StepActionDTO.playVideo(VideoActionDTO(
+            file: "master.mov",
+            channel: "video-master",
+            volume: 0.8,
+            loop: true,
+            presentation: .entity(name: "master.mov", width: 1.6, height: 0.9),
+            layout: .mono,
+            sourceIn: 12.5,
+            sourceOut: 47.25,
+            crop: VideoCropRect(x: 0.1, y: 0.0, width: 0.8, height: 1.0)
+        )))
+    }
+
+    func testVideoActionSourceWindowDuration() {
+        let trimmed = VideoActionDTO(
+            file: "m.mov", channel: "c", sourceIn: 10, sourceOut: 25.5
+        )
+        XCTAssertEqual(trimmed.sourceWindowDuration ?? -1, 15.5, accuracy: 0.0001)
+        // In-only trim: duration unknown until the player probes the asset.
+        let inOnly = VideoActionDTO(file: "m.mov", channel: "c", sourceIn: 10)
+        XCTAssertNil(inOnly.sourceWindowDuration)
+        // Untrimmed: nil window.
+        XCTAssertNil(VideoActionDTO(file: "m.mov", channel: "c").sourceWindowDuration)
     }
 
     func testStepActionMixCases() throws {
