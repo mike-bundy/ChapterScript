@@ -1,7 +1,7 @@
 import Foundation
 
 /// A single composable step action. Mirrors the runtime `StepAction` enum from the
-/// player's ChapterEngine, but uses primitive value types (Vec3, ColorRGBA, VisibilityKind)
+/// player's SegmentEngine, but uses primitive value types (Vec3, ColorRGBA, VisibilityKind)
 /// so the format has no RealityKit / SwiftUI / AVFoundation dependencies.
 ///
 /// JSON wire format is externally tagged: `{"kind": "showEntity", ...}`.

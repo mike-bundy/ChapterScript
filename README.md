@@ -1,8 +1,10 @@
 # ChapterScript
 
-> **An open data format for declarative immersive experiences — chapters of timed steps, each step a bag of actions (entity reveals, audio cues, video playback, motion curves, gates).**
+> **An open data format for declarative immersive experiences — segments of timed steps, each step a bag of actions (entity reveals, audio cues, video playback, motion curves, gates).**
 
 ChapterScript is a Swift package containing only `Codable` value types. It has zero dependencies on RealityKit, UIKit, AppKit, or AVFoundation. The package builds on macOS, iOS, visionOS, tvOS, watchOS, and Linux.
+
+**Vocabulary (format v2):** a *chapter* is the whole `.chapterscript` bundle — one `ChapterDocument`, saved as `chapter.json` beside its `assets/` folder. A chapter contains *segments* (the timed units of steps, animation tracks, and backdrops); players run one segment at a time and editors edit one chapter at a time.
 
 The format is the public contract between authoring tools (e.g., the **Maestro** macOS editor) and players (e.g., the [SharedVisions](https://github.com/Shared-Visions/SharedVisionsProject) visionOS reference player). Either side can be reimplemented — including in a different language — by following the JSON schema this package defines.
 
@@ -10,19 +12,20 @@ The format is the public contract between authoring tools (e.g., the **Maestro**
 
 ## ✨ What's in here
 
-- **`ExperienceDocument`** — the top-level container with `formatVersion`, `id`, `displayName`, `entities`, `chapters`, `particlePresets`, `manifest`, `defaultChapterId`
-- **`ChapterDefinitionDTO`** — chapter id, name, ordered steps, on-complete action (`holdOnLastStep` / `autoAdvance` / `dismissToHome` / `transitionTo`), plus the v0.3.x additions:
-  - **`presentation: ChapterPresentation`** — `.immersive` / `.mixed` / `.windowed`. Tells the player whether to open the full immersive space, the mixed-reality space (passthrough + 3D), or stay in the flat windowed scene. Unknown raw values fall back to `.immersive` so newer docs degrade safely on older players.
-  - **`immersiveBackdrop: ImmersiveBackdropSpec?`** — optional ambient backdrop bound at chapter start. Either `.video(file, layout, field, radius, loop)` for a 360°/180° skybox or `.usdz(assetId)` for a USDZ scene parented under the immersive root.
+- **`ChapterDocument`** — the top-level container with `formatVersion`, `id`, `displayName`, `entities`, `segments`, `particlePresets`, `manifest`, `defaultSegmentId`
+- **`SegmentDefinitionDTO`** — segment id, name, ordered steps, on-complete action (`holdOnLastStep` / `autoAdvance` / `dismissToHome` / `transitionTo`), plus the v0.3.x additions:
+  - **`presentation: SegmentPresentation`** — `.immersive` / `.mixed` / `.windowed`. Tells the player whether to open the full immersive space, the mixed-reality space (passthrough + 3D), or stay in the flat windowed scene. Unknown raw values fall back to `.immersive` so newer docs degrade safely on older players.
+  - **`immersiveBackdrop: ImmersiveBackdropSpec?`** — optional ambient backdrop bound at segment start. Either `.video(file, layout, field, radius, loop)` for a 360°/180° skybox or `.usdz(assetId)` for a USDZ scene parented under the immersive root.
 - **`StepDefinitionDTO`** — step id, name, duration, ordered actions, scheduled actions (time-offset within the step), optional `gate`
 - **`StepActionDTO`** — externally-tagged sum type covering ~30 action variants (entity reveal/move/fade/scale, attachments, audio play/stop/fade/zones/buses, video play/prepare/stop, effects, gestures, system flags, custom escape hatch)
 - **`VideoPresentation`** — `.attachment(id:)`, `.entity(name:, width:, height:)`, or `.immersive(radius:, field:)` for binding video onto a SwiftUI overlay, a scene panel, or a skybox sphere. Pairs with **`VideoLayout`** (`.mono`, `.sideBySide`, `.overUnder`, `.multiviewHEVC`) for stereo hints.
 - **`MotionCurve`** — composable parametric motion: `constant`, `linear`, `orbit`, `spiral`, `oscillate`, `rotate`, `keyframes`, `sum`, `scaled` (recursive)
 - **`EntityDefinition`** — declarative entity registry: primitive shapes, USDZ refs, text3D, lights, video panels, particle preset bindings, custom-factory escape hatch
 - **`AssetManifest`** — `[AssetEntry]` with relative paths, byte sizes, SHA-256 hashes, durations, dimensions
+- **`EntityAnimationTrack`** + **`SegmentAnimationEvaluator`** — segment-level keyframe animation: ten scalar channels per entity (`tx…tz rx…rz sx…sz opacity`), keys at absolute segment seconds with bezier `(dt, dv)` tangent handles, continuous-Euler rotations with explicit rotate order, and the one evaluation truth shared by players and editors (`AnimationEulerMath` covers all six orders)
 - **`KeyframePoint`** + **`InterpolationMode`** — primitives reused inside `MotionCurve.keyframes`
 - **`Migrator`** — JSON-to-JSON schema migrators that run before typed decoding so older documents stay loadable
-- **Forward-compat** — unknown future `StepAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip. Unknown `ChapterPresentation` raw values fall back to `.immersive` for the same reason.
+- **Forward-compat** — unknown future `StepAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip. Unknown `SegmentPresentation` raw values fall back to `.immersive` for the same reason.
 
 ---
 
@@ -32,7 +35,7 @@ A `.chapterscript` package is a Finder-visible directory bundle:
 
 ```
 MyExperience.chapterscript/
-├── experience.json          ← the ExperienceDocument JSON
+├── chapter.json          ← the ChapterDocument JSON
 └── assets/
     ├── audio/narration_01.m4a
     ├── video/skybox.mp4
@@ -40,13 +43,13 @@ MyExperience.chapterscript/
     └── images/poster.heic
 ```
 
-`experience.json` is the top-level JSON document. Paths inside `assets/` are referenced from the `manifest.entries[].relativePath` field. The directory layout under `assets/` is up to the author.
+`chapter.json` is the top-level JSON document. Paths inside `assets/` are referenced from the `manifest.entries[].relativePath` field. The directory layout under `assets/` is up to the author.
 
 ---
 
 ## 🧪 Wire-format example
 
-A minimal one-chapter experience:
+A minimal one-segment experience:
 
 ```json
 {
@@ -56,10 +59,10 @@ A minimal one-chapter experience:
   "entities": [],
   "particlePresets": [],
   "manifest": { "entries": [] },
-  "chapters": [
+  "segments": [
     {
       "id": "only",
-      "name": "Only Chapter",
+      "name": "Only Segment",
       "phase": "immersive",
       "visibility": {},
       "onComplete": { "kind": "holdOnLastStep" },
@@ -110,13 +113,13 @@ Decode a document:
 ```swift
 import ChapterScript
 
-let url = URL(fileURLWithPath: "MyExperience.chapterscript/experience.json")
+let url = URL(fileURLWithPath: "MyExperience.chapterscript/chapter.json")
 let data = try Data(contentsOf: url)
 let migrated = try Migrator.migrate(data)                   // JSON-to-JSON forward migration
 let doc = try ChapterScriptFormat.makeDecoder()
-    .decode(ExperienceDocument.self, from: migrated)
+    .decode(ChapterDocument.self, from: migrated)
 
-print(doc.chapters.map(\.id))                               // ["chapter_01_…", "chapter_02_…", …]
+print(doc.segments.map(\.id))                               // ["segment_01_…", "segment_02_…", …]
 ```
 
 Encode a document:
@@ -155,7 +158,7 @@ Every DTO has round-trip tests. `Tests/Fixtures/` ships:
 
 - **`minimal.json`** — smallest valid document
 - **`representative.json`** — exercises 30+ action variants and most `MotionCurve` kinds
-- **`documentary.json`** — the eight-chapter SharedVisions documentary as a fidelity gate; round-trips every action and validates the auto-advance chain
+- **`documentary.json`** — the eight-segment SharedVisions documentary as a fidelity gate; round-trips every action and validates the auto-advance chain
 
 ---
 
@@ -171,8 +174,8 @@ ChapterScript/
 │   ├── Entity.swift                           # EntityDefinition, PrimitiveSpec, MaterialSpec, …
 │   ├── Actions.swift                          # MoveActionDTO, FadeActionDTO, AudioActionDTO, …
 │   ├── StepAction.swift                       # StepActionDTO + externally-tagged Codable
-│   ├── Chapter.swift                          # ChapterDefinitionDTO, StepDefinitionDTO, …
-│   ├── Document.swift                         # ExperienceDocument, AssetManifest, ChapterScriptFormat
+│   ├── Segment.swift                          # SegmentDefinitionDTO, StepDefinitionDTO, …
+│   ├── Document.swift                         # ChapterDocument, AssetManifest, ChapterScriptFormat
 │   └── Migrator.swift                         # JSON-to-JSON schema migrators
 └── Tests/ChapterScriptTests/
     ├── RoundTripTests.swift
@@ -191,8 +194,8 @@ Pre-1.0. The schema may change. `formatVersion` is currently **1**. The first st
 
 ### Recent releases
 
-- **v0.3.1** — added `ChapterPresentation.mixed` case alongside `.immersive` and `.windowed`. Decoder tolerates unknown raw values (falls back to `.immersive`), so v0.3.1 docs containing `.mixed` still load on v0.3.0 players as full immersive.
-- **v0.3.0** — added `ChapterDefinitionDTO.presentation` and `ChapterDefinitionDTO.immersiveBackdrop`. Both decode-if-present, so v0.2 docs continue to load. Legacy `phase == "windowed"` is detected as `.windowed`.
+- **v0.3.1** — added `SegmentPresentation.mixed` case alongside `.immersive` and `.windowed`. Decoder tolerates unknown raw values (falls back to `.immersive`), so v0.3.1 docs containing `.mixed` still load on v0.3.0 players as full immersive.
+- **v0.3.0** — added `SegmentDefinitionDTO.presentation` and `SegmentDefinitionDTO.immersiveBackdrop`. Both decode-if-present, so v0.2 docs continue to load. Legacy `phase == "windowed"` is detected as `.windowed`.
 - **v0.2.0** — `VideoPresentation.immersive(radius:, field:)` + `VideoLayout` for stereo packing hints (MV-HEVC, side-by-side, over-under).
 
 ---

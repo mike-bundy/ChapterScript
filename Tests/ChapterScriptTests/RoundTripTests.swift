@@ -208,10 +208,10 @@ final class RoundTripTests: XCTestCase {
         }
     }
 
-    // MARK: - Chapter / Step
+    // MARK: - Segment / Step
 
-    func testChapterRoundTrip() throws {
-        let chapter = ChapterDefinitionDTO(
+    func testSegmentRoundTrip() throws {
+        let segment = SegmentDefinitionDTO(
             id: "voyage-prologue.intro",
             name: "Intro",
             phase: "immersive",
@@ -237,15 +237,15 @@ final class RoundTripTests: XCTestCase {
                 )
             ],
             visibility: VisibilityStateDTO(["orb": true]),
-            onComplete: .autoAdvance(nextChapterId: "voyage-prologue.act-one")
+            onComplete: .autoAdvance(nextSegmentId: "voyage-prologue.act-one")
         )
-        try roundTrip(chapter)
+        try roundTrip(segment)
     }
 
     // MARK: - Document
 
     func testMinimalDocumentRoundTrip() throws {
-        let doc = ExperienceDocument(
+        let doc = ChapterDocument(
             id: "minimal",
             displayName: "Minimal Experience",
             entities: [
@@ -257,10 +257,10 @@ final class RoundTripTests: XCTestCase {
                     primitive: PrimitiveSpec(shape: .sphere, size: Vec3(0.15, 0.15, 0.15))
                 )
             ],
-            chapters: [
-                ChapterDefinitionDTO(
+            segments: [
+                SegmentDefinitionDTO(
                     id: "only",
-                    name: "Only Chapter",
+                    name: "Only Segment",
                     phase: "immersive",
                     steps: [StepDefinitionDTO(
                         id: "step1",
@@ -271,7 +271,7 @@ final class RoundTripTests: XCTestCase {
                 )
             ],
             manifest: AssetManifest(),
-            defaultChapterId: "only"
+            defaultSegmentId: "only"
         )
         try roundTrip(doc)
     }
@@ -284,12 +284,12 @@ final class RoundTripTests: XCTestCase {
     }
 
     func testMigratorIsIdentityForCurrentVersion() throws {
-        let doc = ExperienceDocument(id: "x", displayName: "X")
+        let doc = ChapterDocument(id: "x", displayName: "X")
         let data = try ChapterScriptFormat.makeEncoder().encode(doc)
         let migrated = try Migrator.migrate(data, to: ChapterScriptFormat.currentFormatVersion)
         // Decoding both yields equal documents (data bytes may not be identical due to ordering).
-        let a = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: data)
-        let b = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: migrated)
+        let a = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: data)
+        let b = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: migrated)
         XCTAssertEqual(a, b)
     }
 

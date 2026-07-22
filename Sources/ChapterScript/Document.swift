@@ -1,17 +1,17 @@
 import Foundation
 
-/// Top-level immersive experience document. Lives at `experience.json` inside a `.chapterscript` bundle.
-public struct ExperienceDocument: Codable, Sendable, Equatable {
+/// Top-level immersive experience document. Lives at `chapter.json` inside a `.chapterscript` bundle.
+public struct ChapterDocument: Codable, Sendable, Equatable {
     public var formatVersion: Int
     public var id: String
     public var displayName: String
     public var description: String?
     public var entities: [EntityDefinition]
-    public var chapters: [ChapterDefinitionDTO]
+    public var segments: [SegmentDefinitionDTO]
     public var particlePresets: [ParticleEmitterPreset]
     public var manifest: AssetManifest
-    /// Initial chapter id played when the experience loads. Defaults to first chapter.
-    public var defaultChapterId: String?
+    /// Initial segment id played when the experience loads. Defaults to first segment.
+    public var defaultSegmentId: String?
 
     public init(
         formatVersion: Int = ChapterScriptFormat.currentFormatVersion,
@@ -19,20 +19,20 @@ public struct ExperienceDocument: Codable, Sendable, Equatable {
         displayName: String,
         description: String? = nil,
         entities: [EntityDefinition] = [],
-        chapters: [ChapterDefinitionDTO] = [],
+        segments: [SegmentDefinitionDTO] = [],
         particlePresets: [ParticleEmitterPreset] = [],
         manifest: AssetManifest = AssetManifest(),
-        defaultChapterId: String? = nil
+        defaultSegmentId: String? = nil
     ) {
         self.formatVersion = formatVersion
         self.id = id
         self.displayName = displayName
         self.description = description
         self.entities = entities
-        self.chapters = chapters
+        self.segments = segments
         self.particlePresets = particlePresets
         self.manifest = manifest
-        self.defaultChapterId = defaultChapterId
+        self.defaultSegmentId = defaultSegmentId
     }
 }
 
@@ -155,10 +155,10 @@ public enum ParticleEmitterShape: String, Codable, Sendable, Equatable {
 /// Named distinctly from the `ChapterScript` module to avoid collision when the module is imported.
 public enum ChapterScriptFormat {
     /// Current schema version. Increment when emitting a breaking change; pair with a `Migrator` rule.
-    public static let currentFormatVersion: Int = 1
+    public static let currentFormatVersion: Int = 2   // v2: segments/ChapterDocument vocabulary (breaking; no v1 migration by design)
 
     /// File name inside a `.chapterscript` directory bundle.
-    public static let documentFileName = "experience.json"
+    public static let documentFileName = "chapter.json"
 
     /// Subfolder inside a `.chapterscript` directory bundle that holds referenced media.
     public static let assetsFolderName = "assets"

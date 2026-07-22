@@ -101,7 +101,7 @@ public struct RevealActionDTO: Codable, Sendable, Equatable {
 // MARK: - Audio
 
 public enum AudioScope: String, Codable, Sendable, Equatable {
-    case chapter
+    case segment
     case ambient
 }
 
@@ -120,7 +120,7 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     public init(
         file: String,
         channel: String,
-        scope: AudioScope = .chapter,
+        scope: AudioScope = .segment,
         volume: Float = 1.0,
         loop: Bool = false,
         fadeIn: Double? = nil,

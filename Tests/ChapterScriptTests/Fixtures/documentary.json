@@ -1,19 +1,19 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "id": "shared-visions-documentary",
   "displayName": "Shared Visions: The Documentary",
-  "description": "Eight chapters of declarative immersive choreography. Phase 3 of the ChapterScript pivot — the entire SharedVisions documentary expressed as one ChapterScript JSON document.",
+  "description": "Eight segments of declarative immersive choreography. Phase 3 of the ChapterScript pivot — the entire SharedVisions documentary expressed as one ChapterScript JSON document.",
   "entities": [],
   "particlePresets": [],
   "manifest": { "entries": [] },
-  "defaultChapterId": "chapter_01_primitives",
-  "chapters": [
+  "defaultSegmentId": "segment_01_primitives",
+  "segments": [
     {
-      "id": "chapter_01_primitives",
+      "id": "segment_01_primitives",
       "name": "Primitive Showcase",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_02_color_drift" },
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "segment_02_color_drift" },
       "steps": [
         {
           "id": "orb",
@@ -277,11 +277,11 @@
       ]
     },
     {
-      "id": "chapter_02_color_drift",
+      "id": "segment_02_color_drift",
       "name": "Color Drift",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_03_geometric_dance" },
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "segment_03_geometric_dance" },
       "steps": [
         {
           "id": "warm",
@@ -395,11 +395,11 @@
       ]
     },
     {
-      "id": "chapter_03_geometric_dance",
+      "id": "segment_03_geometric_dance",
       "name": "Geometric Dance",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_04_particle_symphony" },
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "segment_04_particle_symphony" },
       "steps": [
         {
           "id": "trio",
@@ -470,11 +470,11 @@
       ]
     },
     {
-      "id": "chapter_04_particle_symphony",
+      "id": "segment_04_particle_symphony",
       "name": "Particle Symphony",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_05_scale_study" },
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "segment_05_scale_study" },
       "steps": [
         {
           "id": "ring_soft",
@@ -571,11 +571,11 @@
       ]
     },
     {
-      "id": "chapter_05_scale_study",
+      "id": "segment_05_scale_study",
       "name": "Scale Study",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_06_orbital_ballet" },
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "segment_06_orbital_ballet" },
       "steps": [
         {
           "id": "tiny",
@@ -630,11 +630,11 @@
       ]
     },
     {
-      "id": "chapter_06_orbital_ballet",
+      "id": "segment_06_orbital_ballet",
       "name": "Orbital Ballet",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_07_video_gallery" },
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "segment_07_video_gallery" },
       "steps": [
         {
           "id": "enter_one",
@@ -700,11 +700,11 @@
       ]
     },
     {
-      "id": "chapter_07_video_gallery",
+      "id": "segment_07_video_gallery",
       "name": "Video Gallery",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "chapter_08_finale" },
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "segment_08_finale" },
       "steps": [
         {
           "id": "panel_a",
@@ -770,7 +770,7 @@
       ]
     },
     {
-      "id": "chapter_08_finale",
+      "id": "segment_08_finale",
       "name": "Finale",
       "phase": "immersive",
       "visibility": {},

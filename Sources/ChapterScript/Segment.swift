@@ -1,19 +1,23 @@
 import Foundation
 
-public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
+public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
     public var id: String
     public var name: String
     public var phase: String
-    /// Whether this chapter expects the player to be in an immersive space
-    /// or in a flat / windowed presentation. Players consult this on chapter
+    /// Whether this segment expects the player to be in an immersive space
+    /// or in a flat / windowed presentation. Players consult this on segment
     /// start to open / dismiss the immersive space as the experience moves
     /// between presentation modes.
-    public var presentation: ChapterPresentation
+    public var presentation: SegmentPresentation
     /// Optional immersive backdrop (skybox video or USDZ scene) shown while
-    /// this chapter plays. Only meaningful when `presentation == .immersive`;
-    /// players may ignore for `.windowed` chapters.
+    /// this segment plays. Only meaningful when `presentation == .immersive`;
+    /// players may ignore for `.windowed` segments.
     public var immersiveBackdrop: ImmersiveBackdropSpec?
     public var steps: [StepDefinitionDTO]
+    /// Segment-level keyframe animation, one track per animated entity.
+    /// Keys sit at absolute seconds from segment start — independent of the
+    /// step grid, so retiming steps never bends an animation curve.
+    public var animationTracks: [EntityAnimationTrack]
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
 
@@ -21,9 +25,10 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
         id: String,
         name: String,
         phase: String,
-        presentation: ChapterPresentation = .immersive,
+        presentation: SegmentPresentation = .immersive,
         immersiveBackdrop: ImmersiveBackdropSpec? = nil,
         steps: [StepDefinitionDTO],
+        animationTracks: [EntityAnimationTrack] = [],
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
         onComplete: CompletionActionDTO = .holdOnLastStep
     ) {
@@ -33,6 +38,7 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
         self.presentation = presentation
         self.immersiveBackdrop = immersiveBackdrop
         self.steps = steps
+        self.animationTracks = animationTracks
         self.visibility = visibility
         self.onComplete = onComplete
     }
@@ -47,7 +53,7 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
     // doc explicitly used `phase == "windowed"`, fall back to that.
     private enum CodingKeys: String, CodingKey {
         case id, name, phase, presentation, immersiveBackdrop
-        case steps, visibility, onComplete
+        case steps, animationTracks, visibility, onComplete
     }
 
     public init(from decoder: Decoder) throws {
@@ -56,26 +62,27 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
         self.name = try c.decode(String.self, forKey: .name)
         let phase = try c.decode(String.self, forKey: .phase)
         self.phase = phase
-        if let decoded = try c.decodeIfPresent(ChapterPresentation.self, forKey: .presentation) {
+        if let decoded = try c.decodeIfPresent(SegmentPresentation.self, forKey: .presentation) {
             self.presentation = decoded
         } else {
             self.presentation = phase == "windowed" ? .windowed : .immersive
         }
         self.immersiveBackdrop = try c.decodeIfPresent(ImmersiveBackdropSpec.self, forKey: .immersiveBackdrop)
         self.steps = try c.decode([StepDefinitionDTO].self, forKey: .steps)
+        self.animationTracks = try c.decodeIfPresent([EntityAnimationTrack].self, forKey: .animationTracks) ?? []
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
         self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
     }
 }
 
-/// Whether a chapter expects the player in an immersive space, a mixed
+/// Whether a segment expects the player in an immersive space, a mixed
 /// (passthrough) space, or a flat windowed scene. The SharedVisions
 /// player maps these to visionOS `ImmersionStyle` values:
 ///
 ///   • `.immersive` → `.full` — the user's real environment is hidden;
 ///     ideal for skybox videos and fully-authored 3D backdrops.
 ///   • `.mixed` → `.mixed` — passthrough stays visible while RealityKit
-///     content places into world space. Good for chapters that need
+///     content places into world space. Good for segments that need
 ///     3D depth (entities anchored in the user's room) without
 ///     replacing the real environment.
 ///   • `.windowed` — the immersive space is dismissed entirely, so
@@ -84,7 +91,7 @@ public struct ChapterDefinitionDTO: Codable, Sendable, Equatable {
 /// Decode is tolerant: unknown raw values fall back to `.immersive` so
 /// a v0.3.1 doc containing `.mixed` loads on a v0.3.0 player as full
 /// immersive (the safest interpretation of "needs 3D space").
-public enum ChapterPresentation: String, Codable, Sendable, Equatable, CaseIterable {
+public enum SegmentPresentation: String, Codable, Sendable, Equatable, CaseIterable {
     case immersive
     case mixed
     case windowed
@@ -92,12 +99,12 @@ public enum ChapterPresentation: String, Codable, Sendable, Equatable, CaseItera
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         let raw = try c.decode(String.self)
-        self = ChapterPresentation(rawValue: raw) ?? .immersive
+        self = SegmentPresentation(rawValue: raw) ?? .immersive
     }
 }
 
-/// Ambient backdrop content for an immersive chapter. The player binds
-/// one of these at chapter start (and tears down the previous one):
+/// Ambient backdrop content for an immersive segment. The player binds
+/// one of these at segment start (and tears down the previous one):
 ///
 ///   • `.video` — a flat video projected onto a sphere (360° / 180°)
 ///     or a stereoscopic MV-HEVC / Apple Immersive Video file. Player
@@ -108,7 +115,7 @@ public enum ChapterPresentation: String, Codable, Sendable, Equatable, CaseItera
 ///     360° photos.
 ///   • `.usdz` — a USDZ scene loaded under the immersive scene root.
 ///
-/// Players may ignore for `.windowed` chapters.
+/// Players may ignore for `.windowed` segments.
 public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     /// Immersive video. `file` references an entry in the asset manifest.
     /// `layout` and `field` mirror the same hints used by `VideoActionDTO`
@@ -120,7 +127,7 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     case image(file: String, field: ImmersiveField, radius: Float)
     /// USDZ scene loaded under the immersive scene root. The asset id
     /// must exist in the document's manifest. The player parents the
-    /// loaded entity under the immersive root before the first chapter
+    /// loaded entity under the immersive root before the first segment
     /// step runs.
     case usdz(assetId: String)
 
@@ -230,10 +237,10 @@ public enum GateType: String, Codable, Sendable, Equatable {
 public enum CompletionActionDTO: Codable, Sendable, Equatable {
     case holdOnLastStep
     case transitionTo(phase: String, visibility: VisibilityStateDTO)
-    case autoAdvance(nextChapterId: String)
+    case autoAdvance(nextSegmentId: String)
     case dismissToHome
 
-    private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextChapterId }
+    private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextSegmentId }
     private enum Kind: String, Codable {
         case holdOnLastStep, transitionTo, autoAdvance, dismissToHome
     }
@@ -247,9 +254,9 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
             try c.encode(Kind.transitionTo, forKey: .kind)
             try c.encode(phase, forKey: .phase)
             try c.encode(visibility, forKey: .visibility)
-        case .autoAdvance(let nextChapterId):
+        case .autoAdvance(let nextSegmentId):
             try c.encode(Kind.autoAdvance, forKey: .kind)
-            try c.encode(nextChapterId, forKey: .nextChapterId)
+            try c.encode(nextSegmentId, forKey: .nextSegmentId)
         case .dismissToHome:
             try c.encode(Kind.dismissToHome, forKey: .kind)
         }
@@ -266,7 +273,7 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
                 visibility: try c.decode(VisibilityStateDTO.self, forKey: .visibility)
             )
         case .autoAdvance:
-            self = .autoAdvance(nextChapterId: try c.decode(String.self, forKey: .nextChapterId))
+            self = .autoAdvance(nextSegmentId: try c.decode(String.self, forKey: .nextSegmentId))
         case .dismissToHome:
             self = .dismissToHome
         }

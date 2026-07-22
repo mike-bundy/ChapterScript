@@ -1,8 +1,8 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "id": "voyage-prologue",
   "displayName": "Voyage — Prologue",
-  "description": "Two-chapter sample exercising most StepAction cases.",
+  "description": "Two-segment sample exercising most StepAction cases.",
   "entities": [
     {
       "id": "orb",
@@ -66,7 +66,7 @@
       }
     }
   ],
-  "chapters": [
+  "segments": [
     {
       "id": "voyage-prologue.intro",
       "name": "Intro",
@@ -160,7 +160,7 @@
         }
       ],
       "visibility": { "orb": true, "skybox": true },
-      "onComplete": { "kind": "autoAdvance", "nextChapterId": "voyage-prologue.act-one" }
+      "onComplete": { "kind": "autoAdvance", "nextSegmentId": "voyage-prologue.act-one" }
     },
     {
       "id": "voyage-prologue.act-one",
@@ -271,5 +271,5 @@
       }
     ]
   },
-  "defaultChapterId": "voyage-prologue.intro"
+  "defaultSegmentId": "voyage-prologue.intro"
 }

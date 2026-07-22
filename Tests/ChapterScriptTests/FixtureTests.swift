@@ -20,25 +20,25 @@ final class FixtureTests: XCTestCase {
 
     func testMinimalFixtureRoundTrips() throws {
         let raw = try loadFixture("minimal")
-        let doc = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: raw)
+        let doc = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: raw)
         XCTAssertEqual(doc.id, "minimal")
         XCTAssertEqual(doc.formatVersion, ChapterScriptFormat.currentFormatVersion)
-        XCTAssertGreaterThanOrEqual(doc.chapters.count, 1)
+        XCTAssertGreaterThanOrEqual(doc.segments.count, 1)
 
         let reencoded = try ChapterScriptFormat.makeEncoder().encode(doc)
-        let redecoded = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: reencoded)
+        let redecoded = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: reencoded)
         XCTAssertEqual(doc, redecoded)
     }
 
     func testRepresentativeFixtureRoundTrips() throws {
         let raw = try loadFixture("representative")
-        let doc = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: raw)
+        let doc = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: raw)
         XCTAssertEqual(doc.id, "voyage-prologue")
-        XCTAssertGreaterThanOrEqual(doc.chapters.count, 2)
+        XCTAssertGreaterThanOrEqual(doc.segments.count, 2)
 
         // Sanity: every step action should round-trip.
-        for chapter in doc.chapters {
-            for step in chapter.steps {
+        for segment in doc.segments {
+            for step in segment.steps {
                 for action in step.actions {
                     let data = try ChapterScriptFormat.makeEncoder().encode(action)
                     let back = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: data)
@@ -48,52 +48,52 @@ final class FixtureTests: XCTestCase {
         }
     }
 
-    /// SharedVisions's eight-chapter documentary, used as an end-to-end fidelity
+    /// SharedVisions's eight-segment documentary, used as an end-to-end fidelity
     /// fixture. If the format evolves in a way that breaks this decode, downstream
     /// players ship broken too — fail loudly here.
     func testDocumentaryFixtureDecodesAndRoundTrips() throws {
         let raw = try loadFixture("documentary")
-        let doc = try ChapterScriptFormat.makeDecoder().decode(ExperienceDocument.self, from: raw)
+        let doc = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: raw)
         XCTAssertEqual(doc.id, "shared-visions-documentary")
-        XCTAssertEqual(doc.chapters.count, 8, "documentary should have 8 chapters")
+        XCTAssertEqual(doc.segments.count, 8, "documentary should have 8 segments")
 
-        // Verify chapter ids are stable so the SharedVisions timeline UI keeps lining up.
+        // Verify segment ids are stable so the SharedVisions timeline UI keeps lining up.
         let expectedIds = [
-            "chapter_01_primitives",
-            "chapter_02_color_drift",
-            "chapter_03_geometric_dance",
-            "chapter_04_particle_symphony",
-            "chapter_05_scale_study",
-            "chapter_06_orbital_ballet",
-            "chapter_07_video_gallery",
-            "chapter_08_finale"
+            "segment_01_primitives",
+            "segment_02_color_drift",
+            "segment_03_geometric_dance",
+            "segment_04_particle_symphony",
+            "segment_05_scale_study",
+            "segment_06_orbital_ballet",
+            "segment_07_video_gallery",
+            "segment_08_finale"
         ]
-        XCTAssertEqual(doc.chapters.map(\.id), expectedIds)
+        XCTAssertEqual(doc.segments.map(\.id), expectedIds)
 
-        // Round-trip every action across every step in every chapter.
-        for chapter in doc.chapters {
-            for step in chapter.steps {
+        // Round-trip every action across every step in every segment.
+        for segment in doc.segments {
+            for step in segment.steps {
                 for action in step.actions {
                     let data = try ChapterScriptFormat.makeEncoder().encode(action)
                     let back = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: data)
-                    XCTAssertEqual(action, back, "action diverged in \(chapter.id)/\(step.id): \(action)")
+                    XCTAssertEqual(action, back, "action diverged in \(segment.id)/\(step.id): \(action)")
                 }
                 for scheduled in step.scheduledActions {
                     let data = try ChapterScriptFormat.makeEncoder().encode(scheduled)
                     let back = try ChapterScriptFormat.makeDecoder().decode(ScheduledActionDTO.self, from: data)
-                    XCTAssertEqual(scheduled, back, "scheduled action diverged in \(chapter.id)/\(step.id)")
+                    XCTAssertEqual(scheduled, back, "scheduled action diverged in \(segment.id)/\(step.id)")
                 }
             }
         }
 
         // Auto-advance chain should connect 1→2→…→7→8, with finale holding.
-        for (i, chapter) in doc.chapters.enumerated() where i < doc.chapters.count - 1 {
-            guard case .autoAdvance(let nextId) = chapter.onComplete else {
-                XCTFail("\(chapter.id) should auto-advance to the next chapter"); continue
+        for (i, segment) in doc.segments.enumerated() where i < doc.segments.count - 1 {
+            guard case .autoAdvance(let nextId) = segment.onComplete else {
+                XCTFail("\(segment.id) should auto-advance to the next segment"); continue
             }
-            XCTAssertEqual(nextId, expectedIds[i + 1], "\(chapter.id) auto-advance points at wrong target")
+            XCTAssertEqual(nextId, expectedIds[i + 1], "\(segment.id) auto-advance points at wrong target")
         }
-        if case .holdOnLastStep = doc.chapters.last?.onComplete {
+        if case .holdOnLastStep = doc.segments.last?.onComplete {
             // expected
         } else {
             XCTFail("finale should holdOnLastStep")

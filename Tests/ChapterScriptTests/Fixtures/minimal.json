@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "id": "minimal",
   "displayName": "Minimal Experience",
   "entities": [
@@ -27,10 +27,10 @@
       }
     }
   ],
-  "chapters": [
+  "segments": [
     {
       "id": "only",
-      "name": "Only Chapter",
+      "name": "Only Segment",
       "phase": "immersive",
       "steps": [
         {
@@ -57,5 +57,5 @@
   ],
   "particlePresets": [],
   "manifest": { "entries": [] },
-  "defaultChapterId": "only"
+  "defaultSegmentId": "only"
 }
