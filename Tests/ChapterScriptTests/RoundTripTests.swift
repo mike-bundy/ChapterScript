@@ -276,6 +276,40 @@ final class RoundTripTests: XCTestCase {
         try roundTrip(doc)
     }
 
+    func testEnvironmentRoundTrip() throws {
+        let doc = ChapterDocument(
+            id: "env",
+            displayName: "Environment Experience",
+            environment: EnvironmentSpec(lighting: "sunset", fogEnabled: true, fogDensity: 0.08)
+        )
+        try roundTrip(doc)
+        try roundTrip(EnvironmentSpec())
+    }
+
+    func testLegacyDocumentWithoutEnvironmentDecodes() throws {
+        // A pre-environment document: key not present.
+        let json = """
+        {
+            "formatVersion": \(ChapterScriptFormat.currentFormatVersion),
+            "id": "legacy",
+            "displayName": "Legacy",
+            "entities": [],
+            "segments": [],
+            "particlePresets": [],
+            "manifest": { "entries": [] }
+        }
+        """.data(using: .utf8)!
+        let doc = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: json)
+        XCTAssertNil(doc.environment)
+
+        // Partially-specified environment falls back to field defaults.
+        let spec = try ChapterScriptFormat.makeDecoder().decode(
+            EnvironmentSpec.self, from: "{\"lighting\": \"night\"}".data(using: .utf8)!)
+        XCTAssertEqual(spec.lighting, "night")
+        XCTAssertFalse(spec.fogEnabled)
+        XCTAssertEqual(spec.fogDensity, 0.02, accuracy: 0.0001)
+    }
+
     // MARK: - Migrator
 
     func testMigratorReadsFormatVersion() throws {

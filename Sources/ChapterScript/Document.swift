@@ -9,6 +9,10 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     public var entities: [EntityDefinition]
     public var segments: [SegmentDefinitionDTO]
     public var particlePresets: [ParticleEmitterPreset]
+    /// Global scene environment (lighting preset + fog). Optional and additive:
+    /// documents authored before this field existed decode as `nil`, and
+    /// players fall back to their own defaults.
+    public var environment: EnvironmentSpec?
     public var manifest: AssetManifest
     /// Initial segment id played when the experience loads. Defaults to first segment.
     public var defaultSegmentId: String?
@@ -21,6 +25,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         entities: [EntityDefinition] = [],
         segments: [SegmentDefinitionDTO] = [],
         particlePresets: [ParticleEmitterPreset] = [],
+        environment: EnvironmentSpec? = nil,
         manifest: AssetManifest = AssetManifest(),
         defaultSegmentId: String? = nil
     ) {
@@ -31,8 +36,65 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.entities = entities
         self.segments = segments
         self.particlePresets = particlePresets
+        self.environment = environment
         self.manifest = manifest
         self.defaultSegmentId = defaultSegmentId
+    }
+
+    // Decode-if-present for `environment` so documents authored before
+    // this format revision keep loading. Encode stays synthesized.
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion, id, displayName, description
+        case entities, segments, particlePresets, environment
+        case manifest, defaultSegmentId
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.formatVersion = try c.decode(Int.self, forKey: .formatVersion)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.description = try c.decodeIfPresent(String.self, forKey: .description)
+        self.entities = try c.decode([EntityDefinition].self, forKey: .entities)
+        self.segments = try c.decode([SegmentDefinitionDTO].self, forKey: .segments)
+        self.particlePresets = try c.decode([ParticleEmitterPreset].self, forKey: .particlePresets)
+        self.environment = try c.decodeIfPresent(EnvironmentSpec.self, forKey: .environment)
+        self.manifest = try c.decode(AssetManifest.self, forKey: .manifest)
+        self.defaultSegmentId = try c.decodeIfPresent(String.self, forKey: .defaultSegmentId)
+    }
+}
+
+/// Global scene environment authored by editors: a free-form lighting preset
+/// tag plus a simple distance-fog toggle. Players map `lighting` onto their
+/// own rendering setup (image-based lighting, exposure, background tint) and
+/// may ignore tags they don't recognize.
+public struct EnvironmentSpec: Codable, Sendable, Equatable {
+    /// Free preset tag (e.g. "studio", "natural", "sunset", "night", "overcast").
+    public var lighting: String
+    public var fogEnabled: Bool
+    public var fogDensity: Float
+
+    public init(
+        lighting: String = "studio",
+        fogEnabled: Bool = false,
+        fogDensity: Float = 0.02
+    ) {
+        self.lighting = lighting
+        self.fogEnabled = fogEnabled
+        self.fogDensity = fogDensity
+    }
+
+    // Field-tolerant decode: partially-specified environments (or fields
+    // added later) fall back to the defaults above.
+    private enum CodingKeys: String, CodingKey {
+        case lighting, fogEnabled, fogDensity
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.lighting = try c.decodeIfPresent(String.self, forKey: .lighting) ?? "studio"
+        self.fogEnabled = try c.decodeIfPresent(Bool.self, forKey: .fogEnabled) ?? false
+        self.fogDensity = try c.decodeIfPresent(Float.self, forKey: .fogDensity) ?? 0.02
     }
 }
 
