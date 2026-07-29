@@ -120,7 +120,9 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     /// Immersive video. `file` references an entry in the asset manifest.
     /// `layout` and `field` mirror the same hints used by `VideoActionDTO`
     /// for skybox playback; `radius` controls the sphere size in meters.
-    case video(file: String, layout: VideoLayout, field: ImmersiveField, radius: Float, loop: Bool)
+    /// `audioEnabled` lets the backdrop's own soundtrack play (default
+    /// false — historically backdrops were always muted).
+    case video(file: String, layout: VideoLayout, field: ImmersiveField, radius: Float, loop: Bool, audioEnabled: Bool)
     /// Static equirectangular image skybox. `field` is `.equirect360` for
     /// full-sphere panoramas, `.equirect180` for half-sphere captures.
     /// `radius` is the sphere size in meters (Player default ~1000m).
@@ -132,20 +134,21 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     case usdz(assetId: String)
 
     private enum CodingKeys: String, CodingKey {
-        case kind, file, layout, field, radius, loop, assetId
+        case kind, file, layout, field, radius, loop, audioEnabled, assetId
     }
     private enum Kind: String, Codable { case video, image, usdz }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .video(let file, let layout, let field, let radius, let loop):
+        case .video(let file, let layout, let field, let radius, let loop, let audioEnabled):
             try c.encode(Kind.video, forKey: .kind)
             try c.encode(file, forKey: .file)
             try c.encode(layout, forKey: .layout)
             try c.encode(field, forKey: .field)
             try c.encode(radius, forKey: .radius)
             try c.encode(loop, forKey: .loop)
+            try c.encode(audioEnabled, forKey: .audioEnabled)
         case .image(let file, let field, let radius):
             try c.encode(Kind.image, forKey: .kind)
             try c.encode(file, forKey: .file)
@@ -166,7 +169,8 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
                 layout: try c.decodeIfPresent(VideoLayout.self, forKey: .layout) ?? .mono,
                 field: try c.decodeIfPresent(ImmersiveField.self, forKey: .field) ?? .equirect360,
                 radius: try c.decodeIfPresent(Float.self, forKey: .radius) ?? 1000,
-                loop: try c.decodeIfPresent(Bool.self, forKey: .loop) ?? true
+                loop: try c.decodeIfPresent(Bool.self, forKey: .loop) ?? true,
+                audioEnabled: try c.decodeIfPresent(Bool.self, forKey: .audioEnabled) ?? false
             )
         case .image:
             self = .image(
