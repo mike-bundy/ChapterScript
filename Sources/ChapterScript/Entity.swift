@@ -174,11 +174,20 @@ public struct VideoPanelSpec: Codable, Sendable, Equatable {
     public var height: Float
     /// Optional placeholder color shown before video binds.
     public var placeholderColor: ColorRGBA?
+    /// Rounded panel corners, in meters (nil/0 = square). Players clip
+    /// the video plane's geometry; the texture stays rect-mapped.
+    public var cornerRadius: Float?
 
-    public init(width: Float, height: Float, placeholderColor: ColorRGBA? = nil) {
+    public init(
+        width: Float,
+        height: Float,
+        placeholderColor: ColorRGBA? = nil,
+        cornerRadius: Float? = nil
+    ) {
         self.width = width
         self.height = height
         self.placeholderColor = placeholderColor
+        self.cornerRadius = cornerRadius
     }
 }
 
