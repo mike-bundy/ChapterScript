@@ -13,6 +13,9 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     // Per-kind specs (only one is non-nil; matched to `kind`)
     public var primitive: PrimitiveSpec?
     public var usdzAssetId: String?           // AssetEntry.id of a USDZ in the manifest
+    /// Built-in USDZ animation playback (models often embed skeletal /
+    /// transform clips). nil = the model renders static.
+    public var usdzAnimation: UsdzAnimationSpec?
     public var text: TextSpec?
     public var light: LightSpec?
     public var videoPanel: VideoPanelSpec?
@@ -29,6 +32,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         gestureEnabled: Bool = false,
         primitive: PrimitiveSpec? = nil,
         usdzAssetId: String? = nil,
+        usdzAnimation: UsdzAnimationSpec? = nil,
         text: TextSpec? = nil,
         light: LightSpec? = nil,
         videoPanel: VideoPanelSpec? = nil,
@@ -43,12 +47,30 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.gestureEnabled = gestureEnabled
         self.primitive = primitive
         self.usdzAssetId = usdzAssetId
+        self.usdzAnimation = usdzAnimation
         self.text = text
         self.light = light
         self.videoPanel = videoPanel
         self.particlePresetId = particlePresetId
         self.customFactoryId = customFactoryId
         self.customParameters = customParameters
+    }
+}
+
+/// Playback settings for a USDZ model's EMBEDDED animation clips.
+/// Players walk the loaded model's subtree and play every available
+/// clip. Additive/tolerant — absent means static.
+public struct UsdzAnimationSpec: Codable, Sendable, Equatable {
+    public var enabled: Bool
+    /// Repeat forever (default) vs play the clip once per reveal.
+    public var loop: Bool
+    /// Playback rate multiplier (1 = authored speed).
+    public var speed: Float
+
+    public init(enabled: Bool = true, loop: Bool = true, speed: Float = 1) {
+        self.enabled = enabled
+        self.loop = loop
+        self.speed = speed
     }
 }
 
