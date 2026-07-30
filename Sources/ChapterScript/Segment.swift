@@ -224,18 +224,54 @@ public struct StepGateDTO: Codable, Sendable, Equatable {
     public var type: GateType
     public var timeout: Double?
     public var prompt: String?
+    /// Entity the gate watches — the thing to look at (`.gaze`), walk up
+    /// to (`.proximity`), or pinch-grab (`.grab`). Ignored by the other
+    /// types. (Optional fields decode tolerantly — older documents load
+    /// unchanged.)
+    public var targetEntity: String?
+    /// Trigger distance in meters for `.proximity` (player default ~1 m).
+    public var radius: Float?
 
-    public init(type: GateType, timeout: Double? = nil, prompt: String? = nil) {
+    public init(
+        type: GateType,
+        timeout: Double? = nil,
+        prompt: String? = nil,
+        targetEntity: String? = nil,
+        radius: Float? = nil
+    ) {
         self.type = type
         self.timeout = timeout
         self.prompt = prompt
+        self.targetEntity = targetEntity
+        self.radius = radius
     }
 }
 
+/// How a waiting step's gate is satisfied. Advisory metadata for the
+/// player (the engine itself is timeout-or-`satisfyGate()`): the type
+/// tells the consumer WHAT input to wire to `satisfyGate()`.
 public enum GateType: String, Codable, Sendable, Equatable {
+    /// A pinch-tap anywhere targetable.
     case tap
+    /// An external controller (companion device / show-control) message.
     case orchestrator
+    /// Tap OR orchestrator — whichever arrives first.
     case any
+    /// Look at `targetEntity` (gaze dwell).
+    case gaze
+    /// Come within `radius` meters of `targetEntity`.
+    case proximity
+    /// Pinch-grab `targetEntity`.
+    case grab
+
+    /// Tolerant decode: an unknown raw value (a document authored by a
+    /// NEWER tool) falls back to `.tap` instead of failing the whole
+    /// document — gate types are advisory, and tap is the one gate
+    /// every player can satisfy.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = GateType(rawValue: raw) ?? .tap
+    }
 }
 
 public enum CompletionActionDTO: Codable, Sendable, Equatable {
