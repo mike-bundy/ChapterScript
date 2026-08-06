@@ -18,8 +18,31 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
     /// Keys sit at absolute seconds from segment start — independent of the
     /// step grid, so retiming steps never bends an animation curve.
     public var animationTracks: [EntityAnimationTrack]
+    /// Segment-level audio automation, one track per audio channel plus an
+    /// optional `master` bus track. Keys sit at absolute seconds from segment
+    /// start, exactly like `animationTracks` — so a volume ride survives step
+    /// retiming, and the same curve editor edits both.
+    public var audioTracks: [AudioAutomationTrack]
+    /// Timed backdrop changes. Each cue runs from its `startTime` until the
+    /// next one begins, so exactly one backdrop is ever active — exclusivity
+    /// by construction rather than by validation. Empty means "use
+    /// `immersiveBackdrop` for the whole segment", which is what every
+    /// document written before this existed says.
+    public var backdropTrack: [BackdropCue]
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
+    /// EDITOR-ONLY organizational colour, as an index into the authoring
+    /// tool's segment palette. `nil` means "no explicit colour" — editors
+    /// fall back to colouring by segment position.
+    ///
+    /// Runtime MUST ignore this. It exists so an author can colour-code a
+    /// long chapter in Chapter Studio / ChapterVision and have that survive
+    /// save, reopen, and live sync. It has no visual effect on playback and
+    /// ChapterPlayer never reads it.
+    ///
+    /// An index rather than an RGB triple, so the two editors agree on the
+    /// same palette and a colour can't arrive as an unrenderable value.
+    public var editorColorIndex: Int?
 
     public init(
         id: String,
@@ -29,9 +52,13 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
         immersiveBackdrop: ImmersiveBackdropSpec? = nil,
         steps: [StepDefinitionDTO],
         animationTracks: [EntityAnimationTrack] = [],
+        audioTracks: [AudioAutomationTrack] = [],
+        backdropTrack: [BackdropCue] = [],
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
-        onComplete: CompletionActionDTO = .holdOnLastStep
+        onComplete: CompletionActionDTO = .holdOnLastStep,
+        editorColorIndex: Int? = nil
     ) {
+        self.editorColorIndex = editorColorIndex
         self.id = id
         self.name = name
         self.phase = phase
@@ -39,6 +66,8 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
         self.immersiveBackdrop = immersiveBackdrop
         self.steps = steps
         self.animationTracks = animationTracks
+        self.audioTracks = audioTracks
+        self.backdropTrack = backdropTrack
         self.visibility = visibility
         self.onComplete = onComplete
     }
@@ -53,7 +82,8 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
     // doc explicitly used `phase == "windowed"`, fall back to that.
     private enum CodingKeys: String, CodingKey {
         case id, name, phase, presentation, immersiveBackdrop
-        case steps, animationTracks, visibility, onComplete
+        case steps, animationTracks, audioTracks, backdropTrack, visibility, onComplete
+        case editorColorIndex
     }
 
     public init(from decoder: Decoder) throws {
@@ -70,8 +100,16 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
         self.immersiveBackdrop = try c.decodeIfPresent(ImmersiveBackdropSpec.self, forKey: .immersiveBackdrop)
         self.steps = try c.decode([StepDefinitionDTO].self, forKey: .steps)
         self.animationTracks = try c.decodeIfPresent([EntityAnimationTrack].self, forKey: .animationTracks) ?? []
+        // Absent in every document written before audio automation existed —
+        // an empty list means "no rides", which mixes to exactly the previous
+        // behaviour.
+        self.audioTracks = try c.decodeIfPresent([AudioAutomationTrack].self, forKey: .audioTracks) ?? []
+        self.backdropTrack = try c.decodeIfPresent([BackdropCue].self, forKey: .backdropTrack) ?? []
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
         self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
+        // Tolerant, like every other additive field: documents written before
+        // segment colours existed simply have no colour.
+        self.editorColorIndex = try c.decodeIfPresent(Int.self, forKey: .editorColorIndex)
     }
 }
 

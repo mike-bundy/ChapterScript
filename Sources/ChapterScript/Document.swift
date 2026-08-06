@@ -16,6 +16,14 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     public var manifest: AssetManifest
     /// Initial segment id played when the experience loads. Defaults to first segment.
     public var defaultSegmentId: String?
+    /// EDITOR-ONLY organisation. Never read by ChapterPlayer.
+    ///
+    /// Optional and tolerant: documents authored before this field existed
+    /// decode as `nil`, and a player that has never heard of it ignores the
+    /// key. It lives in the document rather than in `UserDefaults` so a
+    /// project's organisation travels with the bundle — open the same
+    /// `.chapterscript` on another Mac and the Bins are still there.
+    public var editorMetadata: EditorMetadata?
 
     public init(
         formatVersion: Int = ChapterScriptFormat.currentFormatVersion,
@@ -27,7 +35,8 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         particlePresets: [ParticleEmitterPreset] = [],
         environment: EnvironmentSpec? = nil,
         manifest: AssetManifest = AssetManifest(),
-        defaultSegmentId: String? = nil
+        defaultSegmentId: String? = nil,
+        editorMetadata: EditorMetadata? = nil
     ) {
         self.formatVersion = formatVersion
         self.id = id
@@ -39,6 +48,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.environment = environment
         self.manifest = manifest
         self.defaultSegmentId = defaultSegmentId
+        self.editorMetadata = editorMetadata
     }
 
     // Decode-if-present for `environment` so documents authored before
@@ -46,7 +56,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case formatVersion, id, displayName, description
         case entities, segments, particlePresets, environment
-        case manifest, defaultSegmentId
+        case manifest, defaultSegmentId, editorMetadata
     }
 
     public init(from decoder: Decoder) throws {
@@ -61,6 +71,62 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.environment = try c.decodeIfPresent(EnvironmentSpec.self, forKey: .environment)
         self.manifest = try c.decode(AssetManifest.self, forKey: .manifest)
         self.defaultSegmentId = try c.decodeIfPresent(String.self, forKey: .defaultSegmentId)
+        self.editorMetadata = try c.decodeIfPresent(EditorMetadata.self, forKey: .editorMetadata)
+    }
+}
+
+/// EDITOR-ONLY project organisation. Runtime-inert by contract: ChapterPlayer
+/// must never read this, and nothing here may affect playback.
+///
+/// Kept deliberately small. Anything that changes what the experience DOES
+/// belongs in the document proper, not here.
+public struct EditorMetadata: Codable, Sendable, Equatable {
+    /// Virtual asset collections. Bins never move or copy files inside the
+    /// bundle — they are labels over `manifest` entries, so deleting a Bin
+    /// cannot delete media.
+    public var bins: [MediaBin]
+
+    public init(bins: [MediaBin] = []) {
+        self.bins = bins
+    }
+
+    private enum CodingKeys: String, CodingKey { case bins }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.bins = try c.decodeIfPresent([MediaBin].self, forKey: .bins) ?? []
+    }
+}
+
+/// A virtual collection of project media. Editor-only.
+public struct MediaBin: Codable, Sendable, Equatable, Identifiable {
+    public var id: String
+    public var name: String
+    /// Asset filenames, matching `AssetEntry` ids used elsewhere in the
+    /// editor. An asset may belong to several Bins; membership is a label,
+    /// not ownership.
+    public var assets: [String]
+    /// Marks the single built-in staging collection, so the editor can pin it
+    /// and refuse to delete it. Free-form rather than a separate type: a
+    /// staging Bin IS a Bin, and giving it its own persistence would be a
+    /// second system for no gain.
+    public var isStaging: Bool
+
+    public init(id: String = UUID().uuidString, name: String, assets: [String] = [], isStaging: Bool = false) {
+        self.id = id
+        self.name = name
+        self.assets = assets
+        self.isStaging = isStaging
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, assets, isStaging }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        self.name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Bin"
+        self.assets = try c.decodeIfPresent([String].self, forKey: .assets) ?? []
+        self.isStaging = try c.decodeIfPresent(Bool.self, forKey: .isStaging) ?? false
     }
 }
 

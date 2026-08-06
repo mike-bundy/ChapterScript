@@ -116,6 +116,18 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     public var category: String?
     public var crossfade: Double?
     public var loopConfig: LoopConfigDTO?
+    /// Non-destructive source trim, seconds into the MASTER file where
+    /// playback begins. `nil` (default) plays from the file's start — which
+    /// is what every document written before audio had marks means.
+    ///
+    /// Same rules, same type and same wire shape as `VideoActionDTO`'s: see
+    /// `MediaSourceRange`, and prefer the `sourceRange` accessor below to
+    /// touching these two fields directly.
+    public var sourceIn: Double?
+    /// Non-destructive source trim, exclusive end in master-file seconds.
+    /// `nil` (default) plays through the file's natural end. Looping loops
+    /// the `[sourceIn, sourceOut)` window rather than the whole master.
+    public var sourceOut: Double?
 
     public init(
         file: String,
@@ -127,7 +139,9 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         spatial: SpatialAudioConfigDTO? = nil,
         category: String? = nil,
         crossfade: Double? = nil,
-        loopConfig: LoopConfigDTO? = nil
+        loopConfig: LoopConfigDTO? = nil,
+        sourceIn: Double? = nil,
+        sourceOut: Double? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -139,6 +153,8 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         self.category = category
         self.crossfade = crossfade
         self.loopConfig = loopConfig
+        self.sourceIn = sourceIn
+        self.sourceOut = sourceOut
     }
 }
 
@@ -433,11 +449,110 @@ public enum VideoPresentation: Codable, Sendable, Equatable {
 }
 
 /// Spherical projection for immersive video.
-public enum ImmersiveField: String, Codable, Sendable, Equatable {
+///
+/// The two equirectangular cases are the originals and still encode as the
+/// bare strings `"equirect360"` / `"equirect180"`, so existing documents are
+/// unchanged byte for byte.
+///
+/// `appleImmersive` exists because **Apple Immersive Video is not 180°**.
+/// Half-equirectangular 180° stops dead at the ±90° plane; Apple's parametric
+/// fisheye projection reaches past it into the periphery, so mapping an AIVU
+/// onto a 180° hemisphere throws away real picture at both edges. It is a
+/// named case rather than a `custom` with a number because the projection
+/// itself differs — a renderer that learns Apple's lens math needs to know it
+/// is looking at one, not merely that the sweep is wide.
+///
+/// Coverage is carried as degrees because rigs differ and Apple publishes no
+/// single figure; 190° is the project's working assumption (it matches the
+/// Viewer's Immersive Guides default), not a specification.
+public enum ImmersiveField: Codable, Sendable, Equatable, Hashable {
     /// Full 360° equirectangular sphere — standard immersive video.
     case equirect360
     /// Front 180° hemisphere — typical VR180 / spatial video.
     case equirect180
+    /// Apple Immersive Video — Apple's parametric projection, wider than 180°.
+    case appleImmersive(degrees: Float)
+    /// Any other horizontal sweep, authored directly.
+    case custom(degrees: Float)
+
+    /// Working assumption for Apple Immersive coverage. Not a spec — see the
+    /// type comment.
+    public static let appleImmersiveDefaultDegrees: Float = 190
+
+    /// Apple Immersive at the default coverage.
+    ///
+    /// NOT named `appleImmersive`: a static property sharing a case's name
+    /// shadows it, and `.appleImmersive` in expression position then resolves
+    /// to the property — including inside the property's own initializer,
+    /// which is an infinite recursion that segfaults at first use rather than
+    /// failing to compile.
+    public static let appleImmersiveDefault = ImmersiveField
+        .appleImmersive(degrees: appleImmersiveDefaultDegrees)
+
+    /// Horizontal sweep in degrees, clamped to something a mesh can be built
+    /// from. This is the ONE place a field turns into an angle.
+    public var horizontalDegrees: Float {
+        switch self {
+        case .equirect360: return 360
+        case .equirect180: return 180
+        case .appleImmersive(let degrees), .custom(let degrees):
+            return min(max(degrees, 1), 360)
+        }
+    }
+
+    /// True when the source uses Apple's parametric projection rather than a
+    /// plain equirectangular map.
+    public var isAppleParametric: Bool {
+        if case .appleImmersive = self { return true }
+        return false
+    }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey { case kind, degrees }
+
+    public init(from decoder: Decoder) throws {
+        // Legacy (and forward-compatible) form: a bare string.
+        if let single = try? decoder.singleValueContainer(),
+           let raw = try? single.decode(String.self) {
+            switch raw {
+            case "equirect180":    self = .equirect180
+            case "appleImmersive": self = .appleImmersiveDefault
+            case "custom":         self = .custom(degrees: 180)
+            // UNKNOWN VALUES DEGRADE, THEY DO NOT THROW. A document written by
+            // a newer tool must not fail to open wholesale over one projection
+            // name — same rule as `GateType`, which decodes unknowns as `.tap`.
+            default:               self = .equirect360
+            }
+            return
+        }
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try c.decodeIfPresent(String.self, forKey: .kind) ?? "equirect360"
+        let degrees = try c.decodeIfPresent(Float.self, forKey: .degrees)
+        switch kind {
+        case "equirect180":    self = .equirect180
+        case "appleImmersive": self = .appleImmersive(degrees: degrees ?? Self.appleImmersiveDefaultDegrees)
+        case "custom":         self = .custom(degrees: degrees ?? 180)
+        default:               self = .equirect360
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .equirect360, .equirect180:
+            // Bare string, exactly as before — old readers keep working.
+            var c = encoder.singleValueContainer()
+            try c.encode(self == .equirect180 ? "equirect180" : "equirect360")
+        case .appleImmersive(let degrees):
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode("appleImmersive", forKey: .kind)
+            try c.encode(degrees, forKey: .degrees)
+        case .custom(let degrees):
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode("custom", forKey: .kind)
+            try c.encode(degrees, forKey: .degrees)
+        }
+    }
 }
 
 // MARK: - Effect Configs
