@@ -352,9 +352,14 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     }
 
     /// Duration of the trimmed source window when both endpoints are known.
+    ///
+    /// Kept as a named property because four call sites read it, but the
+    /// arithmetic itself belongs to `MediaSourceRange` — this is the
+    /// "master length unknown" case of `duration(masterDuration:)`, and
+    /// having it compute its own subtraction is exactly the duplication that
+    /// lets two source-time answers drift apart.
     public var sourceWindowDuration: Double? {
-        guard let out = sourceOut else { return nil }
-        return max(out - (sourceIn ?? 0), 0)
+        sourceOut == nil ? nil : sourceRange.duration(masterDuration: nil)
     }
 }
 
