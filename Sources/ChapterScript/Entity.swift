@@ -19,6 +19,10 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     public var text: TextSpec?
     public var light: LightSpec?
     public var videoPanel: VideoPanelSpec?
+    /// Set only when `kind == .placeholder`: blocking content standing in for
+    /// media that does not exist yet. Carries NO file reference — see
+    /// `PlaceholderSpec`.
+    public var placeholder: PlaceholderSpec?
     public var particlePresetId: String?      // references ParticleEmitterPreset.id
     public var customFactoryId: String?       // app-registered factory key for `kind == .custom`
     /// Free-form parameters passed to a custom factory. Players may interpret as JSON.
@@ -36,6 +40,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         text: TextSpec? = nil,
         light: LightSpec? = nil,
         videoPanel: VideoPanelSpec? = nil,
+        placeholder: PlaceholderSpec? = nil,
         particlePresetId: String? = nil,
         customFactoryId: String? = nil,
         customParameters: [String: AnyCodableValue]? = nil
@@ -51,6 +56,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.text = text
         self.light = light
         self.videoPanel = videoPanel
+        self.placeholder = placeholder
         self.particlePresetId = particlePresetId
         self.customFactoryId = customFactoryId
         self.customParameters = customParameters
@@ -81,7 +87,24 @@ public enum EntityKind: String, Codable, Sendable, Equatable {
     case light
     case videoPanel
     case particles
+    /// Blocking content — an authored stand-in for media that does not exist
+    /// yet. Carries `EntityDefinition.placeholder`. A player that does not
+    /// know this case decodes it as `.custom` (below) and, having no factory
+    /// registered for it, renders nothing — which is the right behaviour for
+    /// an unfinished shot on an older runtime.
+    case placeholder
     case custom
+
+    /// Unknown kinds decode as `.custom` rather than throwing. A `.custom`
+    /// entity with no registered factory is inert, so an entity written by a
+    /// newer tool is silently skipped instead of taking the whole document
+    /// down with it — the same degradation rule as `GateType` and
+    /// `ImmersiveField`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        let raw = try c.decode(String.self)
+        self = EntityKind(rawValue: raw) ?? .custom
+    }
 }
 
 public struct PrimitiveSpec: Codable, Sendable, Equatable {

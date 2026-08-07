@@ -90,18 +90,58 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// grouping a track never changes when anything happens.
     public var timelineGroups: [TimelineTrackGroup]
 
-    public init(bins: [MediaBin] = [], timelineGroups: [TimelineTrackGroup] = []) {
+    /// Author-created Scene folders, by name.
+    ///
+    /// STORED, not derived. Folders used to exist only as the set of distinct
+    /// `folder` values across the assets — which meant an EMPTY folder was
+    /// unrepresentable, so creating one and then filling it (the obvious
+    /// order) was impossible: the folder simply never appeared. Naming a place
+    /// before you put anything in it is the whole point of a folder.
+    ///
+    /// Membership still lives on the asset (`SceneAsset.folder`); this is only
+    /// the record that the folder EXISTS. A folder with members is listed here
+    /// too, so the two can never disagree about which folders there are.
+    public var sceneFolders: [SceneFolder]
+
+    public init(
+        bins: [MediaBin] = [],
+        timelineGroups: [TimelineTrackGroup] = [],
+        sceneFolders: [SceneFolder] = []
+    ) {
         self.bins = bins
         self.timelineGroups = timelineGroups
+        self.sceneFolders = sceneFolders
     }
 
-    private enum CodingKeys: String, CodingKey { case bins, timelineGroups }
+    private enum CodingKeys: String, CodingKey { case bins, timelineGroups, sceneFolders }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.bins = try c.decodeIfPresent([MediaBin].self, forKey: .bins) ?? []
         self.timelineGroups = try c.decodeIfPresent([TimelineTrackGroup].self,
                                                     forKey: .timelineGroups) ?? []
+        // Tolerant, like every other editor-metadata field: an older bundle
+        // has no folder list and simply gets none.
+        self.sceneFolders = try c.decodeIfPresent([SceneFolder].self,
+                                                  forKey: .sceneFolders) ?? []
+    }
+}
+
+/// A named folder in the Scene panel. Editor-only, and purely organisational —
+/// foldering an object never changes when or whether it appears.
+///
+/// Scene assets and backdrops are listed separately and can hold folders of the
+/// same name without collision, so the scope is part of the identity.
+public struct SceneFolder: Codable, Sendable, Equatable, Identifiable, Hashable {
+    public var name: String
+    /// True when this folder belongs to the Backdrops list rather than Scene.
+    public var isBackdrop: Bool
+
+    public var id: String { "\(isBackdrop ? "backdrop" : "scene")/\(name)" }
+
+    public init(name: String, isBackdrop: Bool = false) {
+        self.name = name
+        self.isBackdrop = isBackdrop
     }
 }
 

@@ -177,6 +177,9 @@ public enum SegmentBackdropTimeline {
             case .video(let f, _, _, _, _, _): file = f
             case .image(let f, _, _):          file = f
             case .usdz(let assetId):           file = assetId
+            // A placeholder references NO file — that is the whole point of
+            // it — so it contributes nothing to preload.
+            case .placeholder:                 file = nil
             case .none:                        file = nil
             @unknown default:                  file = nil
             }

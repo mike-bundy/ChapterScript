@@ -170,11 +170,17 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     /// loaded entity under the immersive root before the first segment
     /// step runs.
     case usdz(assetId: String)
+    /// Blocking content: an immersive shot that has not been shot yet. Carries
+    /// the projection and radius the finished plate will use, so the segment
+    /// is framed correctly before the media exists, and NO file reference —
+    /// nothing enters the manifest. Replaced in place by `.video` once the
+    /// plate lands, preserving the cue's id, start time and source range.
+    case placeholder(spec: PlaceholderSpec)
 
     private enum CodingKeys: String, CodingKey {
-        case kind, file, layout, field, radius, loop, audioEnabled, assetId
+        case kind, file, layout, field, radius, loop, audioEnabled, assetId, placeholder
     }
-    private enum Kind: String, Codable { case video, image, usdz }
+    private enum Kind: String, Codable { case video, image, usdz, placeholder }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -195,12 +201,20 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
         case .usdz(let assetId):
             try c.encode(Kind.usdz, forKey: .kind)
             try c.encode(assetId, forKey: .assetId)
+        case .placeholder(let spec):
+            try c.encode(Kind.placeholder, forKey: .kind)
+            try c.encode(spec, forKey: .placeholder)
         }
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        switch try c.decode(Kind.self, forKey: .kind) {
+        // An unrecognised kind resolves to a placeholder rather than throwing:
+        // a backdrop written by a newer tool reads as "something goes here,
+        // but this build doesn't know what", which is exactly true and is far
+        // better than refusing to open the chapter.
+        let rawKind = try c.decodeIfPresent(String.self, forKey: .kind) ?? ""
+        switch Kind(rawValue: rawKind) ?? .placeholder {
         case .video:
             self = .video(
                 file: try c.decode(String.self, forKey: .file),
@@ -218,7 +232,19 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
             )
         case .usdz:
             self = .usdz(assetId: try c.decode(String.self, forKey: .assetId))
+        case .placeholder:
+            self = .placeholder(
+                spec: try c.decodeIfPresent(PlaceholderSpec.self, forKey: .placeholder)
+                    ?? .immersiveVideo(label: "Immersive Placeholder", field: .equirect360)
+            )
         }
+    }
+
+    /// The placeholder this backdrop is, if it is one. Views ask this instead
+    /// of pattern-matching the enum in every place that needs to draw a proxy.
+    public var placeholderSpec: PlaceholderSpec? {
+        if case .placeholder(let spec) = self { return spec }
+        return nil
     }
 }
 
