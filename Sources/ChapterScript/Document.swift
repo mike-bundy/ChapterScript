@@ -86,15 +86,73 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// cannot delete media.
     public var bins: [MediaBin]
 
-    public init(bins: [MediaBin] = []) {
+    /// Author-created Timeline track groups. Purely a way to fold rows away;
+    /// grouping a track never changes when anything happens.
+    public var timelineGroups: [TimelineTrackGroup]
+
+    public init(bins: [MediaBin] = [], timelineGroups: [TimelineTrackGroup] = []) {
         self.bins = bins
+        self.timelineGroups = timelineGroups
     }
 
-    private enum CodingKeys: String, CodingKey { case bins }
+    private enum CodingKeys: String, CodingKey { case bins, timelineGroups }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.bins = try c.decodeIfPresent([MediaBin].self, forKey: .bins) ?? []
+        self.timelineGroups = try c.decodeIfPresent([TimelineTrackGroup].self,
+                                                    forKey: .timelineGroups) ?? []
+    }
+}
+
+/// A named, collapsible set of Timeline track rows. Editor-only.
+///
+/// Timeline tracks are a PROJECTION of the action stream, not authored
+/// objects, so a group cannot own its members — it can only name them. That is
+/// why membership is a list of track ids resolved at render time: a track that
+/// stops existing (its last clip deleted, its entity removed) simply stops
+/// appearing in the group, and a group that ends up empty renders as empty
+/// rather than as a dangling row.
+///
+/// A group lives in exactly ONE section. Sections (Scene / Audio / Effects)
+/// are the Timeline's top-level order, and a group spanning two of them would
+/// have to be drawn twice or drawn in the wrong place.
+public struct TimelineTrackGroup: Codable, Sendable, Equatable, Identifiable {
+    public var id: String
+    public var name: String
+    /// `TimelineSection.rawValue`. A raw string rather than the enum because
+    /// the section type lives in the editor layer, above this one.
+    public var section: String
+    /// Track ids, in the order the author arranged them.
+    public var trackIDs: [String]
+    /// Folded state. Persisted because it is an organisational decision about
+    /// the project, not transient view state — reopening a chapter with
+    /// forty tracks should not reopen forty rows.
+    public var isCollapsed: Bool
+
+    public init(
+        id: String = UUID().uuidString,
+        name: String,
+        section: String,
+        trackIDs: [String] = [],
+        isCollapsed: Bool = false
+    ) {
+        self.id = id
+        self.name = name
+        self.section = section
+        self.trackIDs = trackIDs
+        self.isCollapsed = isCollapsed
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, section, trackIDs, isCollapsed }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        self.name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Group"
+        self.section = try c.decodeIfPresent(String.self, forKey: .section) ?? "Scene"
+        self.trackIDs = try c.decodeIfPresent([String].self, forKey: .trackIDs) ?? []
+        self.isCollapsed = try c.decodeIfPresent(Bool.self, forKey: .isCollapsed) ?? false
     }
 }
 
