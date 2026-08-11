@@ -94,11 +94,11 @@ final class MediaSourceRangeTests: XCTestCase {
         XCTAssertTrue(MediaSourceRange.full.clamped(toMasterDuration: 60).isFullSource)
     }
 
-    // MARK: - Segment time → source time
+    // MARK: - Sequence time → source time
 
     func testElapsedMapsThroughTheInPoint() {
-        // The headline case from the spec: a clip at segment t=10 using
-        // source 30 → 40 shows source 35 at segment 15, not source 5.
+        // The headline case from the spec: a clip at sequence t=10 using
+        // source 30 → 40 shows source 35 at sequence 15, not source 5.
         let r = MediaSourceRange(sourceIn: 30, sourceOut: 40)
         XCTAssertEqual(r.sourceTime(forElapsed: 0, masterDuration: 60), 30)
         XCTAssertEqual(r.sourceTime(forElapsed: 5, masterDuration: 60), 35)
@@ -178,7 +178,7 @@ final class MediaSourceRangeTests: XCTestCase {
     }
 
     func testAudioWithoutMarksDecodesAsWholeSource() throws {
-        let json = #"{"file":"a.wav","channel":"amb","scope":"segment","volume":1,"loop":true}"#
+        let json = #"{"file":"a.wav","channel":"amb","scope":"sequence","volume":1,"loop":true}"#
         let dto = try JSONDecoder().decode(AudioActionDTO.self, from: Data(json.utf8))
         XCTAssertTrue(dto.sourceRange.isFullSource)
     }

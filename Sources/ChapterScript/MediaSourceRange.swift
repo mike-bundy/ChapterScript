@@ -11,7 +11,7 @@
 //  behaved differently for no reason a user could see.
 //
 //  This is the range itself, lifted out of `VideoActionDTO` so there is ONE
-//  set of rules — validation, clamping, duration, and the segment-time →
+//  set of rules — validation, clamping, duration, and the sequence-time →
 //  source-time mapping — instead of one set per playback system. The fade-out
 //  bug that came from duplicated timing semantics is the reason this type
 //  exists rather than three private helpers.
@@ -110,12 +110,12 @@ public struct MediaSourceRange: Codable, Sendable, Equatable {
         return max(0, out - resolvedIn)
     }
 
-    // MARK: - Segment time → source time
+    // MARK: - Sequence time → source time
 
     /// The master-file time to show for `elapsed` seconds into this instance.
     ///
-    /// THE mapping, in one place. A clip placed at segment t=10 using source
-    /// 30 → 40 shows source 30 at segment 10 and source 35 at segment 15 —
+    /// THE mapping, in one place. A clip placed at sequence t=10 using source
+    /// 30 → 40 shows source 30 at sequence 10 and source 35 at sequence 15 —
     /// not source 5. Every preview, scrub compositor and runtime path routes
     /// here rather than re-deriving `sourceIn + elapsed`, because the version
     /// that forgets the `+ sourceIn` looks correct on an unmarked clip and

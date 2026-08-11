@@ -101,8 +101,33 @@ public struct RevealActionDTO: Codable, Sendable, Equatable {
 // MARK: - Audio
 
 public enum AudioScope: String, Codable, Sendable, Equatable {
-    case segment
+    /// Bound to the sequence: the sound stops when the sequence does.
+    case sequence
+    /// Survives sequence changes.
     case ambient
+
+    /// Tolerant decode, for the same reason `GateType` has one — plus one that is
+    /// specific to this enum.
+    ///
+    /// `.sequence` was spelled `"segment"` in format v2, so the old vocabulary is  LEGACY-VOCAB
+    /// baked into the DATA. `Migrator` rewrites it when a v2 *document* is opened,
+    /// but documents are not the only way an `AudioActionDTO` arrives: live-sync
+    /// `EditOp` payloads (`POST /ops`) are decoded directly and never see the
+    /// migrator. A peer still running a v2 build would otherwise fail to apply —
+    /// or, under a less careful decoder, land on `.ambient` and leave a sound
+    /// playing past the end of its sequence.
+    ///
+    /// Unknown values resolve to `.sequence` rather than throwing, matching the
+    /// format's forward-compatibility rule: a newer tool's document must not fail
+    /// a whole load over one field.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        if raw == "segment" {   // LEGACY-VOCAB: v2 spelling, must keep decoding
+            self = .sequence
+            return
+        }
+        self = AudioScope(rawValue: raw) ?? .sequence
+    }
 }
 
 public struct AudioActionDTO: Codable, Sendable, Equatable {
@@ -132,7 +157,7 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     public init(
         file: String,
         channel: String,
-        scope: AudioScope = .segment,
+        scope: AudioScope = .sequence,
         volume: Float = 1.0,
         loop: Bool = false,
         fadeIn: Double? = nil,

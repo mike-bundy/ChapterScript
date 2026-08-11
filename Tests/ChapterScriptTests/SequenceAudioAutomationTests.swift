@@ -7,7 +7,7 @@ import XCTest
 /// Before this, volume was a single static float on `playAudio` plus linear
 /// `fadeAudio` ramps authored as discrete step actions — no curve, nothing to
 /// edit, and nothing on the timeline to see.
-final class SegmentAudioAutomationTests: XCTestCase {
+final class SequenceAudioAutomationTests: XCTestCase {
 
     private func curve(_ points: [(Double, Float)]) -> AnimationCurve {
         AnimationCurve(keys: points.map {
@@ -26,12 +26,12 @@ final class SegmentAudioAutomationTests: XCTestCase {
     /// A document with no automation must mix EXACTLY as it did before the
     /// feature existed, so this can be sampled unconditionally every frame.
     func testNoAutomationIsUnityGain() {
-        XCTAssertEqual(SegmentAudioAutomation.volumeMultiplier(for: "audio-vo", at: 3, in: []), 1.0)
+        XCTAssertEqual(SequenceAudioAutomation.volumeMultiplier(for: "audio-vo", at: 3, in: []), 1.0)
         XCTAssertEqual(
-            SegmentAudioAutomation.effectiveVolume(base: 0.6, channel: "audio-vo", at: 3, in: []),
+            SequenceAudioAutomation.effectiveVolume(base: 0.6, channel: "audio-vo", at: 3, in: []),
             0.6, accuracy: 1e-6
         )
-        XCTAssertFalse(SegmentAudioAutomation.hasAutomation([]))
+        XCTAssertFalse(SequenceAudioAutomation.hasAutomation([]))
     }
 
     /// A track that exists but has no keys is still unity — an emptied curve
@@ -39,7 +39,7 @@ final class SegmentAudioAutomationTests: XCTestCase {
     func testEmptyTrackIsUnityGain() {
         let empty = AudioAutomationTrack(channel: "audio-vo")
         XCTAssertFalse(empty.hasAnyKeys)
-        XCTAssertEqual(SegmentAudioAutomation.volumeMultiplier(for: "audio-vo", at: 1, in: [empty]), 1.0)
+        XCTAssertEqual(SequenceAudioAutomation.volumeMultiplier(for: "audio-vo", at: 1, in: [empty]), 1.0)
     }
 
     /// Setting an emptied curve REMOVES it, so `hasAnyKeys` can't be fooled by
@@ -62,12 +62,12 @@ final class SegmentAudioAutomationTests: XCTestCase {
             track(AudioAutomationTrack.masterChannel, [(0, 0.4)])
         ]
         XCTAssertEqual(
-            SegmentAudioAutomation.effectiveVolume(base: 1.0, channel: "audio-music", at: 0, in: tracks),
+            SequenceAudioAutomation.effectiveVolume(base: 1.0, channel: "audio-music", at: 0, in: tracks),
             0.2, accuracy: 1e-6
         )
         // A different base scales it, and does not disturb the curves.
         XCTAssertEqual(
-            SegmentAudioAutomation.effectiveVolume(base: 0.5, channel: "audio-music", at: 0, in: tracks),
+            SequenceAudioAutomation.effectiveVolume(base: 0.5, channel: "audio-music", at: 0, in: tracks),
             0.1, accuracy: 1e-6
         )
     }
@@ -76,7 +76,7 @@ final class SegmentAudioAutomationTests: XCTestCase {
     func testMasterAppliesToUnautomatedChannels() {
         let tracks = [track(AudioAutomationTrack.masterChannel, [(0, 0.25)])]
         XCTAssertEqual(
-            SegmentAudioAutomation.volumeMultiplier(for: "audio-anything", at: 0, in: tracks),
+            SequenceAudioAutomation.volumeMultiplier(for: "audio-anything", at: 0, in: tracks),
             0.25, accuracy: 1e-6
         )
     }
@@ -84,8 +84,8 @@ final class SegmentAudioAutomationTests: XCTestCase {
     /// A channel curve must not leak onto a different channel.
     func testChannelCurvesAreIndependent() {
         let tracks = [track("audio-music", [(0, 0.2)])]
-        XCTAssertEqual(SegmentAudioAutomation.volumeMultiplier(for: "audio-music", at: 0, in: tracks), 0.2, accuracy: 1e-6)
-        XCTAssertEqual(SegmentAudioAutomation.volumeMultiplier(for: "audio-vo", at: 0, in: tracks), 1.0, accuracy: 1e-6)
+        XCTAssertEqual(SequenceAudioAutomation.volumeMultiplier(for: "audio-music", at: 0, in: tracks), 0.2, accuracy: 1e-6)
+        XCTAssertEqual(SequenceAudioAutomation.volumeMultiplier(for: "audio-vo", at: 0, in: tracks), 1.0, accuracy: 1e-6)
     }
 
     /// The master track must never be resolvable as a normal channel, or a
@@ -96,11 +96,11 @@ final class SegmentAudioAutomationTests: XCTestCase {
         // Looked up as a plain channel it contributes nothing extra; the only
         // 0.5 in the result comes from the master factor.
         XCTAssertEqual(
-            SegmentAudioAutomation.value(.volume, for: AudioAutomationTrack.masterChannel, at: 0, in: tracks),
+            SequenceAudioAutomation.value(.volume, for: AudioAutomationTrack.masterChannel, at: 0, in: tracks),
             1.0, accuracy: 1e-6
         )
         XCTAssertEqual(
-            SegmentAudioAutomation.volumeMultiplier(for: AudioAutomationTrack.masterChannel, at: 0, in: tracks),
+            SequenceAudioAutomation.volumeMultiplier(for: AudioAutomationTrack.masterChannel, at: 0, in: tracks),
             0.5, accuracy: 1e-6
         )
     }
@@ -112,7 +112,7 @@ final class SegmentAudioAutomationTests: XCTestCase {
     func testDuckRidesBetweenKeys() {
         let tracks = [track("audio-music", [(0, 1.0), (4, 0.25), (9, 1.0)])]
         func at(_ t: Double) -> Float {
-            SegmentAudioAutomation.volumeMultiplier(for: "audio-music", at: t, in: tracks)
+            SequenceAudioAutomation.volumeMultiplier(for: "audio-music", at: t, in: tracks)
         }
         XCTAssertEqual(at(0), 1.0, accuracy: 1e-5)
         XCTAssertEqual(at(4), 0.25, accuracy: 1e-5)
@@ -127,20 +127,20 @@ final class SegmentAudioAutomationTests: XCTestCase {
     /// fall back to the rest value and jump.
     func testCurveHoldsOutsideItsKeyedRange() {
         let tracks = [track("audio-music", [(5, 0.3), (10, 0.3)])]
-        XCTAssertEqual(SegmentAudioAutomation.volumeMultiplier(for: "audio-music", at: 0, in: tracks), 0.3, accuracy: 1e-5)
-        XCTAssertEqual(SegmentAudioAutomation.volumeMultiplier(for: "audio-music", at: 99, in: tracks), 0.3, accuracy: 1e-5)
+        XCTAssertEqual(SequenceAudioAutomation.volumeMultiplier(for: "audio-music", at: 0, in: tracks), 0.3, accuracy: 1e-5)
+        XCTAssertEqual(SequenceAudioAutomation.volumeMultiplier(for: "audio-music", at: 99, in: tracks), 0.3, accuracy: 1e-5)
     }
 
     /// Bezier handles legitimately overshoot past a key. Volume must not.
     func testEffectiveVolumeIsClamped() {
         let tracks = [track("audio-music", [(0, 1.0)]), track(AudioAutomationTrack.masterChannel, [(0, 1.0)])]
         XCTAssertEqual(
-            SegmentAudioAutomation.effectiveVolume(base: 4.0, channel: "audio-music", at: 0, in: tracks),
+            SequenceAudioAutomation.effectiveVolume(base: 4.0, channel: "audio-music", at: 0, in: tracks),
             1.0, accuracy: 1e-6, "volume must clamp to 1"
         )
         let negative = [track("audio-music", [(0, -3)])]
         XCTAssertEqual(
-            SegmentAudioAutomation.effectiveVolume(base: 1, channel: "audio-music", at: 0, in: negative),
+            SequenceAudioAutomation.effectiveVolume(base: 1, channel: "audio-music", at: 0, in: negative),
             0, accuracy: 1e-6, "volume must clamp to 0"
         )
     }
@@ -182,25 +182,25 @@ final class SegmentAudioAutomationTests: XCTestCase {
         XCTAssertFalse(decoded.hasAnyKeys)
     }
 
-    /// A segment written before this feature has no `audioTracks` key at all.
-    func testSegmentWithoutAudioTracksDecodesToEmpty() throws {
+    /// A sequence written before this feature has no `audioTracks` key at all.
+    func testSequenceWithoutAudioTracksDecodesToEmpty() throws {
         let json = """
         {"id":"s1","name":"S1","phase":"immersive","steps":[],
          "visibility":{},"onComplete":{"kind":"holdOnLastStep"}}
         """.data(using: .utf8)!
-        let segment = try JSONDecoder().decode(SegmentDefinitionDTO.self, from: json)
-        XCTAssertTrue(segment.audioTracks.isEmpty)
+        let sequence = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json)
+        XCTAssertTrue(sequence.audioTracks.isEmpty)
     }
 
-    func testSegmentAudioTracksRoundTrip() throws {
-        var segment = SegmentDefinitionDTO(id: "s1", name: "S1", phase: "immersive", steps: [])
-        segment.audioTracks = [
+    func testSequenceAudioTracksRoundTrip() throws {
+        var sequence = SequenceDefinitionDTO(id: "s1", name: "S1", phase: "immersive", steps: [])
+        sequence.audioTracks = [
             track("audio-music", [(0, 1.0), (4, 0.25)]),
             track(AudioAutomationTrack.masterChannel, [(0, 1.0), (12, 0)])
         ]
-        let data = try JSONEncoder().encode(segment)
-        let decoded = try JSONDecoder().decode(SegmentDefinitionDTO.self, from: data)
-        XCTAssertEqual(decoded.audioTracks, segment.audioTracks)
-        XCTAssertTrue(SegmentAudioAutomation.hasAutomation(decoded.audioTracks))
+        let data = try JSONEncoder().encode(sequence)
+        let decoded = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: data)
+        XCTAssertEqual(decoded.audioTracks, sequence.audioTracks)
+        XCTAssertTrue(SequenceAudioAutomation.hasAutomation(decoded.audioTracks))
     }
 }

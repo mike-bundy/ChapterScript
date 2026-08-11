@@ -8,7 +8,7 @@ final class SavePathCheckTests: XCTestCase {
 
     func testDocumentRoundTripsThroughDiskLikeASave() throws {
         var doc = ChapterDocument(id: "c", displayName: "Chapter")
-        doc.segments = [SegmentDefinitionDTO(
+        doc.sequences = [SequenceDefinitionDTO(
             id: "s", name: "Intro", phase: "immersive",
             steps: [StepDefinitionDTO(id: "step_1", name: "Step 1", duration: 5,
                                       actions: [], scheduledActions: [], gate: nil)],
@@ -28,8 +28,8 @@ final class SavePathCheckTests: XCTestCase {
         let decoded = try JSONDecoder().decode(
             ChapterDocument.self, from: Data(contentsOf: url)
         )
-        XCTAssertEqual(decoded.segments.count, 1)
-        XCTAssertEqual(decoded.segments[0].name, "Intro")
+        XCTAssertEqual(decoded.sequences.count, 1)
+        XCTAssertEqual(decoded.sequences[0].name, "Intro")
         XCTAssertEqual(decoded.editorMetadata?.bins.first?.assets, ["a.mov"])
     }
 

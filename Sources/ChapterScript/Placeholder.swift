@@ -92,7 +92,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
 
     /// Projection for `.immersiveVideo` — the same concept the real clip will
     /// use, so switching to the finished file changes nothing about how the
-    /// segment is framed. `nil` elsewhere.
+    /// sequence is framed. `nil` elsewhere.
     public var field: ImmersiveField?
 
     /// Expected eye packing for a video role, carried so a replacement starts

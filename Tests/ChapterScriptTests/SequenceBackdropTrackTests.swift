@@ -1,13 +1,13 @@
 import XCTest
 @testable import ChapterScript
 
-/// Multiple backdrops per segment, on a timeline, with exactly one active at
+/// Multiple backdrops per sequence, on a timeline, with exactly one active at
 /// any instant.
 ///
 /// The exclusivity guarantee is the point of these tests: a cue has a start
 /// and no end, so an overlap cannot be expressed. If someone later "improves"
 /// this into a range model, these tests are what should stop them.
-final class SegmentBackdropTrackTests: XCTestCase {
+final class SequenceBackdropTrackTests: XCTestCase {
 
     private let sky360 = ImmersiveBackdropSpec.video(
         file: "sky.mp4", layout: .mono, field: .equirect360,
@@ -29,7 +29,7 @@ final class SegmentBackdropTrackTests: XCTestCase {
     func testEachKindCanBeCued() {
         let track = [cue("a", 0, sky360), cue("b", 5, set), cue("c", 10, still), cue("d", 15, reef180)]
         func at(_ t: Double) -> ImmersiveBackdropSpec? {
-            SegmentBackdropTimeline.backdrop(at: t, track: track)
+            SequenceBackdropTimeline.backdrop(at: t, track: track)
         }
         XCTAssertEqual(at(0), sky360)
         XCTAssertEqual(at(4.9), sky360)
@@ -41,32 +41,32 @@ final class SegmentBackdropTrackTests: XCTestCase {
     /// A cue takes effect exactly AT its start time, not a frame later.
     func testCueIsActiveAtItsOwnStartTime() {
         let track = [cue("a", 0, sky360), cue("b", 5, still)]
-        XCTAssertEqual(SegmentBackdropTimeline.backdrop(at: 5, track: track), still)
+        XCTAssertEqual(SequenceBackdropTimeline.backdrop(at: 5, track: track), still)
     }
 
     /// Before the first cue there is no backdrop. Snapping the first cue to
     /// zero would make "start the backdrop at 4s" unauthorable.
     func testNoBackdropBeforeTheFirstCue() {
         let track = [cue("a", 4, sky360)]
-        XCTAssertNil(SegmentBackdropTimeline.backdrop(at: 0, track: track))
-        XCTAssertNil(SegmentBackdropTimeline.backdrop(at: 3.9, track: track))
-        XCTAssertEqual(SegmentBackdropTimeline.backdrop(at: 4, track: track), sky360)
+        XCTAssertNil(SequenceBackdropTimeline.backdrop(at: 0, track: track))
+        XCTAssertNil(SequenceBackdropTimeline.backdrop(at: 3.9, track: track))
+        XCTAssertEqual(SequenceBackdropTimeline.backdrop(at: 4, track: track), sky360)
     }
 
-    /// A nil-spec cue is how a backdrop is turned OFF mid-segment.
+    /// A nil-spec cue is how a backdrop is turned OFF mid-sequence.
     func testNilCueClearsTheBackdrop() {
         let track = [cue("a", 0, sky360), cue("b", 6, nil)]
-        XCTAssertEqual(SegmentBackdropTimeline.backdrop(at: 5, track: track), sky360)
-        XCTAssertNil(SegmentBackdropTimeline.backdrop(at: 6, track: track))
-        XCTAssertNil(SegmentBackdropTimeline.backdrop(at: 100, track: track))
+        XCTAssertEqual(SequenceBackdropTimeline.backdrop(at: 5, track: track), sky360)
+        XCTAssertNil(SequenceBackdropTimeline.backdrop(at: 6, track: track))
+        XCTAssertNil(SequenceBackdropTimeline.backdrop(at: 100, track: track))
     }
 
     /// Cues authored out of order still resolve by time — an editor may append
     /// a cue before retiming it.
     func testUnsortedCuesResolveByTime() {
         let track = [cue("c", 10, still), cue("a", 0, sky360), cue("b", 5, set)]
-        XCTAssertEqual(SegmentBackdropTimeline.backdrop(at: 6, track: track), set)
-        XCTAssertEqual(SegmentBackdropTimeline.effectiveCues(track: track, legacy: nil).map(\.id),
+        XCTAssertEqual(SequenceBackdropTimeline.backdrop(at: 6, track: track), set)
+        XCTAssertEqual(SequenceBackdropTimeline.effectiveCues(track: track, legacy: nil).map(\.id),
                        ["a", "b", "c"])
     }
 
@@ -74,9 +74,9 @@ final class SegmentBackdropTrackTests: XCTestCase {
 
     /// THE guarantee: whatever the cue list, at most one backdrop is active,
     /// and the drawn regions never overlap.
-    func testRegionsTileTheSegmentWithoutOverlap() {
+    func testRegionsTileTheSequenceWithoutOverlap() {
         let track = [cue("a", 0, sky360), cue("b", 5, set), cue("c", 12, still)]
-        let regions = SegmentBackdropTimeline.regions(track: track, segmentDuration: 20)
+        let regions = SequenceBackdropTimeline.regions(track: track, sequenceDuration: 20)
         XCTAssertEqual(regions.map(\.cue.id), ["a", "b", "c"])
         XCTAssertEqual(regions.map(\.endTime), [5, 12, 20])
         // Each region ends exactly where the next begins — no gap, no overlap.
@@ -90,17 +90,17 @@ final class SegmentBackdropTrackTests: XCTestCase {
     /// draws as zero-width rather than negative.
     func testCoincidentCuesResolveDeterministically() {
         let track = [cue("a", 5, sky360), cue("b", 5, still)]
-        let resolved = SegmentBackdropTimeline.backdrop(at: 5, track: track)
+        let resolved = SequenceBackdropTimeline.backdrop(at: 5, track: track)
         XCTAssertEqual(resolved, still)
-        let regions = SegmentBackdropTimeline.regions(track: track, segmentDuration: 20)
+        let regions = SequenceBackdropTimeline.regions(track: track, sequenceDuration: 20)
         XCTAssertEqual(regions[0].endTime, 5)
         XCTAssertGreaterThanOrEqual(regions[0].endTime, regions[0].cue.startTime)
     }
 
-    /// A cue dragged past the segment end must not draw backwards.
+    /// A cue dragged past the sequence end must not draw backwards.
     func testRegionWidthNeverGoesNegative() {
         let track = [cue("a", 30, sky360)]
-        let regions = SegmentBackdropTimeline.regions(track: track, segmentDuration: 20)
+        let regions = SequenceBackdropTimeline.regions(track: track, sequenceDuration: 20)
         XCTAssertGreaterThanOrEqual(regions[0].endTime, regions[0].cue.startTime)
     }
 
@@ -111,24 +111,24 @@ final class SegmentBackdropTrackTests: XCTestCase {
     // MARK: - Back-compatibility
 
     /// A document written before the track existed must behave EXACTLY as
-    /// before: its single backdrop covers the whole segment.
+    /// before: its single backdrop covers the whole sequence.
     func testLegacySingleBackdropFoldsIntoOneCue() {
-        let cues = SegmentBackdropTimeline.effectiveCues(track: [], legacy: sky360)
+        let cues = SequenceBackdropTimeline.effectiveCues(track: [], legacy: sky360)
         XCTAssertEqual(cues.count, 1)
         XCTAssertEqual(cues[0].startTime, 0)
-        XCTAssertEqual(SegmentBackdropTimeline.backdrop(at: 0, track: [], legacy: sky360), sky360)
-        XCTAssertEqual(SegmentBackdropTimeline.backdrop(at: 999, track: [], legacy: sky360), sky360)
+        XCTAssertEqual(SequenceBackdropTimeline.backdrop(at: 0, track: [], legacy: sky360), sky360)
+        XCTAssertEqual(SequenceBackdropTimeline.backdrop(at: 999, track: [], legacy: sky360), sky360)
     }
 
     /// An authored track wins outright — the two must never composite.
     func testAuthoredTrackOverridesLegacyField() {
         let track = [cue("a", 0, still)]
-        XCTAssertEqual(SegmentBackdropTimeline.backdrop(at: 3, track: track, legacy: sky360), still)
+        XCTAssertEqual(SequenceBackdropTimeline.backdrop(at: 3, track: track, legacy: sky360), still)
     }
 
     func testNoTrackAndNoLegacyIsNoBackdrop() {
-        XCTAssertNil(SegmentBackdropTimeline.backdrop(at: 0, track: [], legacy: nil))
-        XCTAssertTrue(SegmentBackdropTimeline.effectiveCues(track: [], legacy: nil).isEmpty)
+        XCTAssertNil(SequenceBackdropTimeline.backdrop(at: 0, track: [], legacy: nil))
+        XCTAssertTrue(SequenceBackdropTimeline.effectiveCues(track: [], legacy: nil).isEmpty)
     }
 
     // MARK: - Assets
@@ -136,7 +136,7 @@ final class SegmentBackdropTrackTests: XCTestCase {
     func testReferencedAssetsCoversEveryKindAndDeduplicates() {
         let track = [cue("a", 0, sky360), cue("b", 5, set), cue("c", 10, still),
                      cue("d", 15, nil), cue("e", 20, sky360)]
-        XCTAssertEqual(SegmentBackdropTimeline.referencedAssets(track: track),
+        XCTAssertEqual(SequenceBackdropTimeline.referencedAssets(track: track),
                        ["sky.mp4", "stage.usdz", "dusk.heic"])
     }
 
@@ -166,19 +166,19 @@ final class SegmentBackdropTrackTests: XCTestCase {
         XCTAssertEqual(decoded.startTime, 2)
     }
 
-    func testSegmentWithoutBackdropTrackDecodesToEmpty() throws {
+    func testSequenceWithoutBackdropTrackDecodesToEmpty() throws {
         let json = """
         {"id":"s1","name":"S1","phase":"immersive","steps":[],
          "visibility":{},"onComplete":{"kind":"holdOnLastStep"}}
         """.data(using: .utf8)!
-        XCTAssertTrue(try JSONDecoder().decode(SegmentDefinitionDTO.self, from: json).backdropTrack.isEmpty)
+        XCTAssertTrue(try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json).backdropTrack.isEmpty)
     }
 
-    func testSegmentBackdropTrackRoundTrips() throws {
-        var segment = SegmentDefinitionDTO(id: "s1", name: "S1", phase: "immersive", steps: [])
-        segment.backdropTrack = [cue("a", 0, sky360), cue("b", 5, set), cue("c", 9, nil)]
-        let data = try JSONEncoder().encode(segment)
-        let decoded = try JSONDecoder().decode(SegmentDefinitionDTO.self, from: data)
-        XCTAssertEqual(decoded.backdropTrack, segment.backdropTrack)
+    func testSequenceBackdropTrackRoundTrips() throws {
+        var sequence = SequenceDefinitionDTO(id: "s1", name: "S1", phase: "immersive", steps: [])
+        sequence.backdropTrack = [cue("a", 0, sky360), cue("b", 5, set), cue("c", 9, nil)]
+        let data = try JSONEncoder().encode(sequence)
+        let decoded = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: data)
+        XCTAssertEqual(decoded.backdropTrack, sequence.backdropTrack)
     }
 }

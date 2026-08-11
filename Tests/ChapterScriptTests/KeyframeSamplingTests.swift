@@ -40,7 +40,7 @@ final class KeyframeSamplingTests: XCTestCase {
         XCTAssertEqual(KeyframeSampling.sample(pts, at: 0).x, 0, accuracy: 0.001)
         XCTAssertEqual(KeyframeSampling.sample(pts, at: 0.5).x, 8, accuracy: 0.01)
         XCTAssertEqual(KeyframeSampling.sample(pts, at: 1).x, 2, accuracy: 0.001)
-        // Smooth mid-segment: strictly between neighbors near the peak.
+        // Smooth mid-sequence: strictly between neighbors near the peak.
         let v = KeyframeSampling.sample(pts, at: 0.4).x
         XCTAssertGreaterThan(v, 4)
         XCTAssertLessThan(v, 9)

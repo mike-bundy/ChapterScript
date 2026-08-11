@@ -1,39 +1,39 @@
 import Foundation
 
-public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
+public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     public var id: String
     public var name: String
     public var phase: String
-    /// Whether this segment expects the player to be in an immersive space
-    /// or in a flat / windowed presentation. Players consult this on segment
+    /// Whether this sequence expects the player to be in an immersive space
+    /// or in a flat / windowed presentation. Players consult this on sequence
     /// start to open / dismiss the immersive space as the experience moves
     /// between presentation modes.
-    public var presentation: SegmentPresentation
+    public var presentation: SequencePresentation
     /// Optional immersive backdrop (skybox video or USDZ scene) shown while
-    /// this segment plays. Only meaningful when `presentation == .immersive`;
-    /// players may ignore for `.windowed` segments.
+    /// this sequence plays. Only meaningful when `presentation == .immersive`;
+    /// players may ignore for `.windowed` sequences.
     public var immersiveBackdrop: ImmersiveBackdropSpec?
     public var steps: [StepDefinitionDTO]
-    /// Segment-level keyframe animation, one track per animated entity.
-    /// Keys sit at absolute seconds from segment start — independent of the
+    /// Sequence-level keyframe animation, one track per animated entity.
+    /// Keys sit at absolute seconds from sequence start — independent of the
     /// step grid, so retiming steps never bends an animation curve.
     public var animationTracks: [EntityAnimationTrack]
-    /// Segment-level audio automation, one track per audio channel plus an
-    /// optional `master` bus track. Keys sit at absolute seconds from segment
+    /// Sequence-level audio automation, one track per audio channel plus an
+    /// optional `master` bus track. Keys sit at absolute seconds from sequence
     /// start, exactly like `animationTracks` — so a volume ride survives step
     /// retiming, and the same curve editor edits both.
     public var audioTracks: [AudioAutomationTrack]
     /// Timed backdrop changes. Each cue runs from its `startTime` until the
     /// next one begins, so exactly one backdrop is ever active — exclusivity
     /// by construction rather than by validation. Empty means "use
-    /// `immersiveBackdrop` for the whole segment", which is what every
+    /// `immersiveBackdrop` for the whole sequence", which is what every
     /// document written before this existed says.
     public var backdropTrack: [BackdropCue]
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
     /// EDITOR-ONLY organizational colour, as an index into the authoring
-    /// tool's segment palette. `nil` means "no explicit colour" — editors
-    /// fall back to colouring by segment position.
+    /// tool's sequence palette. `nil` means "no explicit colour" — editors
+    /// fall back to colouring by sequence position.
     ///
     /// Runtime MUST ignore this. It exists so an author can colour-code a
     /// long chapter in Chapter Studio / ChapterVision and have that survive
@@ -48,7 +48,7 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
         id: String,
         name: String,
         phase: String,
-        presentation: SegmentPresentation = .immersive,
+        presentation: SequencePresentation = .immersive,
         immersiveBackdrop: ImmersiveBackdropSpec? = nil,
         steps: [StepDefinitionDTO],
         animationTracks: [EntityAnimationTrack] = [],
@@ -92,7 +92,7 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
         self.name = try c.decode(String.self, forKey: .name)
         let phase = try c.decode(String.self, forKey: .phase)
         self.phase = phase
-        if let decoded = try c.decodeIfPresent(SegmentPresentation.self, forKey: .presentation) {
+        if let decoded = try c.decodeIfPresent(SequencePresentation.self, forKey: .presentation) {
             self.presentation = decoded
         } else {
             self.presentation = phase == "windowed" ? .windowed : .immersive
@@ -108,19 +108,19 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
         self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
         // Tolerant, like every other additive field: documents written before
-        // segment colours existed simply have no colour.
+        // sequence colours existed simply have no colour.
         self.editorColorIndex = try c.decodeIfPresent(Int.self, forKey: .editorColorIndex)
     }
 }
 
-/// Whether a segment expects the player in an immersive space, a mixed
+/// Whether a sequence expects the player in an immersive space, a mixed
 /// (passthrough) space, or a flat windowed scene. The SharedVisions
 /// player maps these to visionOS `ImmersionStyle` values:
 ///
 ///   • `.immersive` → `.full` — the user's real environment is hidden;
 ///     ideal for skybox videos and fully-authored 3D backdrops.
 ///   • `.mixed` → `.mixed` — passthrough stays visible while RealityKit
-///     content places into world space. Good for segments that need
+///     content places into world space. Good for sequences that need
 ///     3D depth (entities anchored in the user's room) without
 ///     replacing the real environment.
 ///   • `.windowed` — the immersive space is dismissed entirely, so
@@ -129,7 +129,7 @@ public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
 /// Decode is tolerant: unknown raw values fall back to `.immersive` so
 /// a v0.3.1 doc containing `.mixed` loads on a v0.3.0 player as full
 /// immersive (the safest interpretation of "needs 3D space").
-public enum SegmentPresentation: String, Codable, Sendable, Equatable, CaseIterable {
+public enum SequencePresentation: String, Codable, Sendable, Equatable, CaseIterable {
     case immersive
     case mixed
     case windowed
@@ -137,12 +137,12 @@ public enum SegmentPresentation: String, Codable, Sendable, Equatable, CaseItera
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         let raw = try c.decode(String.self)
-        self = SegmentPresentation(rawValue: raw) ?? .immersive
+        self = SequencePresentation(rawValue: raw) ?? .immersive
     }
 }
 
-/// Ambient backdrop content for an immersive segment. The player binds
-/// one of these at segment start (and tears down the previous one):
+/// Ambient backdrop content for an immersive sequence. The player binds
+/// one of these at sequence start (and tears down the previous one):
 ///
 ///   • `.video` — a flat video projected onto a sphere (360° / 180°)
 ///     or a stereoscopic MV-HEVC / Apple Immersive Video file. Player
@@ -153,7 +153,7 @@ public enum SegmentPresentation: String, Codable, Sendable, Equatable, CaseItera
 ///     360° photos.
 ///   • `.usdz` — a USDZ scene loaded under the immersive scene root.
 ///
-/// Players may ignore for `.windowed` segments.
+/// Players may ignore for `.windowed` sequences.
 public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     /// Immersive video. `file` references an entry in the asset manifest.
     /// `layout` and `field` mirror the same hints used by `VideoActionDTO`
@@ -167,11 +167,11 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     case image(file: String, field: ImmersiveField, radius: Float)
     /// USDZ scene loaded under the immersive scene root. The asset id
     /// must exist in the document's manifest. The player parents the
-    /// loaded entity under the immersive root before the first segment
+    /// loaded entity under the immersive root before the first sequence
     /// step runs.
     case usdz(assetId: String)
     /// Blocking content: an immersive shot that has not been shot yet. Carries
-    /// the projection and radius the finished plate will use, so the segment
+    /// the projection and radius the finished plate will use, so the sequence
     /// is framed correctly before the media exists, and NO file reference —
     /// nothing enters the manifest. Replaced in place by `.video` once the
     /// plate lands, preserving the cue's id, start time and source range.
@@ -341,10 +341,10 @@ public enum GateType: String, Codable, Sendable, Equatable {
 public enum CompletionActionDTO: Codable, Sendable, Equatable {
     case holdOnLastStep
     case transitionTo(phase: String, visibility: VisibilityStateDTO)
-    case autoAdvance(nextSegmentId: String)
+    case autoAdvance(nextSequenceId: String)
     case dismissToHome
 
-    private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextSegmentId }
+    private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextSequenceId }
     private enum Kind: String, Codable {
         case holdOnLastStep, transitionTo, autoAdvance, dismissToHome
     }
@@ -358,9 +358,9 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
             try c.encode(Kind.transitionTo, forKey: .kind)
             try c.encode(phase, forKey: .phase)
             try c.encode(visibility, forKey: .visibility)
-        case .autoAdvance(let nextSegmentId):
+        case .autoAdvance(let nextSequenceId):
             try c.encode(Kind.autoAdvance, forKey: .kind)
-            try c.encode(nextSegmentId, forKey: .nextSegmentId)
+            try c.encode(nextSequenceId, forKey: .nextSequenceId)
         case .dismissToHome:
             try c.encode(Kind.dismissToHome, forKey: .kind)
         }
@@ -377,7 +377,7 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
                 visibility: try c.decode(VisibilityStateDTO.self, forKey: .visibility)
             )
         case .autoAdvance:
-            self = .autoAdvance(nextSegmentId: try c.decode(String.self, forKey: .nextSegmentId))
+            self = .autoAdvance(nextSequenceId: try c.decode(String.self, forKey: .nextSequenceId))
         case .dismissToHome:
             self = .dismissToHome
         }

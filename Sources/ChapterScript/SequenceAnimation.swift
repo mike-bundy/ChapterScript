@@ -1,13 +1,13 @@
 import Foundation
 import simd
 
-// MARK: - Segment-level animation tracks (v0.7.0)
+// MARK: - Sequence-level animation tracks (v0.7.0)
 //
-// Keyframe animation lives on the SEGMENT, not inside steps. Each entity a
-// segment animates gets one `EntityAnimationTrack`: up to ten scalar curves
+// Keyframe animation lives on the SEQUENCE, not inside steps. Each entity a
+// sequence animates gets one `EntityAnimationTrack`: up to ten scalar curves
 // (translate/rotate/scale per axis, plus opacity) whose keys sit at ABSOLUTE
-// seconds from segment start. Steps remain the event system (reveal, video,
-// audio, gates); animation is a continuous layer sampled on the segment
+// seconds from sequence start. Steps remain the event system (reveal, video,
+// audio, gates); animation is a continuous layer sampled on the sequence
 // clock, so it survives step retimes, crosses step boundaries, and scrubs
 // identically in every editor and player.
 //
@@ -82,7 +82,7 @@ public struct AnimationTangent: Codable, Sendable, Equatable, Hashable {
     }
 }
 
-/// Segment interpolation, keyed on the LEFT key of each segment.
+/// Sequence interpolation, keyed on the LEFT key of each sequence.
 public enum AnimationInterpolation: String, Codable, Sendable, Equatable {
     case bezier     // default — smooth spline shaped by tangent handles
     case linear
@@ -106,7 +106,7 @@ public enum AnimationTangentMode: String, Codable, Sendable, Equatable {
     }
 }
 
-/// One key on one scalar channel. `time` is ABSOLUTE seconds from segment
+/// One key on one scalar channel. `time` is ABSOLUTE seconds from sequence
 /// start. Rotation-channel values are degrees (and may accumulate past
 /// ±360° — they are unwrapped, not normalized).
 public struct AnimationKey: Codable, Sendable, Equatable, Hashable {
@@ -209,7 +209,7 @@ public struct AnimationCurve: Codable, Sendable, Equatable {
     }
 }
 
-/// All animation for one entity within a segment: up to ten scalar curves
+/// All animation for one entity within a sequence: up to ten scalar curves
 /// plus the Euler rotate order. Channels without keys fall back to the
 /// entity's rest value (its base transform / full opacity).
 public struct EntityAnimationTrack: Codable, Sendable, Equatable {
@@ -285,7 +285,7 @@ public struct EntityAnimationTrack: Codable, Sendable, Equatable {
 
 // MARK: - Sampled pose
 
-/// The result of sampling an entity's track at a segment time. Unkeyed
+/// The result of sampling an entity's track at a sequence time. Unkeyed
 /// channels carry the rest value; `opacity` is nil when the opacity channel
 /// has no keys (the step/action system owns visibility then).
 public struct AnimationSampledPose: Sendable, Equatable {
@@ -304,11 +304,11 @@ public struct AnimationSampledPose: Sendable, Equatable {
 
 // MARK: - Evaluation
 
-/// Scalar curve evaluation — the one interpolation truth for segment
+/// Scalar curve evaluation — the one interpolation truth for sequence
 /// animation tracks, shared by players and editors. Pure math.
-public enum SegmentAnimationEvaluator {
+public enum SequenceAnimationEvaluator {
 
-    /// Sample one curve at `time` (absolute segment seconds). Holds flat
+    /// Sample one curve at `time` (absolute sequence seconds). Holds flat
     /// before the first and after the last key; `rest` when empty.
     public static func evaluate(_ curve: AnimationCurve, at time: Double, rest: Float) -> Float {
         let keys = curve.keys
@@ -316,7 +316,7 @@ public enum SegmentAnimationEvaluator {
         if time <= first.time { return first.value }
         if time >= last.time { return last.value }
 
-        // Binary search for the segment [k0, k1] containing `time`.
+        // Binary search for the sequence [k0, k1] containing `time`.
         var lo = 0
         var hi = keys.count - 1
         while hi - lo > 1 {
@@ -338,7 +338,7 @@ public enum SegmentAnimationEvaluator {
     }
 
     /// Cubic Bézier in (time, value) space. Control times are clamped
-    /// inside the segment so x(t) stays monotonic — Newton then converges
+    /// inside the sequence so x(t) stays monotonic — Newton then converges
     /// fast, with a bisection safety net.
     static func bezier(from k0: AnimationKey, to k1: AnimationKey, at time: Double) -> Float {
         let x0 = k0.time
@@ -359,7 +359,7 @@ public enum SegmentAnimationEvaluator {
     }
 
     /// Solve the cubic-x for the parameter where x(t) == x. Because control
-    /// times are clamped in-segment, x(t) is monotonic: Newton from the
+    /// times are clamped in-sequence, x(t) is monotonic: Newton from the
     /// linear seed converges in a handful of iterations; bisection catches
     /// degenerate derivatives.
     private static func solveT(x: Double, x0: Double, x1: Double, x2: Double, x3: Double) -> Float {

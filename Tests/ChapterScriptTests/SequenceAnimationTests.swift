@@ -2,7 +2,7 @@ import XCTest
 import simd
 @testable import ChapterScript
 
-final class SegmentAnimationTests: XCTestCase {
+final class SequenceAnimationTests: XCTestCase {
 
     private func key(
         _ time: Double, _ value: Float,
@@ -27,30 +27,30 @@ final class SegmentAnimationTests: XCTestCase {
     // MARK: - Evaluation
 
     func testEmptyReturnsRestAndEndsHold() {
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(AnimationCurve(), at: 3, rest: 7), 7)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(AnimationCurve(), at: 3, rest: 7), 7)
         let curve = AnimationCurve(keys: [key(1, 2), key(3, 8)])
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(curve, at: 0, rest: 0), 2)
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(curve, at: 10, rest: 0), 8)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(curve, at: 0, rest: 0), 2)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(curve, at: 10, rest: 0), 8)
     }
 
     func testLinearAndStepped() {
         let linear = AnimationCurve(keys: [key(0, 0, .linear), key(2, 10)])
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(linear, at: 0.5, rest: 0), 2.5, accuracy: 0.001)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(linear, at: 0.5, rest: 0), 2.5, accuracy: 0.001)
         let stepped = AnimationCurve(keys: [key(0, 0, .stepped), key(2, 10)])
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(stepped, at: 1.99, rest: 0), 0)
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(stepped, at: 2, rest: 0), 10)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(stepped, at: 1.99, rest: 0), 0)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(stepped, at: 2, rest: 0), 10)
     }
 
     func testBezierWithFlatAutoTangentsPassesThroughKeysMonotonically() {
         var curve = AnimationCurve(keys: [key(0, 0), key(1, 5), key(2, 10)])
-        SegmentAnimationEvaluator.refreshAutoTangents(&curve)
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(curve, at: 0, rest: 0), 0)
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(curve, at: 1, rest: 0), 5, accuracy: 0.001)
-        XCTAssertEqual(SegmentAnimationEvaluator.evaluate(curve, at: 2, rest: 0), 10)
+        SequenceAnimationEvaluator.refreshAutoTangents(&curve)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(curve, at: 0, rest: 0), 0)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(curve, at: 1, rest: 0), 5, accuracy: 0.001)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(curve, at: 2, rest: 0), 10)
         // Monotonic ramp stays monotonic.
         var previous: Float = -1
         for i in 0...40 {
-            let v = SegmentAnimationEvaluator.evaluate(curve, at: Double(i) * 0.05, rest: 0)
+            let v = SequenceAnimationEvaluator.evaluate(curve, at: Double(i) * 0.05, rest: 0)
             XCTAssertGreaterThanOrEqual(v + 0.0001, previous)
             previous = v
         }
@@ -60,12 +60,12 @@ final class SegmentAnimationTests: XCTestCase {
         // A bounce apex: up to 10, back to 0. The apex tangent must be flat
         // so the curve never overshoots above the key value.
         var curve = AnimationCurve(keys: [key(0, 0), key(1, 10), key(2, 0)])
-        SegmentAnimationEvaluator.refreshAutoTangents(&curve)
+        SequenceAnimationEvaluator.refreshAutoTangents(&curve)
         let apex = curve.keys[1]
         XCTAssertEqual(apex.inTangent.dv, 0)
         XCTAssertEqual(apex.outTangent.dv, 0)
         for i in 0...40 {
-            let v = SegmentAnimationEvaluator.evaluate(curve, at: Double(i) * 0.05, rest: 0)
+            let v = SequenceAnimationEvaluator.evaluate(curve, at: Double(i) * 0.05, rest: 0)
             XCTAssertLessThanOrEqual(v, 10.0001)
         }
     }
@@ -76,7 +76,7 @@ final class SegmentAnimationTests: XCTestCase {
             k.outTangent = AnimationTangent(dt: 0.9, dv: 42)
             k.autoTangents = false
         }
-        SegmentAnimationEvaluator.refreshAutoTangents(&curve)
+        SequenceAnimationEvaluator.refreshAutoTangents(&curve)
         XCTAssertEqual(curve.keys[0].outTangent.dv, 42)
         // The auto key still got refreshed.
         XCTAssertNotEqual(curve.keys[1].inTangent.dt, AnimationTangent().dt)
@@ -92,7 +92,7 @@ final class SegmentAnimationTests: XCTestCase {
             rotation: .identity,
             scale: Vec3(2, 2, 2)
         )
-        let pose = SegmentAnimationEvaluator.samplePose(track, at: 1, rest: rest)
+        let pose = SequenceAnimationEvaluator.samplePose(track, at: 1, rest: rest)
         XCTAssertEqual(pose.position.x, 1)          // rest
         XCTAssertEqual(pose.position.y, 2, accuracy: 0.001)  // keyed midpoint
         XCTAssertEqual(pose.position.z, 3)          // rest
@@ -103,7 +103,7 @@ final class SegmentAnimationTests: XCTestCase {
     func testSamplePoseOpacityClamped() {
         var track = EntityAnimationTrack(entity: "orb")
         track[.opacity] = AnimationCurve(keys: [key(0, -1, .linear), key(1, 2)])
-        let pose = SegmentAnimationEvaluator.samplePose(track, at: 0, rest: .identity)
+        let pose = SequenceAnimationEvaluator.samplePose(track, at: 0, rest: .identity)
         XCTAssertEqual(pose.opacity, 0)
     }
 
@@ -150,23 +150,23 @@ final class SegmentAnimationTests: XCTestCase {
         ])
         track[.opacity] = AnimationCurve(keys: [AnimationKey(time: 1, value: 0.5)])
 
-        let segment = SegmentDefinitionDTO(
+        let sequence = SequenceDefinitionDTO(
             id: "c1", name: "One", phase: "immersive",
             steps: [StepDefinitionDTO(id: "s1", name: "Step", duration: 5, actions: [])],
             animationTracks: [track]
         )
-        let data = try JSONEncoder().encode(segment)
-        let decoded = try JSONDecoder().decode(SegmentDefinitionDTO.self, from: data)
+        let data = try JSONEncoder().encode(sequence)
+        let decoded = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: data)
         XCTAssertEqual(decoded.animationTracks, [track])
     }
 
-    func testLegacySegmentWithoutTracksDecodes() throws {
+    func testLegacySequenceWithoutTracksDecodes() throws {
         let json = """
         {"id":"c1","name":"One","phase":"immersive",
          "steps":[{"id":"s1","name":"S","duration":3,"actions":[],"scheduledActions":[]}],
          "visibility":{},"onComplete":{"kind":"holdOnLastStep"}}
         """
-        let decoded = try JSONDecoder().decode(SegmentDefinitionDTO.self, from: json.data(using: .utf8)!)
+        let decoded = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json.data(using: .utf8)!)
         XCTAssertTrue(decoded.animationTracks.isEmpty)
     }
 

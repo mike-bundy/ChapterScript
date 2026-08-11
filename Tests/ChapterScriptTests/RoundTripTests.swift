@@ -208,10 +208,10 @@ final class RoundTripTests: XCTestCase {
         }
     }
 
-    // MARK: - Segment / Step
+    // MARK: - Sequence / Step
 
-    func testSegmentRoundTrip() throws {
-        let segment = SegmentDefinitionDTO(
+    func testSequenceRoundTrip() throws {
+        let sequence = SequenceDefinitionDTO(
             id: "voyage-prologue.intro",
             name: "Intro",
             phase: "immersive",
@@ -237,9 +237,9 @@ final class RoundTripTests: XCTestCase {
                 )
             ],
             visibility: VisibilityStateDTO(["orb": true]),
-            onComplete: .autoAdvance(nextSegmentId: "voyage-prologue.act-one")
+            onComplete: .autoAdvance(nextSequenceId: "voyage-prologue.act-one")
         )
-        try roundTrip(segment)
+        try roundTrip(sequence)
     }
 
     // MARK: - Document
@@ -257,10 +257,10 @@ final class RoundTripTests: XCTestCase {
                     primitive: PrimitiveSpec(shape: .sphere, size: Vec3(0.15, 0.15, 0.15))
                 )
             ],
-            segments: [
-                SegmentDefinitionDTO(
+            sequences: [
+                SequenceDefinitionDTO(
                     id: "only",
-                    name: "Only Segment",
+                    name: "Only Sequence",
                     phase: "immersive",
                     steps: [StepDefinitionDTO(
                         id: "step1",
@@ -271,7 +271,7 @@ final class RoundTripTests: XCTestCase {
                 )
             ],
             manifest: AssetManifest(),
-            defaultSegmentId: "only"
+            defaultSequenceId: "only"
         )
         try roundTrip(doc)
     }
@@ -294,7 +294,7 @@ final class RoundTripTests: XCTestCase {
             "id": "legacy",
             "displayName": "Legacy",
             "entities": [],
-            "segments": [],
+            "sequences": [],
             "particlePresets": [],
             "manifest": { "entries": [] }
         }

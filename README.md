@@ -1,10 +1,10 @@
 # ChapterScript
 
-> **An open data format for declarative immersive experiences — segments of timed steps, each step a bag of actions (entity reveals, audio cues, video playback, motion curves, gates).**
+> **An open data format for declarative immersive experiences — sequences of timed steps, each step a bag of actions (entity reveals, audio cues, video playback, motion curves, gates).**
 
 ChapterScript is a Swift package containing only `Codable` value types. It has zero dependencies on RealityKit, UIKit, AppKit, or AVFoundation. The package builds on macOS, iOS, visionOS, tvOS, watchOS, and Linux.
 
-**Vocabulary (format v2):** a *chapter* is the whole `.chapterscript` bundle — one `ChapterDocument`, saved as `chapter.json` beside its `assets/` folder. A chapter contains *segments* (the timed units of steps, animation tracks, and backdrops); players run one segment at a time and editors edit one chapter at a time.
+**Vocabulary (format v3):** a *chapter* is the whole `.chapterscript` bundle — one `ChapterDocument`, saved as `chapter.json` beside its `assets/` folder. A chapter contains *sequences* (the timed units of steps, animation tracks, and backdrops); players run one sequence at a time and editors edit one chapter at a time.
 
 The format is the public contract between authoring tools (e.g., the **Maestro** macOS editor) and players (e.g., the [SharedVisions](https://github.com/Shared-Visions/SharedVisionsProject) visionOS reference player). Either side can be reimplemented — including in a different language — by following the JSON schema this package defines.
 
@@ -12,20 +12,20 @@ The format is the public contract between authoring tools (e.g., the **Maestro**
 
 ## ✨ What's in here
 
-- **`ChapterDocument`** — the top-level container with `formatVersion`, `id`, `displayName`, `entities`, `segments`, `particlePresets`, `manifest`, `defaultSegmentId`
-- **`SegmentDefinitionDTO`** — segment id, name, ordered steps, on-complete action (`holdOnLastStep` / `autoAdvance` / `dismissToHome` / `transitionTo`), plus the v0.3.x additions:
-  - **`presentation: SegmentPresentation`** — `.immersive` / `.mixed` / `.windowed`. Tells the player whether to open the full immersive space, the mixed-reality space (passthrough + 3D), or stay in the flat windowed scene. Unknown raw values fall back to `.immersive` so newer docs degrade safely on older players.
-  - **`immersiveBackdrop: ImmersiveBackdropSpec?`** — optional ambient backdrop bound at segment start. Either `.video(file, layout, field, radius, loop)` for a 360°/180° skybox or `.usdz(assetId)` for a USDZ scene parented under the immersive root.
+- **`ChapterDocument`** — the top-level container with `formatVersion`, `id`, `displayName`, `entities`, `sequences`, `particlePresets`, `manifest`, `defaultSequenceId`
+- **`SequenceDefinitionDTO`** — sequence id, name, ordered steps, on-complete action (`holdOnLastStep` / `autoAdvance` / `dismissToHome` / `transitionTo`), plus the v0.3.x additions:
+  - **`presentation: SequencePresentation`** — `.immersive` / `.mixed` / `.windowed`. Tells the player whether to open the full immersive space, the mixed-reality space (passthrough + 3D), or stay in the flat windowed scene. Unknown raw values fall back to `.immersive` so newer docs degrade safely on older players.
+  - **`immersiveBackdrop: ImmersiveBackdropSpec?`** — optional ambient backdrop bound at sequence start. Either `.video(file, layout, field, radius, loop)` for a 360°/180° skybox or `.usdz(assetId)` for a USDZ scene parented under the immersive root.
 - **`StepDefinitionDTO`** — step id, name, duration, ordered actions, scheduled actions (time-offset within the step), optional `gate`
 - **`StepActionDTO`** — externally-tagged sum type covering ~30 action variants (entity reveal/move/fade/scale, attachments, audio play/stop/fade/zones/buses, video play/prepare/stop, effects, gestures, system flags, custom escape hatch)
 - **`VideoPresentation`** — `.attachment(id:)`, `.entity(name:, width:, height:)`, or `.immersive(radius:, field:)` for binding video onto a SwiftUI overlay, a scene panel, or a skybox sphere. Pairs with **`VideoLayout`** (`.mono`, `.sideBySide`, `.overUnder`, `.multiviewHEVC`) for stereo hints.
 - **`MotionCurve`** — composable parametric motion: `constant`, `linear`, `orbit`, `spiral`, `oscillate`, `rotate`, `keyframes`, `sum`, `scaled` (recursive)
 - **`EntityDefinition`** — declarative entity registry: primitive shapes, USDZ refs, text3D, lights, video panels, particle preset bindings, custom-factory escape hatch
 - **`AssetManifest`** — `[AssetEntry]` with relative paths, byte sizes, SHA-256 hashes, durations, dimensions
-- **`EntityAnimationTrack`** + **`SegmentAnimationEvaluator`** — segment-level keyframe animation: ten scalar channels per entity (`tx…tz rx…rz sx…sz opacity`), keys at absolute segment seconds with bezier `(dt, dv)` tangent handles, continuous-Euler rotations with explicit rotate order, and the one evaluation truth shared by players and editors (`AnimationEulerMath` covers all six orders)
+- **`EntityAnimationTrack`** + **`SequenceAnimationEvaluator`** — sequence-level keyframe animation: ten scalar channels per entity (`tx…tz rx…rz sx…sz opacity`), keys at absolute sequence seconds with bezier `(dt, dv)` tangent handles, continuous-Euler rotations with explicit rotate order, and the one evaluation truth shared by players and editors (`AnimationEulerMath` covers all six orders)
 - **`KeyframePoint`** + **`InterpolationMode`** — primitives reused inside `MotionCurve.keyframes`
 - **`Migrator`** — JSON-to-JSON schema migrators that run before typed decoding so older documents stay loadable
-- **Forward-compat** — unknown future `StepAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip. Unknown `SegmentPresentation` raw values fall back to `.immersive` for the same reason.
+- **Forward-compat** — unknown future `StepAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip. Unknown `SequencePresentation` raw values fall back to `.immersive` for the same reason.
 
 ---
 
@@ -49,20 +49,20 @@ MyExperience.chapterscript/
 
 ## 🧪 Wire-format example
 
-A minimal one-segment experience:
+A minimal one-sequence experience:
 
 ```json
 {
-  "formatVersion": 1,
+  "formatVersion": 3,
   "id": "minimal",
   "displayName": "Minimal Experience",
   "entities": [],
   "particlePresets": [],
   "manifest": { "entries": [] },
-  "segments": [
+  "sequences": [
     {
       "id": "only",
-      "name": "Only Segment",
+      "name": "Only Sequence",
       "phase": "immersive",
       "visibility": {},
       "onComplete": { "kind": "holdOnLastStep" },
@@ -119,7 +119,7 @@ let migrated = try Migrator.migrate(data)                   // JSON-to-JSON forw
 let doc = try ChapterScriptFormat.makeDecoder()
     .decode(ChapterDocument.self, from: migrated)
 
-print(doc.segments.map(\.id))                               // ["segment_01_…", "segment_02_…", …]
+print(doc.sequences.map(\.id))                               // ["sequence_01_…", "sequence_02_…", …]
 ```
 
 Encode a document:
@@ -136,6 +136,9 @@ try data.write(to: url)
 
 - **Unknown action variants** parse into `.unknown(name:raw:)`. Editors that don't recognize a future action kind can preserve and re-emit `raw` unchanged through round-trips. Players that don't understand it should log and skip.
 - **Schema versioning** uses a single integer `formatVersion`. Migrators (registered in `Migrator.steps`) run JSON→JSON before typed decode. Players can advertise a `[minSupported, maxSupported]` range; editors refuse to export to a player they know can't read the document.
+<!-- LEGACY-VOCAB-BEGIN -->
+- **v2 → v3 (Segment → Sequence).** v3 renamed the inner timed unit from *segment* to *sequence*. The migration is a pure vocabulary rename and a **semantic identity**: `segments` → `sequences`, `defaultSegmentId` → `defaultSequenceId`, `nextSegmentId` → `nextSequenceId`, plus the `AudioScope` raw value `"segment"` → `"sequence"`. Nothing else is touched — ids, step durations, scheduled-action offsets, gates, absolute animation key times, backdrop cues and `sourceIn`/`sourceOut` all pass through byte for byte. **Authored ids are opaque and are never rewritten**, so a v2 document keeps its `segment_*` ids after migrating; anything referencing a sequence by id therefore still resolves. `AudioScope` additionally decodes `"segment"` tolerantly at all times, because `EditOp` payloads on the live-sync path are decoded directly and never see the migrator.
+<!-- LEGACY-VOCAB-END -->
 
 ---
 
@@ -158,7 +161,7 @@ Every DTO has round-trip tests. `Tests/Fixtures/` ships:
 
 - **`minimal.json`** — smallest valid document
 - **`representative.json`** — exercises 30+ action variants and most `MotionCurve` kinds
-- **`documentary.json`** — the eight-segment SharedVisions documentary as a fidelity gate; round-trips every action and validates the auto-advance chain
+- **`documentary.json`** — the eight-sequence SharedVisions documentary as a fidelity gate; round-trips every action and validates the auto-advance chain
 
 ---
 
@@ -174,7 +177,7 @@ ChapterScript/
 │   ├── Entity.swift                           # EntityDefinition, PrimitiveSpec, MaterialSpec, …
 │   ├── Actions.swift                          # MoveActionDTO, FadeActionDTO, AudioActionDTO, …
 │   ├── StepAction.swift                       # StepActionDTO + externally-tagged Codable
-│   ├── Segment.swift                          # SegmentDefinitionDTO, StepDefinitionDTO, …
+│   ├── Sequence.swift                          # SequenceDefinitionDTO, StepDefinitionDTO, …
 │   ├── Document.swift                         # ChapterDocument, AssetManifest, ChapterScriptFormat
 │   └── Migrator.swift                         # JSON-to-JSON schema migrators
 └── Tests/ChapterScriptTests/
@@ -190,12 +193,12 @@ ChapterScript/
 
 ## 📌 Status
 
-Pre-1.0. The schema may change. `formatVersion` is currently **1**. The first stable release will lock the wire format and start the strict back-compat regime.
+Pre-1.0. The schema may change. `formatVersion` is currently **3**. The first stable release will lock the wire format and start the strict back-compat regime.
 
 ### Recent releases
 
-- **v0.3.1** — added `SegmentPresentation.mixed` case alongside `.immersive` and `.windowed`. Decoder tolerates unknown raw values (falls back to `.immersive`), so v0.3.1 docs containing `.mixed` still load on v0.3.0 players as full immersive.
-- **v0.3.0** — added `SegmentDefinitionDTO.presentation` and `SegmentDefinitionDTO.immersiveBackdrop`. Both decode-if-present, so v0.2 docs continue to load. Legacy `phase == "windowed"` is detected as `.windowed`.
+- **v0.3.1** — added `SequencePresentation.mixed` case alongside `.immersive` and `.windowed`. Decoder tolerates unknown raw values (falls back to `.immersive`), so v0.3.1 docs containing `.mixed` still load on v0.3.0 players as full immersive.
+- **v0.3.0** — added `SequenceDefinitionDTO.presentation` and `SequenceDefinitionDTO.immersiveBackdrop`. Both decode-if-present, so v0.2 docs continue to load. Legacy `phase == "windowed"` is detected as `.windowed`.
 - **v0.2.0** — `VideoPresentation.immersive(radius:, field:)` + `VideoLayout` for stereo packing hints (MV-HEVC, side-by-side, over-under).
 
 ---

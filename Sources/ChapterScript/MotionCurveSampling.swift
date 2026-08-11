@@ -9,7 +9,7 @@ import simd
 /// Conventions
 /// -----------
 /// - `t` is normalized progress through the motion's window, clamped 0…1.
-/// - `absoluteTime` is seconds since segment start; `oscillate` uses it
+/// - `absoluteTime` is seconds since sequence start; `oscillate` uses it
 ///   for real-time-locked phase.
 /// - `rotate(axis, revolutions)` returns `axis * angleInRadians` — the
 ///   rotation channel treats the Vec3 as an axis-angle vector.

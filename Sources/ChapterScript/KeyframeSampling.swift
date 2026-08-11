@@ -5,7 +5,7 @@ import Foundation
 /// MaestroVision's motion trails). Pure math on format types; no
 /// platform dependencies.
 ///
-/// Interpolation semantics (Maya-style, keyed on the SEGMENT's left
+/// Interpolation semantics (Maya-style, keyed on the SEQUENCE's left
 /// keyframe):
 ///   .step      hold the left value until the next key
 ///   .linear    straight lerp
@@ -28,7 +28,7 @@ public enum KeyframeSampling {
         if t <= first.time { return first.value }
         guard let last = points.last, t < last.time else { return points[points.count - 1].value }
 
-        // Find the segment containing t.
+        // Find the sequence containing t.
         var i = 0
         while i + 1 < points.count && points[i + 1].time <= t { i += 1 }
         let k0 = points[i]
@@ -60,8 +60,8 @@ public enum KeyframeSampling {
     // MARK: - Cubic Hermite (bezier / auto tangents)
 
     /// Cubic Hermite basis with per-axis tangent slopes. Explicit tangents
-    /// are slopes in value-units per SEGMENT (already scaled); auto
-    /// tangents use Catmull-Rom over the neighbors, scaled to the segment.
+    /// are slopes in value-units per SEQUENCE (already scaled); auto
+    /// tangents use Catmull-Rom over the neighbors, scaled to the sequence.
     private static func hermite(
         k0: KeyframePoint, k1: KeyframePoint,
         prev: KeyframePoint?, next: KeyframePoint?,
@@ -87,7 +87,7 @@ public enum KeyframeSampling {
     }
 
     /// Catmull-Rom auto tangent at `at`, scaled into the sampling
-    /// segment's parameter space. End keys ease flat toward their single
+    /// sequence's parameter space. End keys ease flat toward their single
     /// neighbor (Maya's "auto" flattens at curve ends).
     private static func autoTangent(
         before: KeyframePoint?, at: KeyframePoint, after: KeyframePoint?, span: Float

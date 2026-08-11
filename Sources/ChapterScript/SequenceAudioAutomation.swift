@@ -1,8 +1,8 @@
 //
-//  SegmentAudioAutomation.swift
+//  SequenceAudioAutomation.swift
 //  ChapterScript
 //
-//  KEYFRAMED AUDIO, AS SEGMENT STATE.
+//  KEYFRAMED AUDIO, AS SEQUENCE STATE.
 //
 //  Audio volume used to be two things, neither of them editable as a curve:
 //  a single static `volume` on `playAudio`, and `fadeAudio(channel:to:
@@ -11,12 +11,12 @@
 //  actions with nothing to see on the timeline and nothing to drag.
 //
 //  Meanwhile Animation 2.0 already had everything this needs: bezier curves
-//  with (dt,dv) handles at ABSOLUTE segment seconds, one evaluator, and a
+//  with (dt,dv) handles at ABSOLUTE sequence seconds, one evaluator, and a
 //  working graph editor. It was unreachable because `EntityAnimationTrack` is
 //  keyed by `entity` — and an audio channel is not an entity.
 //
 //  So automation lives here, keyed by CHANNEL, reusing `AnimationCurve` and
-//  `SegmentAnimationEvaluator` verbatim. Two namespaces stay two namespaces:
+//  `SequenceAnimationEvaluator` verbatim. Two namespaces stay two namespaces:
 //  entities do not gain a volume channel they cannot use, and audio channels
 //  do not have to masquerade as entities.
 //
@@ -47,7 +47,7 @@ public enum AudioAutomationChannel: String, Codable, Sendable, CaseIterable, Has
     }
 }
 
-/// Automation curves for ONE audio channel, over the segment's timeline.
+/// Automation curves for ONE audio channel, over the sequence's timeline.
 ///
 /// `channel` matches `AudioActionDTO.channel`, except for the reserved
 /// `AudioAutomationTrack.masterChannel`, which rides every channel at once.
@@ -126,8 +126,8 @@ public struct AudioAutomationTrack: Codable, Sendable, Equatable {
     }
 }
 
-/// Resolves automated audio values at a point in segment time.
-public enum SegmentAudioAutomation {
+/// Resolves automated audio values at a point in sequence time.
+public enum SequenceAudioAutomation {
 
     /// The automation multiplier for `channel` at `time`: the channel's own
     /// volume curve times the master curve.
@@ -146,7 +146,7 @@ public enum SegmentAudioAutomation {
 
     /// Effective volume for a playing clip: its authored base level rid by the
     /// channel and master curves. This is THE mixing rule — runtime and editor
-    /// preview both call it so they cannot disagree about what a segment
+    /// preview both call it so they cannot disagree about what a sequence
     /// sounds like.
     public static func effectiveVolume(
         base: Float,
@@ -172,7 +172,7 @@ public enum SegmentAudioAutomation {
         }
         let curve = track[parameter]
         guard curve.isAnimated else { return parameter.restValue }
-        return SegmentAnimationEvaluator.evaluate(curve, at: time, rest: parameter.restValue)
+        return SequenceAnimationEvaluator.evaluate(curve, at: time, rest: parameter.restValue)
     }
 
     /// The master bus value at `time`.
@@ -184,11 +184,11 @@ public enum SegmentAudioAutomation {
         guard let master = tracks.first(where: { $0.isMaster }) else { return parameter.restValue }
         let curve = master[parameter]
         guard curve.isAnimated else { return parameter.restValue }
-        return SegmentAnimationEvaluator.evaluate(curve, at: time, rest: parameter.restValue)
+        return SequenceAnimationEvaluator.evaluate(curve, at: time, rest: parameter.restValue)
     }
 
     /// True when any track carries a key — lets hosts skip per-frame sampling
-    /// entirely for the overwhelmingly common un-automated segment.
+    /// entirely for the overwhelmingly common un-automated sequence.
     public static func hasAutomation(_ tracks: [AudioAutomationTrack]) -> Bool {
         tracks.contains { $0.hasAnyKeys }
     }

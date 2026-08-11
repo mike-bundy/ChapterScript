@@ -7,15 +7,15 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     public var displayName: String
     public var description: String?
     public var entities: [EntityDefinition]
-    public var segments: [SegmentDefinitionDTO]
+    public var sequences: [SequenceDefinitionDTO]
     public var particlePresets: [ParticleEmitterPreset]
     /// Global scene environment (lighting preset + fog). Optional and additive:
     /// documents authored before this field existed decode as `nil`, and
     /// players fall back to their own defaults.
     public var environment: EnvironmentSpec?
     public var manifest: AssetManifest
-    /// Initial segment id played when the experience loads. Defaults to first segment.
-    public var defaultSegmentId: String?
+    /// Initial sequence id played when the experience loads. Defaults to first sequence.
+    public var defaultSequenceId: String?
     /// EDITOR-ONLY organisation. Never read by ChapterPlayer.
     ///
     /// Optional and tolerant: documents authored before this field existed
@@ -31,11 +31,11 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         displayName: String,
         description: String? = nil,
         entities: [EntityDefinition] = [],
-        segments: [SegmentDefinitionDTO] = [],
+        sequences: [SequenceDefinitionDTO] = [],
         particlePresets: [ParticleEmitterPreset] = [],
         environment: EnvironmentSpec? = nil,
         manifest: AssetManifest = AssetManifest(),
-        defaultSegmentId: String? = nil,
+        defaultSequenceId: String? = nil,
         editorMetadata: EditorMetadata? = nil
     ) {
         self.formatVersion = formatVersion
@@ -43,11 +43,11 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.displayName = displayName
         self.description = description
         self.entities = entities
-        self.segments = segments
+        self.sequences = sequences
         self.particlePresets = particlePresets
         self.environment = environment
         self.manifest = manifest
-        self.defaultSegmentId = defaultSegmentId
+        self.defaultSequenceId = defaultSequenceId
         self.editorMetadata = editorMetadata
     }
 
@@ -55,8 +55,8 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     // this format revision keep loading. Encode stays synthesized.
     private enum CodingKeys: String, CodingKey {
         case formatVersion, id, displayName, description
-        case entities, segments, particlePresets, environment
-        case manifest, defaultSegmentId, editorMetadata
+        case entities, sequences, particlePresets, environment
+        case manifest, defaultSequenceId, editorMetadata
     }
 
     public init(from decoder: Decoder) throws {
@@ -66,11 +66,11 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.displayName = try c.decode(String.self, forKey: .displayName)
         self.description = try c.decodeIfPresent(String.self, forKey: .description)
         self.entities = try c.decode([EntityDefinition].self, forKey: .entities)
-        self.segments = try c.decode([SegmentDefinitionDTO].self, forKey: .segments)
+        self.sequences = try c.decode([SequenceDefinitionDTO].self, forKey: .sequences)
         self.particlePresets = try c.decode([ParticleEmitterPreset].self, forKey: .particlePresets)
         self.environment = try c.decodeIfPresent(EnvironmentSpec.self, forKey: .environment)
         self.manifest = try c.decode(AssetManifest.self, forKey: .manifest)
-        self.defaultSegmentId = try c.decodeIfPresent(String.self, forKey: .defaultSegmentId)
+        self.defaultSequenceId = try c.decodeIfPresent(String.self, forKey: .defaultSequenceId)
         self.editorMetadata = try c.decodeIfPresent(EditorMetadata.self, forKey: .editorMetadata)
     }
 }
@@ -103,17 +103,50 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// too, so the two can never disagree about which folders there are.
     public var sceneFolders: [SceneFolder]
 
+    /// Author-created Scene BROWSER folders — the organisational tree over
+    /// everything the author has made: Sequences, entities, placeholders and
+    /// backdrop-bound objects alike.
+    ///
+    /// This supersedes `sceneFolders`, which could only ever hold *assets*
+    /// (membership lived in `SceneAsset.folder`, a plain string) and split the
+    /// world into "scene" and "backdrop" scopes. Neither survives contact with
+    /// the browser: a Sequence has no `folder` field to write into, and
+    /// backdrops are no longer a separate section to scope against.
+    ///
+    /// PURELY ORGANISATIONAL. A Scene folder is not a Group Rig and not a
+    /// Timeline group: it never parents a RealityKit entity, never changes a
+    /// transform, never appears in the runtime scene graph, and never affects
+    /// playback, gates or animation. Runtime ignores this field entirely.
+    public var sceneFolderTree: [SceneFolderNode]
+
+    /// True when there is nothing worth writing.
+    ///
+    /// Callers use this to decide whether to emit the field at all. It exists
+    /// because the obvious hand-rolled version — checking ONE collection — is a
+    /// silent data-loss bug waiting to happen: the Mac's bridge tested only
+    /// `bins`, so once Bins left the UI every Scene folder and Timeline group an
+    /// author made was dropped on save. Anything added to this type must be
+    /// added here too, which is why it lives beside the properties.
+    public var isEmpty: Bool {
+        bins.isEmpty && timelineGroups.isEmpty
+            && sceneFolders.isEmpty && sceneFolderTree.isEmpty
+    }
+
     public init(
         bins: [MediaBin] = [],
         timelineGroups: [TimelineTrackGroup] = [],
-        sceneFolders: [SceneFolder] = []
+        sceneFolders: [SceneFolder] = [],
+        sceneFolderTree: [SceneFolderNode] = []
     ) {
         self.bins = bins
         self.timelineGroups = timelineGroups
         self.sceneFolders = sceneFolders
+        self.sceneFolderTree = sceneFolderTree
     }
 
-    private enum CodingKeys: String, CodingKey { case bins, timelineGroups, sceneFolders }
+    private enum CodingKeys: String, CodingKey {
+        case bins, timelineGroups, sceneFolders, sceneFolderTree
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -124,7 +157,85 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         // has no folder list and simply gets none.
         self.sceneFolders = try c.decodeIfPresent([SceneFolder].self,
                                                   forKey: .sceneFolders) ?? []
+        self.sceneFolderTree = try c.decodeIfPresent([SceneFolderNode].self,
+                                                     forKey: .sceneFolderTree) ?? []
     }
+}
+
+/// One thing the Scene browser can hold, referenced the way the FORMAT
+/// references it.
+///
+/// Entities are named, not id'd, everywhere else in ChapterScript (actions,
+/// `EntityAnimationTrack.entity`, `StepGateDTO.targetEntity`,
+/// `VideoPresentation.entity`), so folder membership uses the name too — one
+/// reference scheme, one thing to keep correct on rename. `EntityRenaming` is
+/// the single substitution point and updates this along with the rest.
+public struct SceneItemRef: Codable, Sendable, Equatable, Hashable {
+    public enum Kind: String, Codable, Sendable {
+        case sequence
+        case entity
+    }
+
+    public var kind: Kind
+    /// A Sequence's `id`, or an entity's `name`.
+    public var id: String
+
+    public init(kind: Kind, id: String) {
+        self.kind = kind
+        self.id = id
+    }
+
+    /// Unknown kinds from a newer tool degrade to `.entity` rather than failing
+    /// the load, matching `GateType` and `EntityKind`.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let raw = try c.decode(String.self, forKey: .kind)
+        self.kind = Kind(rawValue: raw) ?? .entity
+        self.id = try c.decode(String.self, forKey: .id)
+    }
+
+    private enum CodingKeys: String, CodingKey { case kind, id }
+}
+
+/// A folder in the Scene browser. Editor-only.
+///
+/// Membership is stored ON THE FOLDER rather than on each item, because the
+/// things it holds do not share a field to write into — a Sequence has no
+/// `folder` property and never will. Anything not named by some folder is at
+/// the root, so the tree never has to be exhaustive and an item can never go
+/// missing by failing to be listed.
+public struct SceneFolderNode: Codable, Sendable, Equatable, Identifiable, Hashable {
+    /// Stable and opaque. NOT the display name — renaming a folder must not
+    /// re-parent its children or orphan its contents.
+    public var id: String
+    public var name: String
+    /// Parent folder id, or `nil` for a top-level folder.
+    public var parentId: String?
+    /// Ordered membership. Order is the author's, so it is preserved verbatim.
+    public var items: [SceneItemRef]
+
+    public init(
+        id: String = UUID().uuidString,
+        name: String,
+        parentId: String? = nil,
+        items: [SceneItemRef] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.parentId = parentId
+        self.items = items
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // A hand-authored folder without an id still has to be addressable.
+        self.id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        self.name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Folder"
+        self.parentId = try c.decodeIfPresent(String.self, forKey: .parentId)
+        self.items = try c.decodeIfPresent([SceneItemRef].self, forKey: .items) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, parentId, items }
 }
 
 /// A named folder in the Scene panel. Editor-only, and purely organisational —
@@ -855,7 +966,10 @@ private extension KeyedDecodingContainer {
 /// Named distinctly from the `ChapterScript` module to avoid collision when the module is imported.
 public enum ChapterScriptFormat {
     /// Current schema version. Increment when emitting a breaking change; pair with a `Migrator` rule.
-    public static let currentFormatVersion: Int = 2   // v2: segments/ChapterDocument vocabulary (breaking; no v1 migration by design)
+    /// v3: Sequence vocabulary (`sequences` / `defaultSequenceId`). Migrated from
+    /// v2 by `Migrator` — a pure rename, semantically identical. v2 documents
+    /// (`segments` / `defaultSegmentId`) still open; v1 was never migrated by design.  LEGACY-VOCAB
+    public static let currentFormatVersion: Int = 3
 
     /// File name inside a `.chapterscript` directory bundle.
     public static let documentFileName = "chapter.json"
