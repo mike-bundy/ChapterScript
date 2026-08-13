@@ -3,7 +3,29 @@ import Foundation
 /// Declarative description of a named entity that the player should construct
 /// when an experience loads. Entities are referenced by `id` from `StepActionDTO` cases.
 public struct EntityDefinition: Codable, Sendable, Equatable {
-    public var id: String                    // canonical name used in StepAction (e.g. "orb")
+    /// STABLE, OPAQUE IDENTITY. The string every reference in the format uses —
+    /// `StepActionDTO` entity names, `EntityAnimationTrack.entity`,
+    /// `StepGateDTO.targetEntity`, `VideoPresentation.entity`.
+    ///
+    /// It is NOT a label and must never be treated as one. Historically the
+    /// editors minted it from a filename (`"IMG_0071.MOV"`), which is why
+    /// renaming a row meant rewriting every reference in the document and why
+    /// one file could only ever be one destination. New content mints opaque
+    /// ids; `displayName` carries what the author reads. Existing ids are
+    /// preserved forever — they are opaque, and a document that says
+    /// `"IMG_0071.MOV"` keeps saying it.
+    public var id: String
+    /// What the author reads and may freely change — "Main Screen", "Radio".
+    ///
+    /// Renaming writes HERE and touches nothing else, so a rename is no longer
+    /// document-wide reference surgery. `nil` means "no authored label", and
+    /// readers fall back to `id` (see `resolvedDisplayName`) — which is exactly
+    /// what every document written before this field existed means, so those
+    /// documents render identically and re-save byte-identically.
+    ///
+    /// Deliberately NOT unique and NOT an identifier. Two destinations may both
+    /// be called "Screen"; they remain distinct objects.
+    public var displayName: String?
     public var kind: EntityKind
     public var transform: TransformData
     /// Initial enabled state. `false` keeps the entity in the registry but hidden until `showEntity`.
@@ -28,8 +50,18 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     /// Free-form parameters passed to a custom factory. Players may interpret as JSON.
     public var customParameters: [String: AnyCodableValue]?
 
+    /// The label to show, never empty. Falls back to `id` so a caller can use
+    /// this unconditionally — no view should ever write `displayName ?? id`
+    /// itself, because half of them would forget and show a raw filename.
+    public var resolvedDisplayName: String {
+        guard let displayName, !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return id }
+        return displayName
+    }
+
     public init(
         id: String,
+        displayName: String? = nil,
         kind: EntityKind,
         transform: TransformData = .identity,
         initiallyEnabled: Bool = false,
@@ -46,6 +78,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         customParameters: [String: AnyCodableValue]? = nil
     ) {
         self.id = id
+        self.displayName = displayName
         self.kind = kind
         self.transform = transform
         self.initiallyEnabled = initiallyEnabled
