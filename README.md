@@ -6,7 +6,9 @@ ChapterScript is a Swift package containing only `Codable` value types. It has z
 
 **Vocabulary (format v3):** a *chapter* is the whole `.chapterscript` bundle — one `ChapterDocument`, saved as `chapter.json` beside its `assets/` folder. A chapter contains *sequences* (the timed units of steps, animation tracks, and backdrops); players run one sequence at a time and editors edit one chapter at a time.
 
-The format is the public contract between authoring tools (e.g., the **Maestro** macOS editor) and players (e.g., the [SharedVisions](https://github.com/Shared-Visions/SharedVisionsProject) visionOS reference player). Either side can be reimplemented — including in a different language — by following the JSON schema this package defines.
+The format is the public contract between authoring tools (**Maestro Studio**, the Mac app of the [Maestro](https://maestrostud.io) suite) and players (the open source [ChapterPlayer](https://github.com/mike-bundy/ChapterPlayer) visionOS runtime). Either side can be reimplemented — including in a different language — by following the JSON schema this package defines.
+
+Website: [chapterscript.com](https://chapterscript.com)
 
 ---
 
@@ -99,7 +101,7 @@ Action variants are externally-tagged: each `actions[i]` carries a `"kind"` key 
 `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/mike-bundy/ChapterScript.git", from: "0.3.1")
+.package(url: "https://github.com/mike-bundy/ChapterScript.git", from: "0.7.0")
 ```
 
 Or as a sibling local package:
@@ -147,7 +149,7 @@ try data.write(to: url)
 The format is intentionally finite for the cases it covers, with two escape hatches for the long tail:
 
 - **`StepActionDTO.custom(id:parameters:)`** — opaque actions identified by a custom id, with a free-form JSON parameter blob. Players register custom factories per id.
-- **`EntityDefinition.kind: .custom`** with `customFactoryId` — opaque entities built by app-registered factories. Used by SharedVisions to ship hand-tuned procedural VFX (PulseRing, SparkBurst) that aren't yet declarative.
+- **`EntityDefinition.kind: .custom`** with `customFactoryId` — opaque entities built by app-registered factories. Used by ChapterPlayer to ship hand-tuned procedural VFX (PulseRing, SparkBurst) that aren't yet declarative.
 
 ---
 
@@ -161,7 +163,7 @@ Every DTO has round-trip tests. `Tests/Fixtures/` ships:
 
 - **`minimal.json`** — smallest valid document
 - **`representative.json`** — exercises 30+ action variants and most `MotionCurve` kinds
-- **`documentary.json`** — the eight-sequence SharedVisions documentary as a fidelity gate; round-trips every action and validates the auto-advance chain
+- **`documentary.json`** — an eight-sequence documentary production chapter as a fidelity gate; round-trips every action and validates the auto-advance chain
 
 ---
 
@@ -197,8 +199,11 @@ Pre-1.0. The schema may change. `formatVersion` is currently **3**. The first st
 
 ### Recent releases
 
-- **v0.3.1** — added `SequencePresentation.mixed` case alongside `.immersive` and `.windowed`. Decoder tolerates unknown raw values (falls back to `.immersive`), so v0.3.1 docs containing `.mixed` still load on v0.3.0 players as full immersive.
-- **v0.3.0** — added `SequenceDefinitionDTO.presentation` and `SequenceDefinitionDTO.immersiveBackdrop`. Both decode-if-present, so v0.2 docs continue to load. Legacy `phase == "windowed"` is detected as `.windowed`.
+- **v0.7.0** — canonical `MotionCurveSampling`: the full curve evaluator (orbit / spiral / oscillate / rotate / sum / scaled / keyframes) moved into the format package, so playback, scrub previews, motion trails, and graph rendering all share one motion truth.
+- **v0.6.0** — canonical `KeyframeSampling` (hermite/bezier tangents, catmull-rom auto, spring): one interpolation truth for players, graph editors, and motion trails.
+- **v0.5.0** — non-destructive source trim (`sourceIn` / `sourceOut`) + `VideoCropRect` on `VideoActionDTO`. Pure-metadata trims; masters are never re-encoded, and pre-trim documents load unchanged.
+- **v0.4.x** — `.image` case on `ImmersiveBackdropSpec` (static equirectangular skybox), rotation on `MoveActionDTO` (`absoluteRotation` + `rotationOffset`), and a `manipulable` flag on `RevealActionDTO`. All backward-compatible additive fields.
+- **v0.3.x** — `SequenceDefinitionDTO.presentation` (`.immersive` / `.mixed` / `.windowed`, unknown values fall back to `.immersive`) and `SequenceDefinitionDTO.immersiveBackdrop`.
 - **v0.2.0** — `VideoPresentation.immersive(radius:, field:)` + `VideoLayout` for stereo packing hints (MV-HEVC, side-by-side, over-under).
 
 ---
