@@ -969,7 +969,17 @@ public enum ChapterScriptFormat {
     /// v3: Sequence vocabulary (`sequences` / `defaultSequenceId`). Migrated from
     /// v2 by `Migrator` — a pure rename, semantically identical. v2 documents
     /// (`segments` / `defaultSegmentId`) still open; v1 was never migrated by design.  LEGACY-VOCAB
-    public static let currentFormatVersion: Int = 3
+    ///
+    /// v4: one authored action list per step (`authoredActions`) replacing the
+    /// `actions` / `scheduledActions` pair, each entry carrying a stable id.
+    /// Migrated from v3 by `Migrator` — semantically identical, and ordering is
+    /// the contract (see `StepDefinitionDTO.unify`).
+    ///
+    /// THE BUMP IS LOAD-BEARING, not decorative. A v4 document no longer writes
+    /// `actions` / `scheduledActions` at all, so a v3-era player reading one
+    /// would find a step with no actions and play silence rather than fail.
+    /// The version is what lets it refuse instead.
+    public static let currentFormatVersion: Int = 4
 
     /// File name inside a `.chapterscript` directory bundle.
     public static let documentFileName = "chapter.json"

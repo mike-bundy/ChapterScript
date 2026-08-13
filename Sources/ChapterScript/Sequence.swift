@@ -252,10 +252,35 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
     public var id: String
     public var name: String
     public var duration: Double
-    public var actions: [StepActionDTO]
-    public var scheduledActions: [ScheduledActionDTO]
+    /// THE canonical action list (format v4). One array, ordered: `at` is the
+    /// time and the array position is the authored tie-break for actions that
+    /// share one. See `AuthoredAction`.
+    ///
+    /// There is exactly ONE persisted representation. `actions` and
+    /// `scheduledActions` below are computed views for callers that have not
+    /// been converted yet — they are never encoded, never decoded into, and
+    /// carry no state of their own.
+    public var authoredActions: [AuthoredAction]
     public var gate: StepGateDTO?
 
+    public init(
+        id: String,
+        name: String,
+        duration: Double,
+        authoredActions: [AuthoredAction],
+        gate: StepGateDTO? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.duration = duration
+        self.authoredActions = authoredActions
+        self.gate = gate
+    }
+
+    /// Legacy-shaped initializer, kept so the many existing construction sites
+    /// (and every test fixture) keep compiling while they are converted.
+    /// Produces the same layout the v3 → v4 migration does: step-start actions
+    /// first, in order, then the scheduled ones.
     public init(
         id: String,
         name: String,
@@ -267,9 +292,114 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
         self.id = id
         self.name = name
         self.duration = duration
-        self.actions = actions
-        self.scheduledActions = scheduledActions
+        self.authoredActions =
+            actions.enumerated().map {
+                AuthoredAction(id: AuthoredAction.migratedID(stepId: id, isScheduled: false,
+                                                             index: $0.offset),
+                               at: 0, action: $0.element)
+            }
+            + scheduledActions.enumerated().map {
+                AuthoredAction(id: AuthoredAction.migratedID(stepId: id, isScheduled: true,
+                                                             index: $0.offset),
+                               at: $0.element.at, action: $0.element.action)
+            }
         self.gate = gate
+    }
+
+    // MARK: - Compatibility views (NOT stored, NOT encoded)
+
+    /// Actions at the step's start. A computed VIEW over `authoredActions`.
+    ///
+    /// Assigning replaces every `at == 0` entry and leaves the rest alone.
+    /// Newly assigned actions get fresh ids, so a caller that round-trips
+    /// through this property loses the identity of the actions it replaced —
+    /// which is correct (it replaced them) but is also why mutation sites are
+    /// converted to `authoredActions` rather than left on the shim.
+    @available(*, deprecated, message: "Use authoredActions — position is no longer identity")
+    public var actions: [StepActionDTO] {
+        get { authoredActions.filter { $0.at <= 0 }.map(\.action) }
+        set {
+            let rest = authoredActions.filter { $0.at > 0 }
+            authoredActions = newValue.map { AuthoredAction(at: 0, action: $0) } + rest
+        }
+    }
+
+    /// Actions after the step's start. A computed VIEW over `authoredActions`.
+    @available(*, deprecated, message: "Use authoredActions — position is no longer identity")
+    public var scheduledActions: [ScheduledActionDTO] {
+        get {
+            authoredActions.filter { $0.at > 0 }
+                .map { ScheduledActionDTO(at: $0.at, action: $0.action) }
+        }
+        set {
+            let head = authoredActions.filter { $0.at <= 0 }
+            authoredActions = head + newValue.map { AuthoredAction(at: $0.at, action: $0.action) }
+        }
+    }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, duration, authoredActions, gate
+        // v3 and earlier. Decoded when `authoredActions` is absent; NEVER written.
+        case actions, scheduledActions
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(duration, forKey: .duration)
+        try c.encode(authoredActions, forKey: .authoredActions)
+        try c.encodeIfPresent(gate, forKey: .gate)
+    }
+
+    /// Accepts BOTH shapes.
+    ///
+    /// The migrator handles documents, but documents are not the only way a
+    /// `StepDefinitionDTO` arrives: live-sync `EditOp` payloads are decoded
+    /// directly and never see it. `AudioScope` already carries this exact
+    /// lesson in its own decoder. A peer still running a v3 build would
+    /// otherwise send a step whose actions all silently vanish.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.duration = try c.decode(Double.self, forKey: .duration)
+        self.gate = try c.decodeIfPresent(StepGateDTO.self, forKey: .gate)
+
+        if let authored = try c.decodeIfPresent([AuthoredAction].self, forKey: .authoredActions) {
+            self.authoredActions = authored
+            return
+        }
+        let legacyImmediate = try c.decodeIfPresent([StepActionDTO].self, forKey: .actions) ?? []
+        let legacyScheduled = try c.decodeIfPresent([ScheduledActionDTO].self,
+                                                    forKey: .scheduledActions) ?? []
+        self.authoredActions = StepDefinitionDTO.unify(
+            immediate: legacyImmediate, scheduled: legacyScheduled, stepId: self.id)
+    }
+
+    /// The v3 → v4 layout rule, in one place so the JSON migrator, the legacy
+    /// initializer and the tolerant decoder cannot disagree.
+    ///
+    /// ORDER IS THE CONTRACT. At runtime v3 awaited every `actions` entry in
+    /// array order BEFORE the timing loop began, and only then fired
+    /// `scheduledActions` whose `at` had elapsed — so at t = 0 the step-start
+    /// actions ran first, in order, then the scheduled ones. Laying them out in
+    /// that same order and sorting stably by `at` reproduces it exactly.
+    public static func unify(immediate: [StepActionDTO],
+                             scheduled: [ScheduledActionDTO],
+                             stepId: String) -> [AuthoredAction] {
+        immediate.enumerated().map {
+            AuthoredAction(id: AuthoredAction.migratedID(stepId: stepId, isScheduled: false,
+                                                         index: $0.offset),
+                           at: 0, action: $0.element)
+        }
+        + scheduled.enumerated().map {
+            AuthoredAction(id: AuthoredAction.migratedID(stepId: stepId, isScheduled: true,
+                                                         index: $0.offset),
+                           at: $0.element.at, action: $0.element.action)
+        }
     }
 }
 

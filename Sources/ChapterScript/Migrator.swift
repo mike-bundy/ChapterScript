@@ -52,8 +52,92 @@ public enum Migrator {
 
     /// Migration steps keyed by the source version. A step at key `N` migrates `N → N+1`.
     private static let steps: [Int: @Sendable ([String: Any]) throws -> [String: Any]] = [
-        2: migrateV2ToV3
+        2: migrateV2ToV3,
+        3: migrateV3ToV4
     ]
+
+    // MARK: - v3 → v4   (two action buckets → one authored list with stable ids)
+
+    /// v3 stored a step's actions in two arrays: `actions` (fired at the step's
+    /// start) and `scheduledActions` (`{at, action}`). v4 stores ONE
+    /// `authoredActions` list, each entry carrying `{id, at, action}`.
+    ///
+    /// ORDERING IS THE ENTIRE CONTRACT, and it is easy to get wrong. At runtime
+    /// v3 awaited every `actions` entry in array order BEFORE the timing loop
+    /// started, and only then fired scheduled actions as their `at` elapsed. So
+    /// at t = 0 the step-start actions ran first, in order, followed by any
+    /// scheduled at +0. Emitting them in exactly that order — immediate first,
+    /// then scheduled — and sorting stably by `at` reproduces the same
+    /// execution sequence, action for action.
+    ///
+    /// Ids are DETERMINISTIC, derived from the legacy location. Two machines
+    /// migrating the same document independently must agree, or a tethered peer
+    /// and the Mac would hold different ids for the same authored action and
+    /// every op between them would miss. The legacy location is a safe source
+    /// for this precisely because the v3 document has finished being edited.
+    /// After migration the string is ordinary authored identity and nothing
+    /// re-derives it from position again.
+    ///
+    /// Idempotent: a step that already has `authoredActions` is left alone.
+    ///
+    /// Everything else is copied through untouched — step ids, durations, gates,
+    /// animation tracks and their absolute key times, audio automation, backdrop
+    /// cues, source ranges, placeholders, entity ids, editorMetadata.
+    @Sendable
+    private static func migrateV3ToV4(_ document: [String: Any]) throws -> [String: Any] {
+        var out = document
+        guard let sequences = document["sequences"] as? [[String: Any]] else { return out }
+
+        out["sequences"] = sequences.map { sequence -> [String: Any] in
+            var sequence = sequence
+            guard let steps = sequence["steps"] as? [[String: Any]] else { return sequence }
+            sequence["steps"] = steps.map(unifyStepActions)
+            return sequence
+        }
+        return out
+    }
+
+    private static func unifyStepActions(_ step: [String: Any]) -> [String: Any] {
+        var step = step
+        // Already migrated — leave it exactly as it is.
+        guard step["authoredActions"] == nil else {
+            step.removeValue(forKey: "actions")
+            step.removeValue(forKey: "scheduledActions")
+            return step
+        }
+
+        let stepId = step["id"] as? String ?? "step"
+        var authored: [[String: Any]] = []
+
+        for (index, action) in (step["actions"] as? [[String: Any]] ?? []).enumerated() {
+            authored.append([
+                "id": migratedActionID(stepId: stepId, isScheduled: false, index: index),
+                "at": 0,
+                "action": action
+            ])
+        }
+        for (index, entry) in (step["scheduledActions"] as? [[String: Any]] ?? []).enumerated() {
+            guard let action = entry["action"] as? [String: Any] else { continue }
+            authored.append([
+                "id": migratedActionID(stepId: stepId, isScheduled: true, index: index),
+                "at": entry["at"] as? Double ?? 0,
+                "action": action
+            ])
+        }
+
+        step["authoredActions"] = authored
+        step.removeValue(forKey: "actions")
+        step.removeValue(forKey: "scheduledActions")
+        return step
+    }
+
+    /// Must produce the same string as `AuthoredAction.migratedID`. The typed
+    /// decoder's tolerant path and this JSON step both run in the wild — a
+    /// document migrated on disk and the same document arriving over live sync
+    /// have to end up with identical ids.
+    private static func migratedActionID(stepId: String, isScheduled: Bool, index: Int) -> String {
+        "act_\(stepId)_\(isScheduled ? "s" : "i")\(index)"
+    }
 
     // MARK: - v2 → v3   (Segment → Sequence)
 
