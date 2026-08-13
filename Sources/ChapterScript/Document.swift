@@ -119,6 +119,24 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// playback, gates or animation. Runtime ignores this field entirely.
     public var sceneFolderTree: [SceneFolderNode]
 
+    /// Author colour tags for individual Timeline clips, keyed by the clip's
+    /// OPENING action id (stable since format v4 — this keying is one of the
+    /// things stable action ids exist for). The value is a palette index, not
+    /// an RGB value: colour is organisation, and organisation should not be
+    /// able to encode arbitrary meaning. Runtime-inert.
+    public var clipColors: [String: Int]
+
+    /// Clips protected from Timeline edits, as opening action ids. Lock is an
+    /// AUTHORING guard only — a locked clip still plays, still renders, and is
+    /// still selectable and inspectable. Runtime-inert.
+    public var lockedClips: [String]
+
+    /// Author-created CLIP edit groups: clips that move as one, preserving
+    /// their relative timing. NOT a Timeline track group (folds rows), NOT
+    /// linked A/V (a media relationship), NOT a Group Rig (a spatial
+    /// hierarchy) — the four are deliberately distinct concepts. Runtime-inert.
+    public var clipGroups: [ClipEditGroup]
+
     /// True when there is nothing worth writing.
     ///
     /// Callers use this to decide whether to emit the field at all. It exists
@@ -130,22 +148,30 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     public var isEmpty: Bool {
         bins.isEmpty && timelineGroups.isEmpty
             && sceneFolders.isEmpty && sceneFolderTree.isEmpty
+            && clipColors.isEmpty && lockedClips.isEmpty && clipGroups.isEmpty
     }
 
     public init(
         bins: [MediaBin] = [],
         timelineGroups: [TimelineTrackGroup] = [],
         sceneFolders: [SceneFolder] = [],
-        sceneFolderTree: [SceneFolderNode] = []
+        sceneFolderTree: [SceneFolderNode] = [],
+        clipColors: [String: Int] = [:],
+        lockedClips: [String] = [],
+        clipGroups: [ClipEditGroup] = []
     ) {
         self.bins = bins
         self.timelineGroups = timelineGroups
         self.sceneFolders = sceneFolders
         self.sceneFolderTree = sceneFolderTree
+        self.clipColors = clipColors
+        self.lockedClips = lockedClips
+        self.clipGroups = clipGroups
     }
 
     private enum CodingKeys: String, CodingKey {
         case bins, timelineGroups, sceneFolders, sceneFolderTree
+        case clipColors, lockedClips, clipGroups
     }
 
     public init(from decoder: Decoder) throws {
@@ -159,6 +185,27 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
                                                   forKey: .sceneFolders) ?? []
         self.sceneFolderTree = try c.decodeIfPresent([SceneFolderNode].self,
                                                      forKey: .sceneFolderTree) ?? []
+        self.clipColors = try c.decodeIfPresent([String: Int].self,
+                                                forKey: .clipColors) ?? [:]
+        self.lockedClips = try c.decodeIfPresent([String].self,
+                                                 forKey: .lockedClips) ?? []
+        self.clipGroups = try c.decodeIfPresent([ClipEditGroup].self,
+                                                forKey: .clipGroups) ?? []
+    }
+}
+
+/// A CLIP edit group: Timeline occurrences that move as one, preserving
+/// relative timing. Members are opening action ids. Purely organisational —
+/// grouping never changes when anything plays.
+public struct ClipEditGroup: Codable, Sendable, Equatable, Identifiable {
+    public var id: String
+    /// Opening action ids of the member clips. A clip belongs to at most one
+    /// group; the editing rules enforce it.
+    public var members: [String]
+
+    public init(id: String, members: [String]) {
+        self.id = id
+        self.members = members
     }
 }
 
