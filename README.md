@@ -208,6 +208,15 @@ Pre-1.0. The schema may change. `formatVersion` is currently **3**. The first st
 
 ---
 
+## 🙌 Credits
+
+MIT means a visible credit is never required beyond the license notice itself.
+That said, if you ship a tool or experience built on ChapterScript, a mention is
+appreciated, and we'd genuinely love to hear about it:
+[hello@chapterscript.com](mailto:hello@chapterscript.com).
+
+---
+
 ## 🪪 License
 
 MIT — see `LICENSE`.
