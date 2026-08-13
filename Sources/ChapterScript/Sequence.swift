@@ -310,21 +310,29 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
 
     /// Actions at the step's start. A computed VIEW over `authoredActions`.
     ///
-    /// Assigning replaces every `at == 0` entry and leaves the rest alone.
-    /// Newly assigned actions get fresh ids, so a caller that round-trips
-    /// through this property loses the identity of the actions it replaced —
-    /// which is correct (it replaced them) but is also why mutation sites are
-    /// converted to `authoredActions` rather than left on the shim.
+    /// **Assigning PRESERVES identity positionally.** The overwhelmingly common
+    /// legacy pattern is a same-length rewrite —
+    /// `step.actions = step.actions.map { … }` — which is an EDIT of existing
+    /// actions, not a replacement of them. Minting fresh ids there silently
+    /// destroyed every action's identity in the sequence; renaming an entity
+    /// did it to a whole document at once. So a rewrite reuses the ids of the
+    /// entries it overwrites, and only genuinely new entries get new ones.
     @available(*, deprecated, message: "Use authoredActions — position is no longer identity")
     public var actions: [StepActionDTO] {
         get { authoredActions.filter { $0.at <= 0 }.map(\.action) }
         set {
+            let existing = authoredActions.filter { $0.at <= 0 }
             let rest = authoredActions.filter { $0.at > 0 }
-            authoredActions = newValue.map { AuthoredAction(at: 0, action: $0) } + rest
+            authoredActions = newValue.enumerated().map { index, action in
+                index < existing.count
+                    ? AuthoredAction(id: existing[index].id, at: 0, action: action)
+                    : AuthoredAction(at: 0, action: action)
+            } + rest
         }
     }
 
     /// Actions after the step's start. A computed VIEW over `authoredActions`.
+    /// Assigning preserves identity positionally, for the same reason as above.
     @available(*, deprecated, message: "Use authoredActions — position is no longer identity")
     public var scheduledActions: [ScheduledActionDTO] {
         get {
@@ -333,7 +341,12 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
         }
         set {
             let head = authoredActions.filter { $0.at <= 0 }
-            authoredActions = head + newValue.map { AuthoredAction(at: $0.at, action: $0.action) }
+            let existing = authoredActions.filter { $0.at > 0 }
+            authoredActions = head + newValue.enumerated().map { index, entry in
+                index < existing.count
+                    ? AuthoredAction(id: existing[index].id, at: entry.at, action: entry.action)
+                    : AuthoredAction(at: entry.at, action: entry.action)
+            }
         }
     }
 
