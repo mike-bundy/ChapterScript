@@ -72,7 +72,7 @@ final class MotionProgressTests: XCTestCase {
     /// it: merging two Steps must not change what an animation looks like.
     /// Measuring from the motion's own start is what makes that true.
     func testProgressIsIndependentOfWhereStepBoundariesFall() {
-        // Same motion, same authored times; only the step segmentation differs.
+        // Same motion, same authored times; only the step segmentation differs.  // LEGACY-VOCAB: 'segmentation' is ordinary English, not the retired unit
         let motionStart = 30.0, duration = 8.0, sampleAt = 34.0
         let asTwoSteps = MotionProgress.progress(startTime: motionStart, now: sampleAt,
                                                  duration: duration)

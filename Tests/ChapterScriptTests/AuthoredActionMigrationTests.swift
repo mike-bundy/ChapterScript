@@ -211,10 +211,10 @@ final class AuthoredActionMigrationTests: XCTestCase {
 
     func testStepIdsAndDurationsAreUntouched() throws {
         let doc = v3Document(steps: [
-            v3Step(id: "segment_1_step_3", duration: 17.5, immediate: [], scheduled: [])
+            v3Step(id: "segment_1_step_3", duration: 17.5, immediate: [], scheduled: [])  // LEGACY-VOCAB: an opaque authored id, deliberately never rewritten
         ])
         let step = try migrate(doc).sequences[0].steps[0]
-        XCTAssertEqual(step.id, "segment_1_step_3", "opaque ids are never rewritten")
+        XCTAssertEqual(step.id, "segment_1_step_3", "opaque ids are never rewritten")  // LEGACY-VOCAB: the point of the test
         XCTAssertEqual(step.duration, 17.5)
     }
 

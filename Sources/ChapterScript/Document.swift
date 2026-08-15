@@ -145,10 +145,39 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// `bins`, so once Bins left the UI every Scene folder and Timeline group an
     /// author made was dropped on save. Anything added to this type must be
     /// added here too, which is why it lives beside the properties.
+    /// AUTHOR INTERPRETATION OF AN AUDIO SOURCE, keyed by filename.
+    ///
+    /// A source-level decision, not an occurrence one: "these eight channels
+    /// are a first-order AmbiX bed" is a statement about the FILE, and every
+    /// use of it inherits the answer. It lives here rather than beside the
+    /// probe's reading because detection is re-derived from the bytes on every
+    /// open and this is not — it is a thing a person decided, and losing it
+    /// would mean asking them again.
+    ///
+    /// Absent (the common case) means "Automatic": defer entirely to what the
+    /// probe reads. Nothing here ever overwrites detection; the two are
+    /// resolved together by `AudioInterpretation.resolved(detected:source:)`,
+    /// which reports an override as `.userDefined` rather than laundering it
+    /// into `.detected`.
+    public var audioInterpretations: [String: AudioInterpretation]
+
+    /// THE AUTHOR'S MEDIA-KIND CORRECTION, keyed by filename.
+    ///
+    /// Separate from the probe's reading for the same reason
+    /// `audioInterpretations` is: "this container holds one audio track and no
+    /// video track" is a fact about the bytes, re-read on every open; "author
+    /// this as Audio" is a decision, and losing it would mean asking again.
+    ///
+    /// Absent (overwhelmingly the common case) means Automatic — defer to the
+    /// tracks. Nothing here overwrites detection; the two are resolved
+    /// together by `MediaKindResolution.effectiveKind`.
+    public var mediaKindOverrides: [String: MediaKindOverride]
+
     public var isEmpty: Bool {
         bins.isEmpty && timelineGroups.isEmpty
             && sceneFolders.isEmpty && sceneFolderTree.isEmpty
             && clipColors.isEmpty && lockedClips.isEmpty && clipGroups.isEmpty
+            && audioInterpretations.isEmpty && mediaKindOverrides.isEmpty
     }
 
     public init(
@@ -158,7 +187,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         sceneFolderTree: [SceneFolderNode] = [],
         clipColors: [String: Int] = [:],
         lockedClips: [String] = [],
-        clipGroups: [ClipEditGroup] = []
+        clipGroups: [ClipEditGroup] = [],
+        audioInterpretations: [String: AudioInterpretation] = [:],
+        mediaKindOverrides: [String: MediaKindOverride] = [:]
     ) {
         self.bins = bins
         self.timelineGroups = timelineGroups
@@ -167,11 +198,14 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.clipColors = clipColors
         self.lockedClips = lockedClips
         self.clipGroups = clipGroups
+        self.audioInterpretations = audioInterpretations
+        self.mediaKindOverrides = mediaKindOverrides
     }
 
     private enum CodingKeys: String, CodingKey {
         case bins, timelineGroups, sceneFolders, sceneFolderTree
         case clipColors, lockedClips, clipGroups
+        case audioInterpretations, mediaKindOverrides
     }
 
     public init(from decoder: Decoder) throws {
@@ -191,6 +225,12 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
                                                  forKey: .lockedClips) ?? []
         self.clipGroups = try c.decodeIfPresent([ClipEditGroup].self,
                                                 forKey: .clipGroups) ?? []
+        self.audioInterpretations = try c.decodeIfPresent(
+            [String: AudioInterpretation].self, forKey: .audioInterpretations
+        ) ?? [:]
+        self.mediaKindOverrides = try c.decodeIfPresent(
+            [String: MediaKindOverride].self, forKey: .mediaKindOverrides
+        ) ?? [:]
     }
 }
 

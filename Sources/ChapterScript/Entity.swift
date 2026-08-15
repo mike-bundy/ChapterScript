@@ -126,6 +126,26 @@ public enum EntityKind: String, Codable, Sendable, Equatable {
     /// registered for it, renders nothing — which is the right behaviour for
     /// an unfinished shot on an older runtime.
     case placeholder
+    /// A POSITIONAL AUDIO SOURCE'S PLACE IN THE SCENE. Carries no geometry
+    /// and nothing to look at — it exists so a `playAudio` occurrence can name
+    /// something whose transform is animated like any other entity, which is
+    /// how a sound moves through a room without a second animation system.
+    ///
+    /// The runtime builds a bare `Entity()` for it, exactly as it does for a
+    /// light. That bare entity is not decoration: it is what makes the emitter
+    /// findable in `entityRegistry`, which is what
+    /// `EntityActionExecutor.applySequenceAnimationTracks` needs to write a
+    /// pose, and what `SpatialAudioManager.playSpatial` needs to parent the
+    /// sound to. An emitter that is not registered is an emitter that cannot
+    /// move.
+    ///
+    /// An older player decodes this as `.custom`, finds no factory, and builds
+    /// nothing — so `attachToEntity` misses and the sound falls back to
+    /// `SpatialAudioConfigDTO.position`, playing at a fixed point rather than
+    /// not playing at all. That is the right degradation.
+    ///
+    /// See `docs/AUDIO_ARCHITECTURE.md` §2.
+    case audioEmitter
     case custom
 
     /// Unknown kinds decode as `.custom` rather than throwing. A `.custom`

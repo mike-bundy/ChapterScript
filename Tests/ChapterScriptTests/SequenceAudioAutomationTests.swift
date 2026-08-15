@@ -172,14 +172,37 @@ final class SequenceAudioAutomationTests: XCTestCase {
         XCTAssertNotNil(curves["volume"])
     }
 
-    /// A newer tool's `pan` curve must not fail the whole document.
+    /// A newer tool's unknown curve must not fail the whole document.
+    ///
+    /// This test used `pan` as its example, and pan has since SHIPPED (audio
+    /// pass, 2026-08-14) — which is the tolerance working exactly as designed:
+    /// documents written by the newer tool opened in builds that predated it.
+    /// The example moved to a parameter that does not exist yet; the rule is
+    /// unchanged.
     func testUnknownParameterDecodesRatherThanThrowing() throws {
         let json = """
-        {"channel":"audio-music","curves":{"pan":{"keys":[{"time":0,"value":0.5}]}}}
+        {"channel":"audio-music","curves":{"lowpass":{"keys":[{"time":0,"value":0.5}]}}}
         """.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(AudioAutomationTrack.self, from: json)
         XCTAssertEqual(decoded.channel, "audio-music")
         XCTAssertFalse(decoded.hasAnyKeys)
+    }
+
+    /// And the other half of that transition: a `pan` curve is now a REAL
+    /// parameter and must decode into keys rather than being dropped.
+    func testPanDecodesAsARealParameter() throws {
+        let json = """
+        {"channel":"audio-music","curves":{"pan":{"keys":[{"time":0,"value":-1},{"time":2,"value":1}]}}}
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(AudioAutomationTrack.self, from: json)
+        XCTAssertTrue(decoded.hasAnyKeys)
+        XCTAssertTrue(decoded[.pan].isAnimated)
+        XCTAssertEqual(
+            SequenceAudioAutomation.pan(for: "audio-music", at: 0, in: [decoded]), -1, accuracy: 0.001
+        )
+        XCTAssertEqual(
+            SequenceAudioAutomation.pan(for: "audio-music", at: 2, in: [decoded]), 1, accuracy: 0.001
+        )
     }
 
     /// A sequence written before this feature has no `audioTracks` key at all.

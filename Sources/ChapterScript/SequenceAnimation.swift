@@ -391,6 +391,123 @@ public enum SequenceAnimationEvaluator {
         return (lo + hi) / 2
     }
 
+    // MARK: - Shape-preserving insertion
+
+    /// Insert a key at `time` WITHOUT CHANGING THE CURVE.
+    ///
+    /// Merely adding a keyframe must not alter motion. That sounds obvious and
+    /// is not what happens naively: `setKey` followed by `refreshAutoTangents`
+    /// re-derives the auto tangents of the new key AND both neighbours, which
+    /// visibly reshapes the segment. Measured on a two-key 0→4 ramp, inserting  // LEGACY-VOCAB: Bezier segment
+    /// the sampled midpoint moved the curve by up to 0.147 — nearly 4% of its
+    /// range, from an edit the author intended as a no-op.
+    ///
+    /// So the segment is SPLIT rather than re-fitted. A cubic Bézier can be cut  // LEGACY-VOCAB: Bezier segment
+    /// at any parameter into two cubics whose union is geometrically identical
+    /// to the original (de Casteljau); this does that, in the same (time,value)
+    /// space `bezier(from:to:at:)` evaluates, using the same monotonic x(t)
+    /// solve — so the parameter is the one the evaluator would have used.
+    ///
+    /// THE THREE AFFECTED KEYS BECOME HAND-SHAPED (`autoTangents = false`).
+    /// That is not incidental: an auto tangent is by definition re-derived from
+    /// its neighbours, so leaving them auto would let the next refresh undo the
+    /// split. Every DCC makes the same trade — inserting a key on an
+    /// auto-smoothed curve pins the tangents that preserve it.
+    ///
+    /// Returns the index of the inserted (or existing) key.
+    @discardableResult
+    public static func insertKeyPreservingShape(
+        _ curve: inout AnimationCurve, at time: Double
+    ) -> Int? {
+        let keys = curve.keys
+        guard let first = keys.first, let last = keys.last else { return nil }
+
+        // An existing key at this time already carries the shape.
+        if let existing = curve.indexOfKey(near: time) { return existing }
+
+        // Outside the keyed range the curve holds flat, so a key at the held
+        // value preserves it exactly and needs no split.
+        if time <= first.time || time >= last.time {
+            let value = evaluate(curve, at: time, rest: first.value)
+            curve.setKey(AnimationKey(time: time, value: value,
+                                      interpolation: time <= first.time ? first.interpolation
+                                                                        : last.interpolation))
+            return curve.indexOfKey(near: time)
+        }
+
+        var lo = 0
+        var hi = keys.count - 1
+        while hi - lo > 1 {
+            let mid = (lo + hi) / 2
+            if keys[mid].time <= time { lo = mid } else { hi = mid }
+        }
+        let k0 = keys[lo]
+        let k1 = keys[hi]
+
+        switch k0.interpolation {
+        case .stepped:
+            // A step holds k0's value across the whole span; a key at that
+            // value, also stepped, is the same function.
+            curve.setKey(AnimationKey(time: time, value: k0.value, interpolation: .stepped))
+            return curve.indexOfKey(near: time)
+
+        case .linear:
+            // A straight line split anywhere is two straight lines.
+            let t = Float((time - k0.time) / max(k1.time - k0.time, 1e-6))
+            let value = k0.value + (k1.value - k0.value) * t
+            curve.setKey(AnimationKey(time: time, value: value, interpolation: .linear))
+            return curve.indexOfKey(near: time)
+
+        case .bezier:
+            break
+        }
+
+        // Control points, EXACTLY as `bezier(from:to:at:)` builds them — the
+        // clamping included, or the split would describe a different curve
+        // from the one being drawn.
+        let x0 = k0.time, x3 = k1.time
+        let x1 = min(max(k0.time + k0.outTangent.dt, x0), x3)
+        let x2 = min(max(k1.time - k1.inTangent.dt, x0), x3)
+        let y0 = k0.value
+        let y1 = k0.value + k0.outTangent.dv
+        let y2 = k1.value - k1.inTangent.dv
+        let y3 = k1.value
+
+        let u = Double(solveT(x: time, x0: x0, x1: x1, x2: x2, x3: x3))
+
+        func lerp(_ a: (Double, Double), _ b: (Double, Double)) -> (Double, Double) {
+            (a.0 + (b.0 - a.0) * u, a.1 + (b.1 - a.1) * u)
+        }
+        let p0 = (x0, Double(y0)), p1 = (x1, Double(y1))
+        let p2 = (x2, Double(y2)), p3 = (x3, Double(y3))
+        let a = lerp(p0, p1)
+        let b = lerp(p1, p2)
+        let c = lerp(p2, p3)
+        let d = lerp(a, b)
+        let e = lerp(b, c)
+        let m = lerp(d, e)          // the point on the curve at `time`
+
+        // Tangent lengths are measured from the times we actually WRITE, so a
+        // hair of solver drift in `m.0` cannot leave a handle inconsistent
+        // with its key.
+        var newKey = AnimationKey(time: time, value: Float(m.1), interpolation: .bezier)
+        newKey.autoTangents = false
+        newKey.tangentMode = .broken
+        newKey.inTangent = AnimationTangent(dt: max(time - d.0, 0.001), dv: Float(m.1 - d.1))
+        newKey.outTangent = AnimationTangent(dt: max(e.0 - time, 0.001), dv: Float(e.1 - m.1))
+
+        curve.updateKey(at: lo) { k in
+            k.autoTangents = false
+            k.outTangent = AnimationTangent(dt: max(a.0 - x0, 0.001), dv: Float(a.1) - y0)
+        }
+        curve.updateKey(at: hi) { k in
+            k.autoTangents = false
+            k.inTangent = AnimationTangent(dt: max(x3 - c.0, 0.001), dv: y3 - Float(c.1))
+        }
+        curve.setKey(newKey)
+        return curve.indexOfKey(near: time)
+    }
+
     /// Recompute auto-managed tangents across a whole curve: smooth
     /// through-slope between same-direction neighbors, FLAT at local
     /// extrema (so a bounce apex never overshoots) and at the end keys.

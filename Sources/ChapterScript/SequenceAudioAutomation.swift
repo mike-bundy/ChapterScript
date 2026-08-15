@@ -33,16 +33,41 @@
 
 import Foundation
 
-/// What can be automated on an audio channel. Volume today; the enum exists so
-/// pan / low-pass can be added without a second track type or a format break.
+/// What can be automated on an audio channel.
+///
+/// The enum was written so pan could be added without a second track type or a
+/// format break, and that is exactly what happened: `AudioAutomationTrack`'s
+/// decoder already DROPS unknown parameter names rather than throwing, so a
+/// document containing a `pan` curve opens in builds that predate it.
+///
+/// Pan is only meaningful for channel-based material that stays in front of
+/// the listener — `AudioPlaybackModel.supportsPan` is true for `.headLocked`
+/// and nothing else. A point source's direction comes from its emitter's
+/// position, and a sound field's or an object mix's from the renderer; a pan
+/// control on either would be a knob that lies. See
+/// `docs/AUDIO_ARCHITECTURE.md` §4.
 public enum AudioAutomationChannel: String, Codable, Sendable, CaseIterable, Hashable {
     case volume
+    /// Stereo placement, −1 hard left … 0 centre … +1 hard right.
+    case pan
 
-    /// Value used where the curve has no keys — the identity for this
-    /// parameter's mixing operation.
+    /// Value used where the curve has no keys — the IDENTITY for this
+    /// parameter's mixing operation, which is not the same constant for every
+    /// parameter. Volume composes by multiplication, so its identity is 1;
+    /// pan composes by displacement, so its identity is 0. Giving pan a rest
+    /// of 1 would silently hard-pan every un-automated channel right.
     public var restValue: Float {
         switch self {
         case .volume: return 1.0
+        case .pan:    return 0.0
+        }
+    }
+
+    /// The range a value is clamped into before it is stored or applied.
+    public var range: ClosedRange<Float> {
+        switch self {
+        case .volume: return 0...1
+        case .pan:    return -1...1
         }
     }
 }
@@ -158,6 +183,29 @@ public enum SequenceAudioAutomation {
         // bezier interpolation useful), and a negative or >1 volume is either
         // a runtime error or silent clipping depending on the platform.
         min(max(base * volumeMultiplier(for: channel, at: time, in: tracks), 0), 1)
+    }
+
+    /// Stereo placement for `channel` at `time`, −1 (hard left) … +1 (hard
+    /// right). Returns 0 — dead centre — when the channel has no pan curve, so
+    /// this too can be applied unconditionally.
+    ///
+    /// THERE IS NO MASTER PAN, deliberately. Volume rides compose: ducking the
+    /// music bus and then fading everything out are two independent, sensible
+    /// operations, and multiplying them is exactly right. Panning composes
+    /// into nonsense — "pan the whole mix left" is not a mix note, it is a
+    /// fault, and summing a master pan into every channel would swing a
+    /// carefully placed stereo image sideways with no way to see why. Pan is a
+    /// per-channel placement and stops there.
+    public static func pan(
+        for channel: String,
+        at time: Double,
+        in tracks: [AudioAutomationTrack]
+    ) -> Float {
+        let value = self.value(.pan, for: channel, at: time, in: tracks)
+        // Clamped for the same reason volume is: bezier handles overshoot past
+        // a key on purpose, and a pan beyond ±1 is not a wider image, it is a
+        // renderer error.
+        return min(max(value, -1), 1)
     }
 
     /// One parameter's value on one channel, ignoring the master bus.
