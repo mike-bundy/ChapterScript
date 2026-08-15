@@ -350,3 +350,95 @@ final class AudioPipelineRoutingTests: XCTestCase {
         XCTAssertFalse(json.contains("spatialPresentation"))
     }
 }
+
+// MARK: - Spatial presentation actually reaches the player
+
+/// THE CONTROL IS NOT DECORATIVE.
+///
+/// The first implementation switched on the presentation and did nothing with
+/// it — `.headTracked` fell through to `break`, `.fixed` only logged — so the
+/// Inspector configured metadata while the player kept the system default.
+/// These pin the mapping that `SystemSpatialMediaPlayer` now applies to
+/// `AVPlayer.intendedSpatialAudioExperience`.
+final class SpatialPresentationWiringTests: XCTestCase {
+
+    private func cue(
+        _ model: AudioPlaybackModel?, presentation: AudioSpatialPresentation? = nil,
+        emitter: String? = nil
+    ) -> AudioActionDTO {
+        var audio = AudioActionDTO(file: "master.mp4", channel: "audio-m")
+        audio.playbackModel = model
+        audio.spatialPresentation = presentation
+        if let emitter { audio.spatial = SpatialAudioConfigDTO(attachToEntity: emitter) }
+        return audio
+    }
+
+    /// 1. Head Tracked maps to the head-tracked intent.
+    func testHeadTrackedMapsToTheHeadTrackedIntent() {
+        XCTAssertEqual(AudioRuntimeRouting.spatialExperience(for: .headTracked), .headTracked)
+        XCTAssertEqual(
+            AudioRuntimeRouting.spatialExperience(for: cue(.spatialMix, presentation: .headTracked)),
+            .headTracked)
+    }
+
+    /// 2. Fixed maps to the fixed intent — never to automatic, and never to a
+    /// bypass, which would strip the spatial processing entirely.
+    func testFixedMapsToTheFixedIntent() {
+        XCTAssertEqual(AudioRuntimeRouting.spatialExperience(for: .fixed), .fixed)
+        XCTAssertEqual(
+            AudioRuntimeRouting.spatialExperience(for: cue(.spatialMix, presentation: .fixed)),
+            .fixed)
+    }
+
+    /// Every authored presentation maps to a definite intent — none falls
+    /// through to the system's choice.
+    func testEveryPresentationHasAnExplicitIntent() {
+        for presentation in AudioSpatialPresentation.allCases {
+            XCTAssertTrue(
+                AudioRuntimeRouting.SpatialExperienceIntent.allCases.contains(
+                    AudioRuntimeRouting.spatialExperience(for: presentation)))
+        }
+    }
+
+    /// 3. Spatial Mix uses pipeline B, and an unset presentation means
+    /// head-tracked — what an encoded master is for.
+    func testSpatialMixDefaultsToHeadTracked() {
+        XCTAssertEqual(AudioRuntimeRouting.route(for: cue(.spatialMix)).route,
+                       .systemSpatialMedia)
+        XCTAssertEqual(AudioRuntimeRouting.spatialExperience(for: cue(.spatialMix)), .headTracked)
+    }
+
+    /// 4. PIPELINE A NEVER TOUCHES THIS. A positional cue's location comes from
+    /// its emitter's transform, and an ordinary cue is not spatialised at all —
+    /// neither may be handed a spatial-experience setting.
+    func testPipelineACuesHaveNoSpatialExperience() {
+        XCTAssertNil(AudioRuntimeRouting.spatialExperience(
+            for: cue(.positional, presentation: .fixed, emitter: "E")),
+            "a positional cue is placed by its emitter, not by a listening frame")
+        XCTAssertNil(AudioRuntimeRouting.spatialExperience(
+            for: cue(.headLocked, presentation: .fixed)))
+        XCTAssertNil(AudioRuntimeRouting.spatialExperience(for: cue(.sceneBased)))
+    }
+
+    /// 5. Looping does not change the route or the intent — a looped master is
+    /// still an encoded master with the author's listening frame.
+    func testLoopingPreservesRouteAndPresentation() {
+        var looped = cue(.spatialMix, presentation: .fixed)
+        looped.loop = true
+        XCTAssertEqual(AudioRuntimeRouting.route(for: looped).route, .systemSpatialMedia)
+        XCTAssertEqual(AudioRuntimeRouting.spatialExperience(for: looped), .fixed)
+    }
+
+    /// 6. Persistence: the choice survives a document round trip, and still
+    /// maps to the same intent afterwards.
+    func testPresentationSurvivesSaveAndReopen() throws {
+        for presentation in AudioSpatialPresentation.allCases {
+            let saved = cue(.spatialMix, presentation: presentation)
+            let reopened = try JSONDecoder().decode(
+                AudioActionDTO.self, from: JSONEncoder().encode(saved))
+            XCTAssertEqual(reopened.spatialPresentation, presentation)
+            XCTAssertEqual(AudioRuntimeRouting.spatialExperience(for: reopened),
+                           AudioRuntimeRouting.spatialExperience(for: presentation))
+        }
+    }
+}

@@ -100,12 +100,25 @@ public enum AudioRuntimeRouting {
 
     /// Route one authored cue.
     ///
-    /// `playbackModel` is the authority when present. When it is absent — every
-    /// document written before the field existed — the LEGACY inference applies:
-    /// an attachment means positional, anything else is what the old code did
-    /// with it, which was the unspatialised path. That is the historic
-    /// behaviour exactly, so no existing chapter changes how it sounds. An old
-    /// stereo cue is never promoted to ambisonic or spatial-mix by guesswork.
+    /// `playbackModel` is the authority when present.
+    ///
+    /// WHEN IT IS ABSENT THIS IS A LEGACY COMPATIBILITY FALLBACK — NOT THE
+    /// NORMAL AUTHORED DEFAULT. The distinction is load-bearing. The runtime
+    /// has no format identity at playback time: it cannot tell a stereo file
+    /// from a Dolby Atmos master, so `nil` can only be read as the historic
+    /// behaviour — attachment means positional, everything else unspatialised.
+    /// For an encoded master that reading is WRONG and destructive: it sends
+    /// the asset through the interactive mixer, which flattens it.
+    ///
+    /// Maestro Studio therefore no longer ships `nil` to the runtime. Newly
+    /// authored audio persists its resolved model, and a legacy `nil`
+    /// normalizes as soon as the editor identifies the source
+    /// (`AudioOccurrence.resolve` is the one authority; see
+    /// `ProjectManager.normalizeAudioPlaybackModels`). This path exists purely
+    /// so documents written before that keep opening and playing as they
+    /// always did — an old stereo cue is never promoted to ambisonic or
+    /// spatial-mix by guesswork. Do not remove it, and do not treat reaching
+    /// it as normal.
     public static func route(
         playbackModel: AudioPlaybackModel?,
         hasSpatialAttachment: Bool
@@ -161,6 +174,51 @@ public enum AudioRuntimeRouting {
     public static let sceneBasedPreparationNote = """
         Requires preparation for faithful Vision Pro scene-based playback.
         """
+
+    // MARK: - Spatial experience intent
+
+    /// WHAT THE SYSTEM PLAYER SHOULD BE SET TO for an authored presentation.
+    ///
+    /// Named here, in the shared package, for two reasons: the mapping is a
+    /// contract rather than an implementation detail, and ChapterPlayer is
+    /// visionOS-only with no test target — so this is the only place the
+    /// mapping can be pinned by a test at all.
+    ///
+    /// `AVPlayer.intendedSpatialAudioExperience` is the property this drives
+    /// (visionOS 26). Deliberately NOT `.automatic` for either case: an author
+    /// who chose a presentation gets that presentation, and leaving the system
+    /// to decide would make the control decorative — which is exactly the bug
+    /// this closes.
+    public enum SpatialExperienceIntent: String, Sendable, Equatable, CaseIterable {
+        /// Anchored to the room, following head motion. The reason an encoded
+        /// master exists.
+        case headTracked
+        /// Spatialised but not motion-tracked — the mix travels with the
+        /// listener. NOT "bypassed", which would strip spatial processing and
+        /// flatten the master: a different and much worse thing.
+        case fixed
+    }
+
+    public static func spatialExperience(
+        for presentation: AudioSpatialPresentation
+    ) -> SpatialExperienceIntent {
+        switch presentation {
+        case .headTracked: return .headTracked
+        case .fixed:       return .fixed
+        }
+    }
+
+    /// The intent for a whole cue, or `nil` when the cue does not use the
+    /// system pipeline at all.
+    ///
+    /// `nil` for positional and head-locked is the point: pipeline A's location
+    /// comes from the emitter's transform and an ordinary cue is not
+    /// spatialised at all. Neither one may ever be handed a spatial-experience
+    /// setting.
+    public static func spatialExperience(for audio: AudioActionDTO) -> SpatialExperienceIntent? {
+        guard route(for: audio).route == .systemSpatialMedia else { return nil }
+        return spatialExperience(for: audio.spatialPresentation ?? .headTracked)
+    }
 
     // MARK: - Capability matrix
 
