@@ -201,10 +201,12 @@ final class AuthoredActionMigrationTests: XCTestCase {
     func testGatesSurviveMigration() throws {
         let doc = v3Document(steps: [
             v3Step(id: "s1", duration: 10, immediate: ["A"], scheduled: [],
-                   gate: ["type": "gaze", "targetEntity": "Radio", "timeout": 12.0])
+                   // LEGACY-INTERACTION-VOCAB: the stored gate spelling.
+                   gate: ["type": "gaze",   // LEGACY-INTERACTION-VOCAB
+                          "targetEntity": "Radio", "timeout": 12.0])
         ])
         let step = try migrate(doc).sequences[0].steps[0]
-        XCTAssertEqual(step.gate?.type, .gaze)
+        XCTAssertEqual(step.gate?.type, .viewerFacing)
         XCTAssertEqual(step.gate?.targetEntity, "Radio")
         XCTAssertEqual(step.gate?.timeout, 12)
     }

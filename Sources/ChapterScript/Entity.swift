@@ -50,6 +50,43 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     /// Free-form parameters passed to a custom factory. Players may interpret as JSON.
     public var customParameters: [String: AnyCodableValue]?
 
+    /// WHAT THE VIEWER CAN DO TO THIS OBJECT.
+    ///
+    /// Interactions attach to the OBJECT, not to a timeline position and not to
+    /// the media that happens to be playing on it — a door is a door whether or
+    /// not a clip is running, and a screen with three films on it is still one
+    /// interactive surface. See `Interaction.swift` for why this is not a gate.
+    ///
+    /// Optional, and normalized to `nil` when emptied (`didSet`), so an entity
+    /// with no interactions emits NO key and every document written before this
+    /// field existed re-saves byte-identically.
+    public var interactions: [InteractionSpec]? {
+        didSet { if interactions?.isEmpty == true { interactions = nil } }
+    }
+
+    /// How this object signals that it can be interacted with. `nil` =
+    /// `.automatic`, the platform's own affordance.
+    ///
+    /// The authored CHOICE lives here. Whether the viewer is looking at it
+    /// right now does not: that is transient runtime state, and storing it
+    /// would put a gesture-rate value in the document.
+    public var interactionFeedback: InteractionFeedbackSpec?
+
+    /// Interactions, never nil — readers use this so no view writes
+    /// `interactions ?? []` and half of them forget.
+    public var resolvedInteractions: [InteractionSpec] { interactions ?? [] }
+
+    /// True when this object does anything at all when the viewer acts on it.
+    /// A disabled interaction still counts as authored behaviour: the Timeline
+    /// and the Scene browser must show that the object HAS behaviour, or the
+    /// author cannot find the switch that turned it off.
+    public var isInteractive: Bool { !(interactions ?? []).isEmpty }
+
+    /// The feedback actually in force.
+    public var resolvedInteractionFeedback: InteractionFeedbackSpec {
+        interactionFeedback ?? .automatic
+    }
+
     /// The label to show, never empty. Falls back to `id` so a caller can use
     /// this unconditionally — no view should ever write `displayName ?? id`
     /// itself, because half of them would forget and show a raw filename.
@@ -75,7 +112,9 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         placeholder: PlaceholderSpec? = nil,
         particlePresetId: String? = nil,
         customFactoryId: String? = nil,
-        customParameters: [String: AnyCodableValue]? = nil
+        customParameters: [String: AnyCodableValue]? = nil,
+        interactions: [InteractionSpec]? = nil,
+        interactionFeedback: InteractionFeedbackSpec? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -93,6 +132,11 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.particlePresetId = particlePresetId
         self.customFactoryId = customFactoryId
         self.customParameters = customParameters
+        // Normalized here as well as in `didSet`: a property observer does not
+        // run during initialization, so an empty array passed in would
+        // otherwise encode as `"interactions": []`.
+        self.interactions = (interactions?.isEmpty ?? true) ? nil : interactions
+        self.interactionFeedback = interactionFeedback
     }
 }
 

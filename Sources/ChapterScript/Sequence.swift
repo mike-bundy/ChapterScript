@@ -29,6 +29,15 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// `immersiveBackdrop` for the whole sequence", which is what every
     /// document written before this existed says.
     public var backdropTrack: [BackdropCue]
+    /// EXPLORE SPANS — the parts of this Sequence where the viewer may look
+    /// around and narrative progression may stall at the span's boundary.
+    ///
+    /// Empty means the Sequence is entirely DIRECTED, which is what every
+    /// document written before Story Regions existed says and what most
+    /// Sequences will always say. Directed is the ABSENCE of a region, never a
+    /// region of its own — an author never draws a block to get ordinary
+    /// playback. See `StoryRegion`.
+    public var storyRegions: [StoryRegion]
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
     /// EDITOR-ONLY organizational colour, as an index into the authoring
@@ -54,6 +63,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         animationTracks: [EntityAnimationTrack] = [],
         audioTracks: [AudioAutomationTrack] = [],
         backdropTrack: [BackdropCue] = [],
+        storyRegions: [StoryRegion] = [],
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
         onComplete: CompletionActionDTO = .holdOnLastStep,
         editorColorIndex: Int? = nil
@@ -68,6 +78,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.animationTracks = animationTracks
         self.audioTracks = audioTracks
         self.backdropTrack = backdropTrack
+        self.storyRegions = storyRegions
         self.visibility = visibility
         self.onComplete = onComplete
     }
@@ -83,6 +94,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case id, name, phase, presentation, immersiveBackdrop
         case steps, animationTracks, audioTracks, backdropTrack, visibility, onComplete
+        case storyRegions
         case editorColorIndex
     }
 
@@ -105,6 +117,9 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         // behaviour.
         self.audioTracks = try c.decodeIfPresent([AudioAutomationTrack].self, forKey: .audioTracks) ?? []
         self.backdropTrack = try c.decodeIfPresent([BackdropCue].self, forKey: .backdropTrack) ?? []
+        // Absent in every document written before Explore existed. An empty
+        // list is a fully Directed Sequence — exactly the previous behaviour.
+        self.storyRegions = try c.decodeIfPresent([StoryRegion].self, forKey: .storyRegions) ?? []
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
         self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
         // Tolerant, like every other additive field: documents written before
@@ -431,26 +446,72 @@ public struct StepGateDTO: Codable, Sendable, Equatable {
     public var type: GateType
     public var timeout: Double?
     public var prompt: String?
-    /// Entity the gate watches — the thing to look at (`.gaze`), walk up
+    /// Entity the gate watches — the thing to face (`.viewerFacing`), walk up
     /// to (`.proximity`), or pinch-grab (`.grab`). Ignored by the other
     /// types. (Optional fields decode tolerantly — older documents load
     /// unchanged.)
     public var targetEntity: String?
     /// Trigger distance in meters for `.proximity` (player default ~1 m).
     public var radius: Float?
+    /// WHAT THE STORY MUST ALREADY REMEMBER before this boundary may pass.
+    ///
+    /// A gate is the ONE place authored progression stalls, so a Story State
+    /// requirement belongs on it rather than in a second stall mechanism. Two
+    /// shapes, and both are the same field:
+    ///
+    /// * `type == .storyCondition` — the conditions are the WHOLE requirement.
+    ///   No physical act continues the story; it continues when the facts hold.
+    /// * any other type — the conditions are an ADDITIONAL requirement, so
+    ///   "tap the door, once you have the key" is a `.tap` gate carrying one
+    ///   condition. That is mixed authoring, and it falls out of one field.
+    ///
+    /// Absent in every Chapter authored before Story State, and encoded only
+    /// when present.
+    public var storyConditions: StoryConditionGroup?
 
     public init(
         type: GateType,
         timeout: Double? = nil,
         prompt: String? = nil,
         targetEntity: String? = nil,
-        radius: Float? = nil
+        radius: Float? = nil,
+        storyConditions: StoryConditionGroup? = nil
     ) {
         self.type = type
         self.timeout = timeout
         self.prompt = prompt
         self.targetEntity = targetEntity
         self.radius = radius
+        self.storyConditions = storyConditions
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case type, timeout, prompt, targetEntity, radius, storyConditions
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.type = try c.decode(GateType.self, forKey: .type)
+        self.timeout = try c.decodeIfPresent(Double.self, forKey: .timeout)
+        self.prompt = try c.decodeIfPresent(String.self, forKey: .prompt)
+        self.targetEntity = try c.decodeIfPresent(String.self, forKey: .targetEntity)
+        self.radius = try c.decodeIfPresent(Float.self, forKey: .radius)
+        self.storyConditions = try c.decodeIfPresent(StoryConditionGroup.self,
+                                                     forKey: .storyConditions)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(type, forKey: .type)
+        try c.encodeIfPresent(timeout, forKey: .timeout)
+        try c.encodeIfPresent(prompt, forKey: .prompt)
+        try c.encodeIfPresent(targetEntity, forKey: .targetEntity)
+        try c.encodeIfPresent(radius, forKey: .radius)
+        // An EMPTY group is not written. It imposes nothing, and a key that
+        // means nothing is a key a future reader has to decide about.
+        if let storyConditions, !storyConditions.isEmpty {
+            try c.encode(storyConditions, forKey: .storyConditions)
+        }
     }
 }
 
@@ -464,19 +525,54 @@ public enum GateType: String, Codable, Sendable, Equatable {
     case orchestrator
     /// Tap OR orchestrator — whichever arrives first.
     case any
-    /// Look at `targetEntity` (gaze dwell).
-    case gaze
+    /// THE VIEWER FACES `targetEntity` for a dwell time.
+    ///
+    /// **SYSTEM-EYE-INPUT: not eye tracking.** Measured from the forward spatial
+    /// direction (the device pose), never from where the eyes are pointed —
+    /// visionOS does not give an app that, and Maestro must not imply it does.
+    /// See `ChapterScript.InteractionTrigger.viewerFacing`, which this shares a
+    /// detector with.
+    ///
+    /// LEGACY-INTERACTION-VOCAB: the raw value stays `"gaze"` deliberately.
+    /// Existing chapters carry it, and a player built before this rename
+    /// decodes an unknown gate type as `.tap` — which would silently turn a
+    /// facing gate into a tap gate on someone's device. The WIRE is
+    /// compatibility vocabulary; every Swift name and every user-visible string
+    /// says Viewer Facing.
+    case viewerFacing = "gaze"   // LEGACY-INTERACTION-VOCAB
     /// Come within `radius` meters of `targetEntity`.
     case proximity
     /// Pinch-grab `targetEntity`.
     case grab
+    /// THE STORY'S OWN MEMORY IS THE CONDITION. No physical act continues this
+    /// boundary; it continues when `StepGateDTO.storyConditions` hold.
+    ///
+    /// ── WHAT AN OLDER PLAYER DOES WITH THIS, STATED PLAINLY ─────────────────
+    ///
+    /// A build predating Story State decodes this raw value as `.tap` (the rule
+    /// below) and ignores `storyConditions` entirely, so the boundary continues
+    /// on a tap instead of on the facts. That is a real degradation and it is
+    /// named here rather than discovered later.
+    ///
+    /// It is also unavoidable: an older player cannot evaluate a condition it
+    /// has never heard of, so EVERY representation of a state gate degrades on
+    /// it. The choice is between continuing on a tap and waiting forever, and a
+    /// chapter that can still be finished is the better of the two. Unlike
+    /// `.viewerFacing`, there is no legacy spelling to inherit — this concept
+    /// did not exist before.
+    case storyCondition
 
     /// Tolerant decode: an unknown raw value (a document authored by a
     /// NEWER tool) falls back to `.tap` instead of failing the whole
     /// document — gate types are advisory, and tap is the one gate
     /// every player can satisfy.
+    ///
+    /// LEGACY-INTERACTION-VOCAB: `"viewerFacing"` is accepted as well as the
+    /// stored spelling, so a
+    /// document hand-edited to the accurate spelling still loads.
     public init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
+        if raw == "viewerFacing" { self = .viewerFacing; return }
         self = GateType(rawValue: raw) ?? .tap
     }
 }
@@ -487,9 +583,27 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
     case autoAdvance(nextSequenceId: String)
     case dismissToHome
 
-    private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextSequenceId }
+    /// WHERE THE STORY GOES WHEN THIS SEQUENCE ENDS.
+    ///
+    /// The four cases above predate Experience Flow and between them can only
+    /// say "hold", "go to this one Sequence" and "dismiss". They cannot express
+    /// **Return** or **Restart**, which is why those were missing from the
+    /// Sequence-end authoring surface — an expressive gap in the format, not a
+    /// missing menu item.
+    ///
+    /// This carries a `NavigationIntent` verbatim, exactly as
+    /// `StepActionDTO.navigate` does for an Interaction, so a Sequence's ending
+    /// and an object's response speak one vocabulary and reach one navigator.
+    ///
+    /// Additive and tolerant. `autoAdvance` is NOT deprecated: it is what every
+    /// existing chapter contains, it still means `.goTo`, and it is still what
+    /// the editor writes for a plain "Continue to" so those documents stay
+    /// byte-identical.
+    case navigate(NavigationIntent)
+
+    private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextSequenceId, navigation }
     private enum Kind: String, Codable {
-        case holdOnLastStep, transitionTo, autoAdvance, dismissToHome
+        case holdOnLastStep, transitionTo, autoAdvance, dismissToHome, navigate
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -506,6 +620,9 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
             try c.encode(nextSequenceId, forKey: .nextSequenceId)
         case .dismissToHome:
             try c.encode(Kind.dismissToHome, forKey: .kind)
+        case .navigate(let intent):
+            try c.encode(Kind.navigate, forKey: .kind)
+            try c.encode(intent, forKey: .navigation)
         }
     }
 
@@ -523,6 +640,9 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
             self = .autoAdvance(nextSequenceId: try c.decode(String.self, forKey: .nextSequenceId))
         case .dismissToHome:
             self = .dismissToHome
+        case .navigate:
+            self = .navigate((try? c.decode(NavigationIntent.self, forKey: .navigation))
+                             ?? .unsupported(kind: "navigate", raw: nil))
         }
     }
 }

@@ -14,6 +14,15 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     /// players fall back to their own defaults.
     public var environment: EnvironmentSpec?
     public var manifest: AssetManifest
+    /// WHAT THE STORY CAN REMEMBER. Chapter-scoped, because memory that reset
+    /// when the audience walked into another room would not be memory.
+    ///
+    /// DEFINITIONS ONLY — what facts exist, of what kind, and what a fresh run
+    /// starts from. The values a viewer's run has reached live in
+    /// `StoryStateLedger` and are never written here. Additive and tolerant:
+    /// absent in every Chapter authored before this, and encoded only when
+    /// non-empty so those Chapters re-save byte-identically.
+    public var storyState: [StoryStateDefinition]
     /// Initial sequence id played when the experience loads. Defaults to first sequence.
     public var defaultSequenceId: String?
     /// EDITOR-ONLY organisation. Never read by ChapterPlayer.
@@ -35,6 +44,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         particlePresets: [ParticleEmitterPreset] = [],
         environment: EnvironmentSpec? = nil,
         manifest: AssetManifest = AssetManifest(),
+        storyState: [StoryStateDefinition] = [],
         defaultSequenceId: String? = nil,
         editorMetadata: EditorMetadata? = nil
     ) {
@@ -47,6 +57,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.particlePresets = particlePresets
         self.environment = environment
         self.manifest = manifest
+        self.storyState = storyState
         self.defaultSequenceId = defaultSequenceId
         self.editorMetadata = editorMetadata
     }
@@ -56,7 +67,27 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case formatVersion, id, displayName, description
         case entities, sequences, particlePresets, environment
-        case manifest, defaultSequenceId, editorMetadata
+        case manifest, storyState, defaultSequenceId, editorMetadata
+    }
+
+    /// Hand-written so `storyState` emits NO key when empty — every Chapter
+    /// authored before Story State existed re-saves byte-identically, which is
+    /// the same promise `EntityDefinition.displayName` and
+    /// `EntityDefinition.interactions` already keep.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(formatVersion, forKey: .formatVersion)
+        try c.encode(id, forKey: .id)
+        try c.encode(displayName, forKey: .displayName)
+        try c.encodeIfPresent(description, forKey: .description)
+        try c.encode(entities, forKey: .entities)
+        try c.encode(sequences, forKey: .sequences)
+        try c.encode(particlePresets, forKey: .particlePresets)
+        try c.encodeIfPresent(environment, forKey: .environment)
+        try c.encode(manifest, forKey: .manifest)
+        if !storyState.isEmpty { try c.encode(storyState, forKey: .storyState) }
+        try c.encodeIfPresent(defaultSequenceId, forKey: .defaultSequenceId)
+        try c.encodeIfPresent(editorMetadata, forKey: .editorMetadata)
     }
 
     public init(from decoder: Decoder) throws {
@@ -70,6 +101,8 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.particlePresets = try c.decode([ParticleEmitterPreset].self, forKey: .particlePresets)
         self.environment = try c.decodeIfPresent(EnvironmentSpec.self, forKey: .environment)
         self.manifest = try c.decode(AssetManifest.self, forKey: .manifest)
+        self.storyState = try c.decodeIfPresent([StoryStateDefinition].self,
+                                                forKey: .storyState) ?? []
         self.defaultSequenceId = try c.decodeIfPresent(String.self, forKey: .defaultSequenceId)
         self.editorMetadata = try c.decodeIfPresent(EditorMetadata.self, forKey: .editorMetadata)
     }
