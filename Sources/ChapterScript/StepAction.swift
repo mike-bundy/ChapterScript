@@ -17,6 +17,11 @@ public indirect enum StepActionDTO: Sendable, Equatable {
     case unpersistEntity(name: String)
     case revealEntity(RevealActionDTO)
     case animateMotion(AnimateMotionActionDTO)
+    /// MOTION ACTIONS 2.0 — a semantic behavior resolved to an OFFSET at
+    /// evaluation time. Distinct from `animateMotion`, which is an absolute
+    /// procedural path: see `MotionBehavior.swift` for why an entrance cannot
+    /// be expressed as absolute curves without baking the rest pose.
+    case motionBehavior(MotionBehaviorDTO)
 
     // Attachments
     case showAttachment(id: String)
@@ -115,7 +120,7 @@ extension StepActionDTO: Codable {
         case name, id, channel, busId, category, viewId
         case multiplier, opacity, duration, timing, volume, to
         case headRelativePosition, headYOnly
-        case action, audio, video, fade, reveal, move, motion
+        case action, audio, video, fade, reveal, move, motion, behavior
         case config, zone, effect, then
         case visibility, enabled, on
         case parameters
@@ -124,7 +129,7 @@ extension StepActionDTO: Codable {
 
     private enum Kind: String, Codable {
         case showEntity, hideEntity, moveEntity, scaleEntity, fadeEntity
-        case persistEntity, unpersistEntity, revealEntity, animateMotion
+        case persistEntity, unpersistEntity, revealEntity, animateMotion, motionBehavior
         case showAttachment, hideAttachment, fadeAttachment, setAttachmentView, positionAttachment
         case playAudio, stopAudio, fadeAudio, onAudioComplete
         case playVideo, prepareVideo, stopVideo
@@ -173,6 +178,9 @@ extension StepActionDTO: Codable {
         case .animateMotion(let m):
             try c.encode(Kind.animateMotion, forKey: .kind)
             try c.encode(m, forKey: .motion)
+        case .motionBehavior(let b):
+            try c.encode(Kind.motionBehavior, forKey: .kind)
+            try c.encode(b, forKey: .behavior)
         case .showAttachment(let id):
             try c.encode(Kind.showAttachment, forKey: .kind)
             try c.encode(id, forKey: .id)
@@ -329,6 +337,8 @@ extension StepActionDTO: Codable {
             self = .revealEntity(try c.decode(RevealActionDTO.self, forKey: .reveal))
         case .animateMotion:
             self = .animateMotion(try c.decode(AnimateMotionActionDTO.self, forKey: .motion))
+        case .motionBehavior:
+            self = .motionBehavior(try c.decode(MotionBehaviorDTO.self, forKey: .behavior))
         case .showAttachment:
             self = .showAttachment(id: try c.decode(String.self, forKey: .id))
         case .hideAttachment:
