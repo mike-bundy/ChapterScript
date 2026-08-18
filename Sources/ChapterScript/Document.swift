@@ -206,11 +206,37 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// together by `MediaKindResolution.effectiveKind`.
     public var mediaKindOverrides: [String: MediaKindOverride]
 
+    /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
+    /// surface's entity id.
+    ///
+    /// A Timeline track is a DESTINATION, and a destination created with the
+    /// Track button is a Timeline-only object (`PlaceholderOrigin.trackSurface`)
+    /// — never a browser asset. It lives in the chapter-global entity list
+    /// because that is where every entity lives, and that is exactly what made
+    /// adding a track in Sequence A put an empty row in B and C: the Timeline
+    /// projection seeded a row for the surface's EXISTENCE, and existence is
+    /// chapter-wide.
+    ///
+    /// So ownership is recorded, and only the owning Sequence gets the empty
+    /// row. A surface another Sequence actually routes media to still gets a
+    /// row THERE, from its clips — membership follows references, exactly as
+    /// `SequenceEntityUsage` decides everywhere else. Ownership only answers
+    /// "who gets the row when there is nothing on it yet".
+    ///
+    /// Absent (a legacy surface, made before this was recorded) means UNOWNED
+    /// and keeps the old chapter-wide seeding: we cannot know which Sequence
+    /// an existing empty track was made for, and silently hiding an author's
+    /// track is worse than leaving it where they last saw it.
+    ///
+    /// Editor-only. Runtime ignores this field entirely.
+    public var trackSurfaceOwners: [String: String]
+
     public var isEmpty: Bool {
         bins.isEmpty && timelineGroups.isEmpty
             && sceneFolders.isEmpty && sceneFolderTree.isEmpty
             && clipColors.isEmpty && lockedClips.isEmpty && clipGroups.isEmpty
             && audioInterpretations.isEmpty && mediaKindOverrides.isEmpty
+            && trackSurfaceOwners.isEmpty
     }
 
     public init(
@@ -222,7 +248,8 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         lockedClips: [String] = [],
         clipGroups: [ClipEditGroup] = [],
         audioInterpretations: [String: AudioInterpretation] = [:],
-        mediaKindOverrides: [String: MediaKindOverride] = [:]
+        mediaKindOverrides: [String: MediaKindOverride] = [:],
+        trackSurfaceOwners: [String: String] = [:]
     ) {
         self.bins = bins
         self.timelineGroups = timelineGroups
@@ -233,12 +260,14 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.clipGroups = clipGroups
         self.audioInterpretations = audioInterpretations
         self.mediaKindOverrides = mediaKindOverrides
+        self.trackSurfaceOwners = trackSurfaceOwners
     }
 
     private enum CodingKeys: String, CodingKey {
         case bins, timelineGroups, sceneFolders, sceneFolderTree
         case clipColors, lockedClips, clipGroups
         case audioInterpretations, mediaKindOverrides
+        case trackSurfaceOwners
     }
 
     public init(from decoder: Decoder) throws {
@@ -263,6 +292,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.mediaKindOverrides = try c.decodeIfPresent(
             [String: MediaKindOverride].self, forKey: .mediaKindOverrides
+        ) ?? [:]
+        self.trackSurfaceOwners = try c.decodeIfPresent(
+            [String: String].self, forKey: .trackSurfaceOwners
         ) ?? [:]
     }
 }
