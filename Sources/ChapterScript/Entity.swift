@@ -3,7 +3,29 @@ import Foundation
 /// Declarative description of a named entity that the player should construct
 /// when an experience loads. Entities are referenced by `id` from `StepActionDTO` cases.
 public struct EntityDefinition: Codable, Sendable, Equatable {
-    public var id: String                    // canonical name used in StepAction (e.g. "orb")
+    /// STABLE, OPAQUE IDENTITY. The string every reference in the format uses —
+    /// `StepActionDTO` entity names, `EntityAnimationTrack.entity`,
+    /// `StepGateDTO.targetEntity`, `VideoPresentation.entity`.
+    ///
+    /// It is NOT a label and must never be treated as one. Historically the
+    /// editors minted it from a filename (`"IMG_0071.MOV"`), which is why
+    /// renaming a row meant rewriting every reference in the document and why
+    /// one file could only ever be one destination. New content mints opaque
+    /// ids; `displayName` carries what the author reads. Existing ids are
+    /// preserved forever — they are opaque, and a document that says
+    /// `"IMG_0071.MOV"` keeps saying it.
+    public var id: String
+    /// What the author reads and may freely change — "Main Screen", "Radio".
+    ///
+    /// Renaming writes HERE and touches nothing else, so a rename is no longer
+    /// document-wide reference surgery. `nil` means "no authored label", and
+    /// readers fall back to `id` (see `resolvedDisplayName`) — which is exactly
+    /// what every document written before this field existed means, so those
+    /// documents render identically and re-save byte-identically.
+    ///
+    /// Deliberately NOT unique and NOT an identifier. Two destinations may both
+    /// be called "Screen"; they remain distinct objects.
+    public var displayName: String?
     public var kind: EntityKind
     public var transform: TransformData
     /// Initial enabled state. `false` keeps the entity in the registry but hidden until `showEntity`.
@@ -28,8 +50,55 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     /// Free-form parameters passed to a custom factory. Players may interpret as JSON.
     public var customParameters: [String: AnyCodableValue]?
 
+    /// WHAT THE VIEWER CAN DO TO THIS OBJECT.
+    ///
+    /// Interactions attach to the OBJECT, not to a timeline position and not to
+    /// the media that happens to be playing on it — a door is a door whether or
+    /// not a clip is running, and a screen with three films on it is still one
+    /// interactive surface. See `Interaction.swift` for why this is not a gate.
+    ///
+    /// Optional, and normalized to `nil` when emptied (`didSet`), so an entity
+    /// with no interactions emits NO key and every document written before this
+    /// field existed re-saves byte-identically.
+    public var interactions: [InteractionSpec]? {
+        didSet { if interactions?.isEmpty == true { interactions = nil } }
+    }
+
+    /// How this object signals that it can be interacted with. `nil` =
+    /// `.automatic`, the platform's own affordance.
+    ///
+    /// The authored CHOICE lives here. Whether the viewer is looking at it
+    /// right now does not: that is transient runtime state, and storing it
+    /// would put a gesture-rate value in the document.
+    public var interactionFeedback: InteractionFeedbackSpec?
+
+    /// Interactions, never nil — readers use this so no view writes
+    /// `interactions ?? []` and half of them forget.
+    public var resolvedInteractions: [InteractionSpec] { interactions ?? [] }
+
+    /// True when this object does anything at all when the viewer acts on it.
+    /// A disabled interaction still counts as authored behaviour: the Timeline
+    /// and the Scene browser must show that the object HAS behaviour, or the
+    /// author cannot find the switch that turned it off.
+    public var isInteractive: Bool { !(interactions ?? []).isEmpty }
+
+    /// The feedback actually in force.
+    public var resolvedInteractionFeedback: InteractionFeedbackSpec {
+        interactionFeedback ?? .automatic
+    }
+
+    /// The label to show, never empty. Falls back to `id` so a caller can use
+    /// this unconditionally — no view should ever write `displayName ?? id`
+    /// itself, because half of them would forget and show a raw filename.
+    public var resolvedDisplayName: String {
+        guard let displayName, !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return id }
+        return displayName
+    }
+
     public init(
         id: String,
+        displayName: String? = nil,
         kind: EntityKind,
         transform: TransformData = .identity,
         initiallyEnabled: Bool = false,
@@ -43,9 +112,12 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         placeholder: PlaceholderSpec? = nil,
         particlePresetId: String? = nil,
         customFactoryId: String? = nil,
-        customParameters: [String: AnyCodableValue]? = nil
+        customParameters: [String: AnyCodableValue]? = nil,
+        interactions: [InteractionSpec]? = nil,
+        interactionFeedback: InteractionFeedbackSpec? = nil
     ) {
         self.id = id
+        self.displayName = displayName
         self.kind = kind
         self.transform = transform
         self.initiallyEnabled = initiallyEnabled
@@ -60,6 +132,11 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.particlePresetId = particlePresetId
         self.customFactoryId = customFactoryId
         self.customParameters = customParameters
+        // Normalized here as well as in `didSet`: a property observer does not
+        // run during initialization, so an empty array passed in would
+        // otherwise encode as `"interactions": []`.
+        self.interactions = (interactions?.isEmpty ?? true) ? nil : interactions
+        self.interactionFeedback = interactionFeedback
     }
 }
 
@@ -93,6 +170,26 @@ public enum EntityKind: String, Codable, Sendable, Equatable {
     /// registered for it, renders nothing — which is the right behaviour for
     /// an unfinished shot on an older runtime.
     case placeholder
+    /// A POSITIONAL AUDIO SOURCE'S PLACE IN THE SCENE. Carries no geometry
+    /// and nothing to look at — it exists so a `playAudio` occurrence can name
+    /// something whose transform is animated like any other entity, which is
+    /// how a sound moves through a room without a second animation system.
+    ///
+    /// The runtime builds a bare `Entity()` for it, exactly as it does for a
+    /// light. That bare entity is not decoration: it is what makes the emitter
+    /// findable in `entityRegistry`, which is what
+    /// `EntityActionExecutor.applySequenceAnimationTracks` needs to write a
+    /// pose, and what `SpatialAudioManager.playSpatial` needs to parent the
+    /// sound to. An emitter that is not registered is an emitter that cannot
+    /// move.
+    ///
+    /// An older player decodes this as `.custom`, finds no factory, and builds
+    /// nothing — so `attachToEntity` misses and the sound falls back to
+    /// `SpatialAudioConfigDTO.position`, playing at a fixed point rather than
+    /// not playing at all. That is the right degradation.
+    ///
+    /// See `docs/AUDIO_ARCHITECTURE.md` §2.
+    case audioEmitter
     case custom
 
     /// Unknown kinds decode as `.custom` rather than throwing. A `.custom`

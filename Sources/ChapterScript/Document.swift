@@ -14,6 +14,15 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     /// players fall back to their own defaults.
     public var environment: EnvironmentSpec?
     public var manifest: AssetManifest
+    /// WHAT THE STORY CAN REMEMBER. Chapter-scoped, because memory that reset
+    /// when the audience walked into another room would not be memory.
+    ///
+    /// DEFINITIONS ONLY — what facts exist, of what kind, and what a fresh run
+    /// starts from. The values a viewer's run has reached live in
+    /// `StoryStateLedger` and are never written here. Additive and tolerant:
+    /// absent in every Chapter authored before this, and encoded only when
+    /// non-empty so those Chapters re-save byte-identically.
+    public var storyState: [StoryStateDefinition]
     /// Initial sequence id played when the experience loads. Defaults to first sequence.
     public var defaultSequenceId: String?
     /// EDITOR-ONLY organisation. Never read by ChapterPlayer.
@@ -35,6 +44,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         particlePresets: [ParticleEmitterPreset] = [],
         environment: EnvironmentSpec? = nil,
         manifest: AssetManifest = AssetManifest(),
+        storyState: [StoryStateDefinition] = [],
         defaultSequenceId: String? = nil,
         editorMetadata: EditorMetadata? = nil
     ) {
@@ -47,6 +57,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.particlePresets = particlePresets
         self.environment = environment
         self.manifest = manifest
+        self.storyState = storyState
         self.defaultSequenceId = defaultSequenceId
         self.editorMetadata = editorMetadata
     }
@@ -56,7 +67,27 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case formatVersion, id, displayName, description
         case entities, sequences, particlePresets, environment
-        case manifest, defaultSequenceId, editorMetadata
+        case manifest, storyState, defaultSequenceId, editorMetadata
+    }
+
+    /// Hand-written so `storyState` emits NO key when empty — every Chapter
+    /// authored before Story State existed re-saves byte-identically, which is
+    /// the same promise `EntityDefinition.displayName` and
+    /// `EntityDefinition.interactions` already keep.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(formatVersion, forKey: .formatVersion)
+        try c.encode(id, forKey: .id)
+        try c.encode(displayName, forKey: .displayName)
+        try c.encodeIfPresent(description, forKey: .description)
+        try c.encode(entities, forKey: .entities)
+        try c.encode(sequences, forKey: .sequences)
+        try c.encode(particlePresets, forKey: .particlePresets)
+        try c.encodeIfPresent(environment, forKey: .environment)
+        try c.encode(manifest, forKey: .manifest)
+        if !storyState.isEmpty { try c.encode(storyState, forKey: .storyState) }
+        try c.encodeIfPresent(defaultSequenceId, forKey: .defaultSequenceId)
+        try c.encodeIfPresent(editorMetadata, forKey: .editorMetadata)
     }
 
     public init(from decoder: Decoder) throws {
@@ -70,6 +101,8 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.particlePresets = try c.decode([ParticleEmitterPreset].self, forKey: .particlePresets)
         self.environment = try c.decodeIfPresent(EnvironmentSpec.self, forKey: .environment)
         self.manifest = try c.decode(AssetManifest.self, forKey: .manifest)
+        self.storyState = try c.decodeIfPresent([StoryStateDefinition].self,
+                                                forKey: .storyState) ?? []
         self.defaultSequenceId = try c.decodeIfPresent(String.self, forKey: .defaultSequenceId)
         self.editorMetadata = try c.decodeIfPresent(EditorMetadata.self, forKey: .editorMetadata)
     }
@@ -119,6 +152,24 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// playback, gates or animation. Runtime ignores this field entirely.
     public var sceneFolderTree: [SceneFolderNode]
 
+    /// Author colour tags for individual Timeline clips, keyed by the clip's
+    /// OPENING action id (stable since format v4 — this keying is one of the
+    /// things stable action ids exist for). The value is a palette index, not
+    /// an RGB value: colour is organisation, and organisation should not be
+    /// able to encode arbitrary meaning. Runtime-inert.
+    public var clipColors: [String: Int]
+
+    /// Clips protected from Timeline edits, as opening action ids. Lock is an
+    /// AUTHORING guard only — a locked clip still plays, still renders, and is
+    /// still selectable and inspectable. Runtime-inert.
+    public var lockedClips: [String]
+
+    /// Author-created CLIP edit groups: clips that move as one, preserving
+    /// their relative timing. NOT a Timeline track group (folds rows), NOT
+    /// linked A/V (a media relationship), NOT a Group Rig (a spatial
+    /// hierarchy) — the four are deliberately distinct concepts. Runtime-inert.
+    public var clipGroups: [ClipEditGroup]
+
     /// True when there is nothing worth writing.
     ///
     /// Callers use this to decide whether to emit the field at all. It exists
@@ -127,25 +178,96 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// `bins`, so once Bins left the UI every Scene folder and Timeline group an
     /// author made was dropped on save. Anything added to this type must be
     /// added here too, which is why it lives beside the properties.
+    /// AUTHOR INTERPRETATION OF AN AUDIO SOURCE, keyed by filename.
+    ///
+    /// A source-level decision, not an occurrence one: "these eight channels
+    /// are a first-order AmbiX bed" is a statement about the FILE, and every
+    /// use of it inherits the answer. It lives here rather than beside the
+    /// probe's reading because detection is re-derived from the bytes on every
+    /// open and this is not — it is a thing a person decided, and losing it
+    /// would mean asking them again.
+    ///
+    /// Absent (the common case) means "Automatic": defer entirely to what the
+    /// probe reads. Nothing here ever overwrites detection; the two are
+    /// resolved together by `AudioInterpretation.resolved(detected:source:)`,
+    /// which reports an override as `.userDefined` rather than laundering it
+    /// into `.detected`.
+    public var audioInterpretations: [String: AudioInterpretation]
+
+    /// THE AUTHOR'S MEDIA-KIND CORRECTION, keyed by filename.
+    ///
+    /// Separate from the probe's reading for the same reason
+    /// `audioInterpretations` is: "this container holds one audio track and no
+    /// video track" is a fact about the bytes, re-read on every open; "author
+    /// this as Audio" is a decision, and losing it would mean asking again.
+    ///
+    /// Absent (overwhelmingly the common case) means Automatic — defer to the
+    /// tracks. Nothing here overwrites detection; the two are resolved
+    /// together by `MediaKindResolution.effectiveKind`.
+    public var mediaKindOverrides: [String: MediaKindOverride]
+
+    /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
+    /// surface's entity id.
+    ///
+    /// A Timeline track is a DESTINATION, and a destination created with the
+    /// Track button is a Timeline-only object (`PlaceholderOrigin.trackSurface`)
+    /// — never a browser asset. It lives in the chapter-global entity list
+    /// because that is where every entity lives, and that is exactly what made
+    /// adding a track in Sequence A put an empty row in B and C: the Timeline
+    /// projection seeded a row for the surface's EXISTENCE, and existence is
+    /// chapter-wide.
+    ///
+    /// So ownership is recorded, and only the owning Sequence gets the empty
+    /// row. A surface another Sequence actually routes media to still gets a
+    /// row THERE, from its clips — membership follows references, exactly as
+    /// `SequenceEntityUsage` decides everywhere else. Ownership only answers
+    /// "who gets the row when there is nothing on it yet".
+    ///
+    /// Absent (a legacy surface, made before this was recorded) means UNOWNED
+    /// and keeps the old chapter-wide seeding: we cannot know which Sequence
+    /// an existing empty track was made for, and silently hiding an author's
+    /// track is worse than leaving it where they last saw it.
+    ///
+    /// Editor-only. Runtime ignores this field entirely.
+    public var trackSurfaceOwners: [String: String]
+
     public var isEmpty: Bool {
         bins.isEmpty && timelineGroups.isEmpty
             && sceneFolders.isEmpty && sceneFolderTree.isEmpty
+            && clipColors.isEmpty && lockedClips.isEmpty && clipGroups.isEmpty
+            && audioInterpretations.isEmpty && mediaKindOverrides.isEmpty
+            && trackSurfaceOwners.isEmpty
     }
 
     public init(
         bins: [MediaBin] = [],
         timelineGroups: [TimelineTrackGroup] = [],
         sceneFolders: [SceneFolder] = [],
-        sceneFolderTree: [SceneFolderNode] = []
+        sceneFolderTree: [SceneFolderNode] = [],
+        clipColors: [String: Int] = [:],
+        lockedClips: [String] = [],
+        clipGroups: [ClipEditGroup] = [],
+        audioInterpretations: [String: AudioInterpretation] = [:],
+        mediaKindOverrides: [String: MediaKindOverride] = [:],
+        trackSurfaceOwners: [String: String] = [:]
     ) {
         self.bins = bins
         self.timelineGroups = timelineGroups
         self.sceneFolders = sceneFolders
         self.sceneFolderTree = sceneFolderTree
+        self.clipColors = clipColors
+        self.lockedClips = lockedClips
+        self.clipGroups = clipGroups
+        self.audioInterpretations = audioInterpretations
+        self.mediaKindOverrides = mediaKindOverrides
+        self.trackSurfaceOwners = trackSurfaceOwners
     }
 
     private enum CodingKeys: String, CodingKey {
         case bins, timelineGroups, sceneFolders, sceneFolderTree
+        case clipColors, lockedClips, clipGroups
+        case audioInterpretations, mediaKindOverrides
+        case trackSurfaceOwners
     }
 
     public init(from decoder: Decoder) throws {
@@ -159,6 +281,36 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
                                                   forKey: .sceneFolders) ?? []
         self.sceneFolderTree = try c.decodeIfPresent([SceneFolderNode].self,
                                                      forKey: .sceneFolderTree) ?? []
+        self.clipColors = try c.decodeIfPresent([String: Int].self,
+                                                forKey: .clipColors) ?? [:]
+        self.lockedClips = try c.decodeIfPresent([String].self,
+                                                 forKey: .lockedClips) ?? []
+        self.clipGroups = try c.decodeIfPresent([ClipEditGroup].self,
+                                                forKey: .clipGroups) ?? []
+        self.audioInterpretations = try c.decodeIfPresent(
+            [String: AudioInterpretation].self, forKey: .audioInterpretations
+        ) ?? [:]
+        self.mediaKindOverrides = try c.decodeIfPresent(
+            [String: MediaKindOverride].self, forKey: .mediaKindOverrides
+        ) ?? [:]
+        self.trackSurfaceOwners = try c.decodeIfPresent(
+            [String: String].self, forKey: .trackSurfaceOwners
+        ) ?? [:]
+    }
+}
+
+/// A CLIP edit group: Timeline occurrences that move as one, preserving
+/// relative timing. Members are opening action ids. Purely organisational —
+/// grouping never changes when anything plays.
+public struct ClipEditGroup: Codable, Sendable, Equatable, Identifiable {
+    public var id: String
+    /// Opening action ids of the member clips. A clip belongs to at most one
+    /// group; the editing rules enforce it.
+    public var members: [String]
+
+    public init(id: String, members: [String]) {
+        self.id = id
+        self.members = members
     }
 }
 
@@ -969,7 +1121,17 @@ public enum ChapterScriptFormat {
     /// v3: Sequence vocabulary (`sequences` / `defaultSequenceId`). Migrated from
     /// v2 by `Migrator` — a pure rename, semantically identical. v2 documents
     /// (`segments` / `defaultSegmentId`) still open; v1 was never migrated by design.  LEGACY-VOCAB
-    public static let currentFormatVersion: Int = 3
+    ///
+    /// v4: one authored action list per step (`authoredActions`) replacing the
+    /// `actions` / `scheduledActions` pair, each entry carrying a stable id.
+    /// Migrated from v3 by `Migrator` — semantically identical, and ordering is
+    /// the contract (see `StepDefinitionDTO.unify`).
+    ///
+    /// THE BUMP IS LOAD-BEARING, not decorative. A v4 document no longer writes
+    /// `actions` / `scheduledActions` at all, so a v3-era player reading one
+    /// would find a step with no actions and play silence rather than fail.
+    /// The version is what lets it refuse instead.
+    public static let currentFormatVersion: Int = 4
 
     /// File name inside a `.chapterscript` directory bundle.
     public static let documentFileName = "chapter.json"

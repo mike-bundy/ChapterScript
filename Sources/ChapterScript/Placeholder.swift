@@ -103,6 +103,23 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
     /// default (~1000 m).
     public var radius: Float?
 
+    /// WHO MADE THIS, AND WHY — the fact that separates a deliberately
+    /// authored placeholder (a real project asset the author manages in the
+    /// browser) from an internal Timeline track surface (runtime plumbing a
+    /// Track button minted so clips have somewhere to play).
+    ///
+    /// One object system serves both on purpose (D17: replacement, identity
+    /// and the Viewer proxy are identical), but the BROWSER must tell them
+    /// apart: authored placeholders are listed, track surfaces are not.
+    ///
+    /// `nil` — every document written before this field existed — is read as
+    /// `.trackSurface` at browser-filter sites: the owner's correction that
+    /// introduced the rule hid ALL video-panel placeholders, so absent-means-
+    /// hidden preserves what those documents currently show, and a legacy
+    /// authored placeholder is recovered by an explicit author action rather
+    /// than every legacy surface flooding the browser on open.
+    public var origin: PlaceholderOrigin?
+
     public init(
         role: PlaceholderRole,
         label: String,
@@ -111,7 +128,8 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
         size: Vec3? = nil,
         field: ImmersiveField? = nil,
         layout: VideoLayout? = nil,
-        radius: Float? = nil
+        radius: Float? = nil,
+        origin: PlaceholderOrigin? = nil
     ) {
         self.role = role
         self.label = label
@@ -121,6 +139,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
         self.field = field
         self.layout = layout
         self.radius = radius
+        self.origin = origin
     }
 
     // MARK: - Role-shaped constructors
@@ -186,7 +205,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
     // MARK: - Codable
 
     private enum CodingKeys: String, CodingKey {
-        case role, label, notes, intendedDuration, size, field, layout, radius
+        case role, label, notes, intendedDuration, size, field, layout, radius, origin
     }
 
     public init(from decoder: Decoder) throws {
@@ -202,5 +221,18 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
         self.field = try c.decodeIfPresent(ImmersiveField.self, forKey: .field)
         self.layout = try c.decodeIfPresent(VideoLayout.self, forKey: .layout)
         self.radius = try c.decodeIfPresent(Float.self, forKey: .radius)
+        // Unknown raw value (a newer tool's origin kind) degrades to nil —
+        // the conservative reading — rather than failing the document.
+        self.origin = try? c.decodeIfPresent(PlaceholderOrigin.self, forKey: .origin)
     }
+}
+
+/// Why a placeholder exists — see `PlaceholderSpec.origin`.
+public enum PlaceholderOrigin: String, Codable, Sendable, Equatable {
+    /// The author deliberately created this as a project asset ("Interview
+    /// A-roll goes here"). Listed in the project browser.
+    case authored
+    /// The Timeline minted this as an internal playback destination when a
+    /// track was created. Timeline-only; never listed as a project asset.
+    case trackSurface
 }

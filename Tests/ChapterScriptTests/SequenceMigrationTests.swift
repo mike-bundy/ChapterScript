@@ -157,8 +157,12 @@ final class SequenceMigrationTests: XCTestCase {
         XCTAssertTrue(v2Text.contains("\"segments\""), "downgrade should emit v2 vocabulary")
         XCTAssertFalse(v2Text.contains("\"sequences\""))
 
+        // The chain runs v2 → v3 → v4; assert the destination rather than a
+        // hard-coded 3, so adding a step does not silently stop testing the end
+        // of the chain.
         let migrated = try Migrator.migrate(asV2)
-        XCTAssertEqual(try Migrator.readFormatVersion(from: migrated), 3)
+        XCTAssertEqual(try Migrator.readFormatVersion(from: migrated),
+                       ChapterScriptFormat.currentFormatVersion)
 
         let decoded = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: migrated)
 

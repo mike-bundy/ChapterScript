@@ -154,6 +154,34 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     /// the `[sourceIn, sourceOut)` window rather than the whole master.
     public var sourceOut: Double?
 
+    /// HOW THIS OCCURRENCE IS REPRODUCED — head-locked, positional,
+    /// scene-based or an already-authored spatial mix.
+    ///
+    /// Authored per OCCURRENCE, not per source, because the same file can
+    /// legitimately be head-locked narration in one cue and a positional
+    /// source in another. `nil` means "whatever this source's spatial form
+    /// implies" — see `AudioSpatialForm.defaultPlaybackModel` — which is what
+    /// every document written before this field means, so absent stays absent
+    /// and existing bundles re-save byte-identically.
+    ///
+    /// This is the field the Inspector, the Viewer and the runtime branch on.
+    /// It is NOT a spatial flag: `.positional` gets an emitter and XYZ keys,
+    /// `.sceneBased` gets an orientation, `.spatialMix` gets a level and
+    /// nothing else. See `docs/AUDIO_ARCHITECTURE.md` §4.
+    public var playbackModel: AudioPlaybackModel?
+
+    /// The listening frame for an ENCODED SPATIAL MASTER — head-tracked or
+    /// fixed. Meaningful only for `.spatialMix`; ignored elsewhere.
+    ///
+    /// NOT A TRANSFORM. A mastered mix carries its own spatial scene, so it has
+    /// no location; this says whether that scene is anchored to the room or
+    /// travels with the listener. `.positional`'s X/Y/Z is the other idea and
+    /// the two are deliberately separate fields.
+    ///
+    /// `nil` = head-tracked, which is what an encoded master is for. Absent
+    /// stays absent, so existing bundles re-save byte-identically.
+    public var spatialPresentation: AudioSpatialPresentation?
+
     public init(
         file: String,
         channel: String,
@@ -166,7 +194,9 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         crossfade: Double? = nil,
         loopConfig: LoopConfigDTO? = nil,
         sourceIn: Double? = nil,
-        sourceOut: Double? = nil
+        sourceOut: Double? = nil,
+        playbackModel: AudioPlaybackModel? = nil,
+        spatialPresentation: AudioSpatialPresentation? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -180,6 +210,8 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         self.loopConfig = loopConfig
         self.sourceIn = sourceIn
         self.sourceOut = sourceOut
+        self.playbackModel = playbackModel
+        self.spatialPresentation = spatialPresentation
     }
 }
 
@@ -197,6 +229,25 @@ public struct LoopConfigDTO: Codable, Sendable, Equatable {
     }
 }
 
+/// Where a POSITIONAL occurrence sounds from.
+///
+/// `attachToEntity` is the load-bearing field, and it is how keyframed audio
+/// motion works without a second animation system. The runtime
+/// (`SpatialAudioManager.playSpatial`) parents the sound's entity to the named
+/// entity; `EntityActionExecutor.applySequenceAnimationTracks` samples that
+/// entity's `EntityAnimationTrack` every frame on the authored sequence clock;
+/// RealityKit carries the child along. So a sound moves through the room
+/// because its EMITTER is animated like any other scene object — same
+/// evaluator, same Set Key, same Auto-Key, same graph editor, same gizmo, and
+/// it holds still at a gate for the same reason a transform does.
+///
+/// `position` is the STATIC fallback for an emitter that never moves. Once an
+/// entity is named, its animated transform wins — do not write both and expect
+/// `position` to offset it.
+///
+/// Two occurrences of one file name two different emitters, which is what
+/// makes their positions independent by construction rather than by a guard.
+/// The full argument is `docs/AUDIO_ARCHITECTURE.md` §2.
 public struct SpatialAudioConfigDTO: Codable, Sendable, Equatable {
     public var position: Vec3?
     public var attachToEntity: String?

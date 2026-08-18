@@ -17,6 +17,11 @@ public indirect enum StepActionDTO: Sendable, Equatable {
     case unpersistEntity(name: String)
     case revealEntity(RevealActionDTO)
     case animateMotion(AnimateMotionActionDTO)
+    /// MOTION ACTIONS 2.0 — a semantic behavior resolved to an OFFSET at
+    /// evaluation time. Distinct from `animateMotion`, which is an absolute
+    /// procedural path: see `MotionBehavior.swift` for why an entrance cannot
+    /// be expressed as absolute curves without baking the rest pose.
+    case motionBehavior(MotionBehaviorDTO)
 
     // Attachments
     case showAttachment(id: String)
@@ -60,6 +65,39 @@ public indirect enum StepActionDTO: Sendable, Equatable {
     case enableGesture(entity: String)
     case disableGesture(entity: String)
 
+    // Interactions (see Interaction.swift)
+    /// Arm or disarm one authored `InteractionSpec` on an entity, by its stable
+    /// id. This is how "tapping the switch makes the door tappable" is written
+    /// without a scripting layer — and it is deliberately an ordinary step
+    /// action, so a STEP can arm an interaction at a moment in the timeline
+    /// exactly as another interaction can.
+    case enableInteraction(entity: String, interactionId: String)
+    case disableInteraction(entity: String, interactionId: String)
+
+    // Experience Flow — WHERE THE STORY GOES NEXT.
+    //
+    // The authored representation of a `NavigationIntent`. Before this, the
+    // navigator understood five intents while the format could express one and
+    // a half (`autoAdvance` and `dismissToHome` on a Sequence's completion), so
+    // an Interaction could not send the story anywhere. This is the missing
+    // authored fact, and it is deliberately ONE case carrying the intent rather
+    // than four sibling cases — every navigation converges on one navigator, so
+    // it converges on one action too.
+    //
+    // Additive: no existing document contains it, and one that does not decodes
+    // exactly as before.
+    case navigate(NavigationIntent)
+
+    // Story State — WHAT THE STORY REMEMBERS.
+    //
+    // An ordinary composable action, deliberately. "Tapping the radio plays the
+    // recording AND remembers that they heard it" is two responses in one list,
+    // not a combined `playAudioAndRemember` — composition is the feature, and a
+    // fused action would need a sibling for every pair anyone ever wants.
+    //
+    // Additive: no existing document contains it.
+    case setStoryState(StoryStateMutation)
+
     // System
     case setUpperLimbVisibility(VisibilityKind)
     case setKeyboardPassthrough(Bool)
@@ -76,19 +114,22 @@ public indirect enum StepActionDTO: Sendable, Equatable {
 
 extension StepActionDTO: Codable {
     private enum CodingKeys: String, CodingKey {
+        case navigation
+        case storyState
         case kind
         case name, id, channel, busId, category, viewId
         case multiplier, opacity, duration, timing, volume, to
         case headRelativePosition, headYOnly
-        case action, audio, video, fade, reveal, move, motion
+        case action, audio, video, fade, reveal, move, motion, behavior
         case config, zone, effect, then
         case visibility, enabled, on
         case parameters
+        case interactionId
     }
 
     private enum Kind: String, Codable {
         case showEntity, hideEntity, moveEntity, scaleEntity, fadeEntity
-        case persistEntity, unpersistEntity, revealEntity, animateMotion
+        case persistEntity, unpersistEntity, revealEntity, animateMotion, motionBehavior
         case showAttachment, hideAttachment, fadeAttachment, setAttachmentView, positionAttachment
         case playAudio, stopAudio, fadeAudio, onAudioComplete
         case playVideo, prepareVideo, stopVideo
@@ -97,6 +138,9 @@ extension StepActionDTO: Codable {
         case addAudioZone, removeAudioZone, removeAllAudioZones
         case setBusVolume, setBusEffect, removeBusEffect
         case enableGesture, disableGesture
+        case enableInteraction, disableInteraction
+        case navigate
+        case setStoryState
         case setUpperLimbVisibility, setKeyboardPassthrough
         case custom
     }
@@ -134,6 +178,9 @@ extension StepActionDTO: Codable {
         case .animateMotion(let m):
             try c.encode(Kind.animateMotion, forKey: .kind)
             try c.encode(m, forKey: .motion)
+        case .motionBehavior(let b):
+            try c.encode(Kind.motionBehavior, forKey: .kind)
+            try c.encode(b, forKey: .behavior)
         case .showAttachment(let id):
             try c.encode(Kind.showAttachment, forKey: .kind)
             try c.encode(id, forKey: .id)
@@ -221,6 +268,20 @@ extension StepActionDTO: Codable {
         case .disableGesture(let entity):
             try c.encode(Kind.disableGesture, forKey: .kind)
             try c.encode(entity, forKey: .name)
+        case .enableInteraction(let entity, let interactionId):
+            try c.encode(Kind.enableInteraction, forKey: .kind)
+            try c.encode(entity, forKey: .name)
+            try c.encode(interactionId, forKey: .interactionId)
+        case .disableInteraction(let entity, let interactionId):
+            try c.encode(Kind.disableInteraction, forKey: .kind)
+            try c.encode(entity, forKey: .name)
+            try c.encode(interactionId, forKey: .interactionId)
+        case .navigate(let intent):
+            try c.encode(Kind.navigate, forKey: .kind)
+            try c.encode(intent, forKey: .navigation)
+        case .setStoryState(let mutation):
+            try c.encode(Kind.setStoryState, forKey: .kind)
+            try c.encode(mutation, forKey: .storyState)
         case .setUpperLimbVisibility(let v):
             try c.encode(Kind.setUpperLimbVisibility, forKey: .kind)
             try c.encode(v, forKey: .visibility)
@@ -276,6 +337,8 @@ extension StepActionDTO: Codable {
             self = .revealEntity(try c.decode(RevealActionDTO.self, forKey: .reveal))
         case .animateMotion:
             self = .animateMotion(try c.decode(AnimateMotionActionDTO.self, forKey: .motion))
+        case .motionBehavior:
+            self = .motionBehavior(try c.decode(MotionBehaviorDTO.self, forKey: .behavior))
         case .showAttachment:
             self = .showAttachment(id: try c.decode(String.self, forKey: .id))
         case .hideAttachment:
@@ -358,6 +421,20 @@ extension StepActionDTO: Codable {
             self = .enableGesture(entity: try c.decode(String.self, forKey: .name))
         case .disableGesture:
             self = .disableGesture(entity: try c.decode(String.self, forKey: .name))
+        case .enableInteraction:
+            self = .enableInteraction(
+                entity: try c.decode(String.self, forKey: .name),
+                interactionId: try c.decode(String.self, forKey: .interactionId)
+            )
+        case .disableInteraction:
+            self = .disableInteraction(
+                entity: try c.decode(String.self, forKey: .name),
+                interactionId: try c.decode(String.self, forKey: .interactionId)
+            )
+        case .navigate:
+            self = .navigate(try c.decode(NavigationIntent.self, forKey: .navigation))
+        case .setStoryState:
+            self = .setStoryState(try c.decode(StoryStateMutation.self, forKey: .storyState))
         case .setUpperLimbVisibility:
             self = .setUpperLimbVisibility(try c.decode(VisibilityKind.self, forKey: .visibility))
         case .setKeyboardPassthrough:
