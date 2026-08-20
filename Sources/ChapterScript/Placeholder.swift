@@ -103,6 +103,18 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
     /// default (~1000 m).
     public var radius: Float?
 
+    /// ROUNDED CORNERS FOR A `.videoPanel` STAND-IN, in meters (nil/0 = square).
+    ///
+    /// The same number `VideoPanelSpec.cornerRadius` carries, held here while
+    /// the shot has no file, so the grey proxy is framed the way the finished
+    /// screen will be and REPLACEMENT CHANGES NOTHING ABOUT THE COMPOSITION.
+    /// Corner treatment is a property of the SURFACE, never of the source: a
+    /// movie is not rounded, the screen showing it is.
+    ///
+    /// `PlaceholderReplacement` carries it into the real panel and `reverted`
+    /// carries it back, so the round trip is lossless.
+    public var cornerRadius: Float?
+
     /// WHO MADE THIS, AND WHY — the fact that separates a deliberately
     /// authored placeholder (a real project asset the author manages in the
     /// browser) from an internal Timeline track surface (runtime plumbing a
@@ -129,6 +141,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
         field: ImmersiveField? = nil,
         layout: VideoLayout? = nil,
         radius: Float? = nil,
+        cornerRadius: Float? = nil,
         origin: PlaceholderOrigin? = nil
     ) {
         self.role = role
@@ -139,6 +152,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
         self.field = field
         self.layout = layout
         self.radius = radius
+        self.cornerRadius = cornerRadius
         self.origin = origin
     }
 
@@ -206,6 +220,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case role, label, notes, intendedDuration, size, field, layout, radius, origin
+        case cornerRadius
     }
 
     public init(from decoder: Decoder) throws {
@@ -221,6 +236,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
         self.field = try c.decodeIfPresent(ImmersiveField.self, forKey: .field)
         self.layout = try c.decodeIfPresent(VideoLayout.self, forKey: .layout)
         self.radius = try c.decodeIfPresent(Float.self, forKey: .radius)
+        self.cornerRadius = try c.decodeIfPresent(Float.self, forKey: .cornerRadius)
         // Unknown raw value (a newer tool's origin kind) degrades to nil —
         // the conservative reading — rather than failing the document.
         self.origin = try? c.decodeIfPresent(PlaceholderOrigin.self, forKey: .origin)

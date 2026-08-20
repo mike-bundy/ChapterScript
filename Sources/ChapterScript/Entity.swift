@@ -311,6 +311,32 @@ public enum LightKind: String, Codable, Sendable, Equatable {
     case ambient
 }
 
+/// HOW A FLAT PANEL PRESENTS SPATIAL VIDEO.
+///
+/// Two cases, because two is what the platform actually offers. visionOS 26's
+/// `RealityKit.VideoPlayerComponent` exposes `desiredSpatialVideoMode`
+/// (`.screen` / `.spatial`) and `isPassthroughTintingEnabled`, and NOTHING
+/// resembling a strength, threshold or feather. A slider for those would be a
+/// control with no runtime behind it on either end.
+public enum SpatialVideoPresentation: String, Codable, Sendable, Equatable, CaseIterable {
+    /// The panel is a rectangle with the picture on it — one eye of a stereo
+    /// master. What every Chapter written before this field does, and the
+    /// default, so nothing changes for them.
+    case flat
+    /// visionOS's own spatial-video presentation: stereo, with the system's
+    /// edge treatment. `SpatialVideoPresentation` is a REQUEST — a source with
+    /// no second eye simply presents as it always did.
+    case spatial
+
+    /// Unknown value from a newer tool degrades to the presentation every
+    /// existing document has, rather than failing the load — the same rule
+    /// `GateType` and `ImmersiveField` follow.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = SpatialVideoPresentation(rawValue: raw) ?? .flat
+    }
+}
+
 public struct VideoPanelSpec: Codable, Sendable, Equatable {
     public var width: Float
     public var height: Float
@@ -319,17 +345,27 @@ public struct VideoPanelSpec: Codable, Sendable, Equatable {
     /// Rounded panel corners, in meters (nil/0 = square). Players clip
     /// the video plane's geometry; the texture stays rect-mapped.
     public var cornerRadius: Float?
+    /// How this panel presents a spatial (MV-HEVC) source. `nil` = `.flat`,
+    /// and absent writes no key.
+    public var spatialPresentation: SpatialVideoPresentation?
+    /// Let the picture tint the passthrough around it, the way the system's
+    /// own player does. Only consulted under `.spatial`; `nil` = off.
+    public var passthroughTinting: Bool?
 
     public init(
         width: Float,
         height: Float,
         placeholderColor: ColorRGBA? = nil,
-        cornerRadius: Float? = nil
+        cornerRadius: Float? = nil,
+        spatialPresentation: SpatialVideoPresentation? = nil,
+        passthroughTinting: Bool? = nil
     ) {
         self.width = width
         self.height = height
         self.placeholderColor = placeholderColor
         self.cornerRadius = cornerRadius
+        self.spatialPresentation = spatialPresentation
+        self.passthroughTinting = passthroughTinting
     }
 }
 
