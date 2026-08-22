@@ -206,6 +206,20 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// together by `MediaKindResolution.effectiveKind`.
     public var mediaKindOverrides: [String: MediaKindOverride]
 
+    /// AUTHOR INTERPRETATION OF A VIDEO SOURCE, keyed by filename.
+    ///
+    /// The video sibling of `audioInterpretations`, and it exists for the one
+    /// fact about a video file that inspection can never establish: frame
+    /// packing. A side-by-side master is indistinguishable from a wide mono
+    /// movie, so somebody has to say, and what they say has to survive a
+    /// reopen. Eye order and the author's preferred placement ride along for
+    /// the same reason.
+    ///
+    /// Absent (the common case) means Automatic. Detected facts — multiview
+    /// views, projection kind, baseline, field of view, disparity adjustment —
+    /// are re-read from the bytes on every open and never stored here.
+    public var videoInterpretations: [String: VideoInterpretation]
+
     /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
     /// surface's entity id.
     ///
@@ -236,6 +250,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
             && sceneFolders.isEmpty && sceneFolderTree.isEmpty
             && clipColors.isEmpty && lockedClips.isEmpty && clipGroups.isEmpty
             && audioInterpretations.isEmpty && mediaKindOverrides.isEmpty
+            && videoInterpretations.isEmpty
             && trackSurfaceOwners.isEmpty
     }
 
@@ -249,6 +264,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         clipGroups: [ClipEditGroup] = [],
         audioInterpretations: [String: AudioInterpretation] = [:],
         mediaKindOverrides: [String: MediaKindOverride] = [:],
+        videoInterpretations: [String: VideoInterpretation] = [:],
         trackSurfaceOwners: [String: String] = [:]
     ) {
         self.bins = bins
@@ -260,13 +276,14 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.clipGroups = clipGroups
         self.audioInterpretations = audioInterpretations
         self.mediaKindOverrides = mediaKindOverrides
+        self.videoInterpretations = videoInterpretations
         self.trackSurfaceOwners = trackSurfaceOwners
     }
 
     private enum CodingKeys: String, CodingKey {
         case bins, timelineGroups, sceneFolders, sceneFolderTree
         case clipColors, lockedClips, clipGroups
-        case audioInterpretations, mediaKindOverrides
+        case audioInterpretations, mediaKindOverrides, videoInterpretations
         case trackSurfaceOwners
     }
 
@@ -292,6 +309,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.mediaKindOverrides = try c.decodeIfPresent(
             [String: MediaKindOverride].self, forKey: .mediaKindOverrides
+        ) ?? [:]
+        self.videoInterpretations = try c.decodeIfPresent(
+            [String: VideoInterpretation].self, forKey: .videoInterpretations
         ) ?? [:]
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners

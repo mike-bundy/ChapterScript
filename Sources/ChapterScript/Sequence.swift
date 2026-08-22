@@ -23,6 +23,12 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// start, exactly like `animationTracks` — so a volume ride survives step
     /// retiming, and the same curve editor edits both.
     public var audioTracks: [AudioAutomationTrack]
+
+    /// Keyframed stereo presentation per video DESTINATION — convergence.
+    /// Keyed by the screen rather than by an entity for the reason set out in
+    /// `SequenceStereoAutomation`: convergence belongs to the media on a
+    /// screen, not to the screen.
+    public var stereoTracks: [StereoAutomationTrack]
     /// Timed backdrop changes. Each cue runs from its `startTime` until the
     /// next one begins, so exactly one backdrop is ever active — exclusivity
     /// by construction rather than by validation. Empty means "use
@@ -62,6 +68,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         steps: [StepDefinitionDTO],
         animationTracks: [EntityAnimationTrack] = [],
         audioTracks: [AudioAutomationTrack] = [],
+        stereoTracks: [StereoAutomationTrack] = [],
         backdropTrack: [BackdropCue] = [],
         storyRegions: [StoryRegion] = [],
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
@@ -77,6 +84,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.steps = steps
         self.animationTracks = animationTracks
         self.audioTracks = audioTracks
+        self.stereoTracks = stereoTracks
         self.backdropTrack = backdropTrack
         self.storyRegions = storyRegions
         self.visibility = visibility
@@ -93,7 +101,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     // doc explicitly used `phase == "windowed"`, fall back to that.
     private enum CodingKeys: String, CodingKey {
         case id, name, phase, presentation, immersiveBackdrop
-        case steps, animationTracks, audioTracks, backdropTrack, visibility, onComplete
+        case steps, animationTracks, audioTracks, stereoTracks, backdropTrack, visibility, onComplete
         case storyRegions
         case editorColorIndex
     }
@@ -116,6 +124,10 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         // an empty list means "no rides", which mixes to exactly the previous
         // behaviour.
         self.audioTracks = try c.decodeIfPresent([AudioAutomationTrack].self, forKey: .audioTracks) ?? []
+        // Absent in every document written before convergence existed. An
+        // empty list means every clip keeps its source's own stereo
+        // relationship — exactly the previous behaviour.
+        self.stereoTracks = try c.decodeIfPresent([StereoAutomationTrack].self, forKey: .stereoTracks) ?? []
         self.backdropTrack = try c.decodeIfPresent([BackdropCue].self, forKey: .backdropTrack) ?? []
         // Absent in every document written before Explore existed. An empty
         // list is a fully Directed Sequence — exactly the previous behaviour.

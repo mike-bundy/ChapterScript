@@ -386,6 +386,19 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// Optional normalized spatial crop of the video frame, applied by the
     /// player at render time. `nil` shows the full frame.
     public var crop: VideoCropRect?
+    /// This occurrence's CONVERGENCE: where the source's stereo content sits
+    /// in depth relative to its Video Panel, as a fraction of image width.
+    ///
+    /// `nil` and `0` mean the same thing and both mean "the source's own
+    /// stereo relationship" — the file's embedded disparity adjustment is
+    /// still honoured underneath. It is NOT "no disparity", and nothing here
+    /// ever writes to source media: three occurrences of one file can carry
+    /// three different convergences and the file is untouched.
+    ///
+    /// Rides on top of this come from `SequenceDefinitionDTO.stereoTracks`;
+    /// `SequenceStereoAutomation.effectiveConvergence` is the one rule that
+    /// combines them.
+    public var convergence: Float?
 
     public init(
         file: String,
@@ -396,7 +409,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         layout: VideoLayout = .mono,
         sourceIn: Double? = nil,
         sourceOut: Double? = nil,
-        crop: VideoCropRect? = nil
+        crop: VideoCropRect? = nil,
+        convergence: Float? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -407,10 +421,12 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.sourceIn = sourceIn
         self.sourceOut = sourceOut
         self.crop = crop
+        self.convergence = convergence
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
+        case convergence
     }
 
     public init(from decoder: Decoder) throws {
@@ -425,6 +441,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.sourceIn = try c.decodeIfPresent(Double.self, forKey: .sourceIn)
         self.sourceOut = try c.decodeIfPresent(Double.self, forKey: .sourceOut)
         self.crop = try c.decodeIfPresent(VideoCropRect.self, forKey: .crop)
+        self.convergence = try c.decodeIfPresent(Float.self, forKey: .convergence)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.
