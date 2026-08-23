@@ -281,6 +281,19 @@ public struct TextSpec: Codable, Sendable, Equatable {
 }
 
 public struct LightSpec: Codable, Sendable, Equatable {
+
+    /// WHAT AN UNSET FIELD ACTUALLY MEANS AT RUNTIME.
+    ///
+    /// `range` and `spotAngle` are optional, so every consumer needs a
+    /// fallback — and for a while each one picked its own. The runtime lit
+    /// 5 m while MaestroVision's Inspector displayed 10 m for the same
+    /// light, which is a control reporting a number nothing uses. These are
+    /// the runtime's values, and they live on the model so the renderer,
+    /// the editors and the Director's light guides cannot drift apart
+    /// again. NOT serialized: an unset field stays unset.
+    public static let defaultRange: Float = 5
+    public static let defaultSpotAngleDegrees: Float = 45
+
     public var kind: LightKind
     public var color: ColorRGBA
     public var intensity: Float
