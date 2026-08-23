@@ -55,6 +55,87 @@ public enum MotionBehaviorKind: String, Codable, Sendable, Equatable, CaseIterab
     case exit
     /// Travels away from the rest pose and STAYS there.
     case drift
+    /// CYCLES AROUND the rest pose, indefinitely.
+    ///
+    /// The first kind whose progress is not a ramp from one state to another:
+    /// an ambient behavior has a PERIOD rather than an end, so `duration` is
+    /// one cycle and the phase is deliberately NOT clamped. Its purpose is to
+    /// say "this thing is alive / available / interactive" without the author
+    /// hand-keying a loop, which is what `docs/ACTIONS.md` calls Idle Float.
+    case ambient
+}
+
+/// What an ambient behavior does over its cycle.
+///
+/// A small closed set on purpose. Each is one dominant idea, at a comfortable
+/// default amplitude: the failure mode this feature invites is a scene where
+/// everything bobs, so there is no "combine three of these" style.
+public enum MotionAmbientStyle: String, Codable, Sendable, Equatable, CaseIterable {
+    /// Rises and settles. `distance` is the peak rise.
+    case float
+    /// Turns steadily about its own up axis. `distance` is unused; one cycle
+    /// is one full revolution.
+    case spin
+    /// Breathes larger and back. `awayScale` is the peak size.
+    case pulse
+    /// TRAVELS A CIRCLE AROUND THE ORIGIN, on the plane perpendicular to
+    /// `ambientAxis`, keeping its distance. One cycle is one full revolution.
+    ///
+    /// Unlike the other three this needs to know where the object IS: a float
+    /// is the same wherever it happens, an orbit is defined by its centre. The
+    /// resolver takes the rest position for exactly this case.
+    case orbit
+}
+
+/// Where an entrance comes FROM, or an exit goes TO.
+public enum MotionStartPlace: String, Codable, Sendable, Equatable, CaseIterable {
+    /// An offset along `direction` by `distance`. Every behavior authored
+    /// before this field existed, and still the default.
+    case direction
+    /// The world origin — the centre of the scene, and the viewer's own
+    /// position in both the Mac Viewer and on device.
+    case sceneCentre
+
+    public var displayName: String {
+        switch self {
+        case .direction:   return "A direction"
+        case .sceneCentre: return "The centre of the scene"
+        }
+    }
+}
+
+/// Which axis an ambient behavior turns about — a SPIN turns about it in
+/// place, an ORBIT draws its circle in the plane perpendicular to it. One
+/// field, because it is one idea: two would have to be kept in step by hand,
+/// and the picker an author sees is the same picker either way.
+public enum MotionAmbientAxis: String, Codable, Sendable, Equatable, CaseIterable {
+    case x, y, z
+
+    public var unitVector: SIMD3<Float> {
+        switch self {
+        case .x: return SIMD3(1, 0, 0)
+        case .y: return SIMD3(0, 1, 0)
+        case .z: return SIMD3(0, 0, 1)
+        }
+    }
+
+    /// The two axes the circle is drawn on, in order, so a positive phase
+    /// turns the same way for every axis.
+    var plane: (SIMD3<Float>, SIMD3<Float>) {
+        switch self {
+        case .x: return (SIMD3(0, 1, 0), SIMD3(0, 0, 1))
+        case .y: return (SIMD3(0, 0, 1), SIMD3(1, 0, 0))
+        case .z: return (SIMD3(1, 0, 0), SIMD3(0, 1, 0))
+        }
+    }
+
+    public var displayName: String {
+        switch self {
+        case .x: return "X (side to side)"
+        case .y: return "Y (upright)"
+        case .z: return "Z (front to back)"
+        }
+    }
 }
 
 /// The frame a direction is expressed in.
@@ -195,6 +276,58 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
     /// resolved scale. `nil` = the motion does not touch scale. Never 0 — see
     /// `MotionBehaviorLimits.minimumScale`.
     public var awayScale: Float?
+    /// What an `.ambient` behavior does. Absent for every other kind, and an
+    /// ambient behavior with no style reads as `.float` so a document written
+    /// by a newer tool still plays.
+    public var ambientStyle: MotionAmbientStyle?
+
+    /// HOW LONG AN AMBIENT BEHAVIOR RUNS FOR, in seconds from its start.
+    ///
+    /// `duration` is an ambient behavior's CYCLE, not its lifetime — a Pulse
+    /// with a 2 s duration breathes once every two seconds, forever. Drawing
+    /// that cycle as the clip's length made the Timeline lie: the clip ended at
+    /// two seconds and the object went on pulsing, which is what the author
+    /// reported.
+    ///
+    /// Nil means "until the object leaves", which is the sensible default for a
+    /// cue that says "this is interactive". A number is the author trimming the
+    /// clip. Meaningless for the other kinds, which end when their ramp does.
+    public var span: Double?
+
+    /// Which axis a `.spin` or an `.orbit` turns about. Absent reads as `.y`,
+    /// the upright turntable, which is what an author almost always means.
+    public var ambientAxis: MotionAmbientAxis?
+
+    /// WHERE THE AWAY POSE IS, for an entrance or an exit.
+    ///
+    /// Absent reads as `.direction`, which is every existing behavior: an
+    /// offset along `direction` by `distance` from the object's rest pose.
+    /// `.sceneCentre` is the other thing authors mean by "comes in from the
+    /// middle" — the away pose is the world origin itself, wherever the object
+    /// rests. It is exact rather than a direction that happens to point at the
+    /// centre, which would need re-aiming every time the object moved.
+    ///
+    /// There is deliberately no "out of frame": the format has no camera and
+    /// no field of view, so the distance that clears one would be a guess
+    /// dressed as a rule.
+    public var startPlace: MotionStartPlace?
+
+    /// Turn the other way. A separate flag rather than a negative period,
+    /// because a negative duration is not a thing and every consumer would
+    /// have to remember to take its absolute value.
+    public var ambientReversed: Bool?
+
+    /// How far from the axis an orbit runs, in metres. Absent or zero keeps the
+    /// object's OWN distance — an orbit that silently moved a carefully placed
+    /// prop to a default radius would be the more surprising answer.
+    public var orbitRadius: Float?
+
+    /// Whether the object keeps facing the centre as it goes round.
+    ///
+    /// Absent reads as TRUE: an object that orbits without turning drifts
+    /// sideways past the viewer, which reads as a mistake rather than as a
+    /// display turntable.
+    public var orbitFacesCentre: Bool?
 
     public init(
         entity: String,
@@ -205,7 +338,14 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
         duration: Double = MotionBehaviorLimits.defaultDuration,
         easing: StepTimingFunction? = nil,
         fade: Bool = true,
-        awayScale: Float? = nil
+        awayScale: Float? = nil,
+        ambientStyle: MotionAmbientStyle? = nil,
+        span: Double? = nil,
+        startPlace: MotionStartPlace? = nil,
+        ambientAxis: MotionAmbientAxis? = nil,
+        ambientReversed: Bool? = nil,
+        orbitRadius: Float? = nil,
+        orbitFacesCentre: Bool? = nil
     ) {
         self.entity = entity
         self.kind = kind
@@ -219,12 +359,22 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
         self.easing = easing ?? MotionBehaviorLimits.defaultEasing(for: kind)
         self.fade = fade
         self.awayScale = awayScale
+        self.ambientStyle = ambientStyle
+        self.span = span
+        self.startPlace = startPlace
+        self.ambientAxis = ambientAxis
+        self.ambientReversed = ambientReversed
+        self.orbitRadius = orbitRadius
+        self.orbitFacesCentre = orbitFacesCentre
     }
 
     // Tolerant decode: every field but `entity` and `kind` has a default, so a
     // document written by a newer tool with more fields still reads.
     private enum CodingKeys: String, CodingKey {
         case entity, kind, direction, space, distance, duration, easing, fade, awayScale
+        case ambientStyle, span
+        case startPlace
+        case ambientAxis, ambientReversed, orbitRadius, orbitFacesCentre
     }
 
     public init(from decoder: Decoder) throws {
@@ -241,6 +391,16 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
             ?? MotionBehaviorLimits.defaultEasing(for: kind)
         fade = try c.decodeIfPresent(Bool.self, forKey: .fade) ?? true
         awayScale = try c.decodeIfPresent(Float.self, forKey: .awayScale)
+        // TOLERANT, like every other field here: a style written by a newer
+        // tool that this build does not recognise reads as absent, and an
+        // absent style resolves as `.float` rather than as no motion at all.
+        ambientStyle = try? c.decodeIfPresent(MotionAmbientStyle.self, forKey: .ambientStyle)
+        span = try? c.decodeIfPresent(Double.self, forKey: .span)
+        startPlace = try? c.decodeIfPresent(MotionStartPlace.self, forKey: .startPlace)
+        ambientAxis = try? c.decodeIfPresent(MotionAmbientAxis.self, forKey: .ambientAxis)
+        ambientReversed = try? c.decodeIfPresent(Bool.self, forKey: .ambientReversed)
+        orbitRadius = try? c.decodeIfPresent(Float.self, forKey: .orbitRadius)
+        orbitFacesCentre = try? c.decodeIfPresent(Bool.self, forKey: .orbitFacesCentre)
     }
 }
 
@@ -267,8 +427,34 @@ public enum MotionBehaviorLimits {
         case .enter: return .easeOut
         case .exit:  return .easeIn
         case .drift: return .easeInOut
+        // A cycle that eases at both ends reads as breathing rather than as a
+        // machine; linear would give a spin a constant rate but make a float
+        // and a pulse tick.
+        // An orbit is LINEAR: easing inside a revolution stutters once per lap.
+        case .ambient: return .linear
         }
     }
+
+    /// How long a behavior OCCUPIES on a Timeline.
+    ///
+    /// For a ramp that is its duration. For an ambient cue it is its span, and
+    /// when it has none it is indefinite — the caller draws it to the end of
+    /// the object's presence rather than to one cycle.
+    public static func timelineSpan(of behavior: MotionBehaviorDTO) -> Double? {
+        guard behavior.kind == .ambient else { return behavior.duration }
+        return behavior.span
+    }
+
+    /// One cycle. Slow on purpose: an ambient cue that competes for attention
+    /// has stopped being a cue.
+    public static let defaultAmbientPeriod: Double = 4.0
+    /// Peak rise for an Idle Float, in metres. Small enough to read as "alive"
+    /// and never as "moving".
+    public static let defaultAmbientRise: Float = 0.02
+    /// Peak size for a Pulse.
+    public static let defaultAmbientPulseScale: Float = 1.04
+    /// One full revolution per cycle, in degrees.
+    public static let ambientSpinDegrees: Float = 360
 }
 
 // MARK: - The resolved offset
@@ -276,17 +462,29 @@ public enum MotionBehaviorLimits {
 /// What a motion contributes at one instant. Deliberately a DELTA, not a pose.
 public struct MotionOffset: Sendable, Equatable {
     public var positionDelta: SIMD3<Float>
+    /// EULER DEGREES, added to the authored orientation.
+    ///
+    /// Added for `MotionAmbientStyle.spin`, which cannot be expressed any other
+    /// way. Degrees rather than a quaternion because it ADDS, and because the
+    /// rest of this format speaks Euler degrees for authored rotation
+    /// (`MoveActionDTO.absoluteRotation`, `EntityAnimationTrack`'s `rx/ry/rz`).
+    /// A spin past 360 is a real value here, exactly as a continuous Euler
+    /// curve is in Animation 2.0.
+    public var rotationDelta: SIMD3<Float>
     public var scaleMultiplier: Float
     public var opacityMultiplier: Float
 
     public static let identity = MotionOffset(
-        positionDelta: .zero, scaleMultiplier: 1, opacityMultiplier: 1
+        positionDelta: .zero, rotationDelta: .zero,
+        scaleMultiplier: 1, opacityMultiplier: 1
     )
 
     public init(positionDelta: SIMD3<Float> = .zero,
+                rotationDelta: SIMD3<Float> = .zero,
                 scaleMultiplier: Float = 1,
                 opacityMultiplier: Float = 1) {
         self.positionDelta = positionDelta
+        self.rotationDelta = rotationDelta
         self.scaleMultiplier = scaleMultiplier
         self.opacityMultiplier = opacityMultiplier
     }
@@ -297,6 +495,7 @@ public struct MotionOffset: Sendable, Equatable {
     public static func combine(_ a: MotionOffset, _ b: MotionOffset) -> MotionOffset {
         MotionOffset(
             positionDelta: a.positionDelta + b.positionDelta,
+            rotationDelta: a.rotationDelta + b.rotationDelta,
             scaleMultiplier: a.scaleMultiplier * b.scaleMultiplier,
             opacityMultiplier: a.opacityMultiplier * b.opacityMultiplier
         )
@@ -314,11 +513,32 @@ public enum MotionBehaviorResolver {
     /// `nil` means "no viewer pose available" — the resolver then treats
     /// viewer space as world space rather than guessing, which keeps a
     /// preview deterministic before a head pose exists.
+    /// - Parameter restPosition: where the object sits when nothing is acting
+    ///   on it. Needed ONLY by `.orbit`, which is defined by its centre rather
+    ///   than by a displacement — every other behavior is a delta and does not
+    ///   care where it starts. Absent, an orbit falls back to a circle through
+    ///   the origin's forward axis rather than guessing.
     public static func offset(
         _ behavior: MotionBehaviorDTO,
         progress: Float,
-        viewerYaw: Float? = nil
+        viewerYaw: Float? = nil,
+        restPosition: SIMD3<Float>? = nil
     ) -> MotionOffset {
+        // AN AMBIENT BEHAVIOR HAS A PERIOD, NOT AN END. Its `progress` arrives
+        // UNCLAMPED — cycles elapsed, which grows without bound — because
+        // clamping it at 1 would freeze the cue after one cycle. Every other
+        // kind is a ramp and is clamped exactly as before.
+        if behavior.kind == .ambient {
+            // PAST ITS SPAN IT IS OVER, and over means the authored pose — not
+            // frozen at whatever phase it happened to reach, which would leave
+            // an object permanently tilted or swollen.
+            if let span = behavior.span, span > 0 {
+                let elapsed = Double(progress) * max(MotionProgress.minimumDuration,
+                                                     behavior.duration)
+                if elapsed >= span { return .identity }
+            }
+            return ambientOffset(behavior, cycles: progress, restPosition: restPosition)
+        }
         let t = max(0, min(1, progress))
         let eased = ease(t, behavior.easing)
 
@@ -328,11 +548,24 @@ public enum MotionBehaviorResolver {
         switch behavior.kind {
         case .enter: awayness = 1 - eased
         case .exit, .drift: awayness = eased
+        // Unreachable: `.ambient` returned above. Spelled out rather than
+        // defaulted so a fourth kind breaks the build here too.
+        case .ambient: awayness = 0
         }
 
         var offset = MotionOffset.identity
 
-        if let direction = behavior.direction, behavior.distance != 0 {
+        // THE AWAY POSE IS THE SCENE CENTRE, EXACTLY. Expressing it as a
+        // direction that happens to point at the origin would need re-aiming
+        // every time the object moved; the away vector is the origin minus
+        // where the object rests, so it is right wherever that is.
+        if behavior.startPlace == .sceneCentre {
+            if let rest = restPosition {
+                offset.positionDelta = -rest * awayness
+            }
+            // With no rest position there is no vector to the centre, so the
+            // behavior contributes no translation rather than an invented one.
+        } else if let direction = behavior.direction, behavior.distance != 0 {
             var vector = direction.unitVector * behavior.distance
             let space = direction.requiresViewerSpace ? .viewer : behavior.space
             if space == .viewer, let yaw = viewerYaw {
@@ -354,6 +587,91 @@ public enum MotionBehaviorResolver {
             offset.opacityMultiplier = 1 - awayness
         }
 
+        return offset
+    }
+
+    /// One instant of a cycling behavior.
+    ///
+    /// PHASE IS TAKEN MODULO ONE so the value is identical at cycle 3.25 and
+    /// cycle 900.25: an hour-long chapter must not accumulate float error into
+    /// a visibly different amplitude, and a scrub to the same authored second
+    /// must draw the same frame every time.
+    static func ambientOffset(_ behavior: MotionBehaviorDTO, cycles: Float,
+                              restPosition: SIMD3<Float>? = nil) -> MotionOffset {
+        var offset = MotionOffset.identity
+        let style = behavior.ambientStyle ?? .float
+        let phase = cycles - floor(cycles)
+
+        switch style {
+        case .float:
+            // A full sine, so the object passes through its authored pose
+            // twice per cycle and never sits parked above it.
+            let rise = behavior.distance == 0 ? MotionBehaviorLimits.defaultAmbientRise
+                                              : behavior.distance
+            offset.positionDelta = SIMD3(0, sin(phase * 2 * .pi) * rise, 0)
+        case .spin:
+            // LINEAR IN PHASE, whatever the easing says. A spin that eases
+            // within each cycle stutters once per revolution, which is the one
+            // thing a steady turn must not do.
+            let axis = (behavior.ambientAxis ?? .y).unitVector
+            let turn = phase * MotionBehaviorLimits.ambientSpinDegrees
+            offset.rotationDelta = axis * (behavior.ambientReversed == true ? -turn : turn)
+        case .pulse:
+            let peak = behavior.awayScale ?? MotionBehaviorLimits.defaultAmbientPulseScale
+            // 0…1…0 over the cycle, so it returns to the authored size.
+            let swell = (1 - cos(phase * 2 * .pi)) / 2
+            offset.scaleMultiplier = 1 + (peak - 1) * swell
+        case .orbit:
+            return orbitOffset(behavior, phase: phase, restPosition: restPosition)
+        }
+        return offset
+    }
+
+    /// One instant of an orbit.
+    ///
+    /// THE OFFSET IS A DELTA FROM REST, like every other behavior, so the
+    /// circle is computed in world terms and the object's own rest position is
+    /// subtracted back out. That keeps orbit composable with the rest of the
+    /// stack — a Fade In and an Orbit still add up — and means removing the
+    /// behavior restores the authored pose exactly.
+    ///
+    /// THE RADIUS DEFAULTS TO THE OBJECT'S OWN DISTANCE. An orbit that silently
+    /// moved a carefully placed prop onto a default circle would be the more
+    /// surprising answer; the author asks for a different radius when they want
+    /// one.
+    static func orbitOffset(_ behavior: MotionBehaviorDTO, phase: Float,
+                            restPosition: SIMD3<Float>?) -> MotionOffset {
+        let axis = behavior.ambientAxis ?? .y
+        let (u, v) = axis.plane
+        let rest = restPosition ?? .zero
+
+        // Where rest sits on the circle: its components in the orbit plane give
+        // both the starting angle and, when the author has not chosen one, the
+        // radius.
+        let ru = simd_dot(rest, u), rv = simd_dot(rest, v)
+        let restRadius = (ru * ru + rv * rv).squareRoot()
+        let radius = (behavior.orbitRadius.map { $0 > 0 ? $0 : restRadius }) ?? restRadius
+        // A start angle of zero is the right reading for an object sitting ON
+        // the axis: it has no angle to preserve, so it begins on +u.
+        let startAngle = restRadius > 1e-5 ? atan2(rv, ru) : 0
+
+        let sweep = phase * 2 * Float.pi
+        let angle = startAngle + (behavior.ambientReversed == true ? -sweep : sweep)
+        let orbited = u * (radius * cos(angle)) + v * (radius * sin(angle))
+        // The component ALONG the axis is untouched: an orbit goes round, it
+        // does not lift.
+        let restInPlane = u * ru + v * rv
+
+        var offset = MotionOffset.identity
+        offset.positionDelta = orbited - restInPlane
+        // FACING THE CENTRE IS A TURN, NOT A LOOK-AT. If the object faces the
+        // centre at rest, turning it by the same angle it has travelled keeps
+        // it facing the centre — no world matrix, no camera, nothing that could
+        // disagree between the editor and the device.
+        if behavior.orbitFacesCentre ?? true {
+            offset.rotationDelta = axis.unitVector
+                * (behavior.ambientReversed == true ? -phase * 360 : phase * 360)
+        }
         return offset
     }
 

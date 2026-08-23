@@ -158,30 +158,30 @@ final class StoryStateTests: XCTestCase {
     /// one of the three. The `NavigationIntent` rule: a fallback that parses is
     /// not the same as a fallback that means the right thing.
     func testAnUnknownKindIsUnsupportedAndSurvivesARoundTrip() throws {
-        let json = #"{"id":"sst_x","name":"Mood","kind":"colour","initialValue":{"kind":"colour"}}"#
+        let json = #"{"id":"sst_x","name":"Mood","kind":"color","initialValue":{"kind":"color"}}"#
         let decoded = try JSONDecoder().decode(StoryStateDefinition.self,
                                                from: Data(json.utf8))
-        XCTAssertEqual(decoded.kind, .unsupported(raw: "colour"))
+        XCTAssertEqual(decoded.kind, .unsupported(raw: "color"))
         XCTAssertTrue(decoded.kind.isUnsupported)
 
         let reencoded = try JSONEncoder().encode(decoded)
         let object = try XCTUnwrap(try JSONSerialization.jsonObject(with: reencoded)
                                    as? [String: Any])
-        XCTAssertEqual(object["kind"] as? String, "colour",
+        XCTAssertEqual(object["kind"] as? String, "color",
                        "An older build must not downgrade a newer build's Chapter.")
     }
 
     /// And nothing can be applied to it, so it cannot silently behave like a
     /// Yes/No that happens to be false.
     func testAnUnsupportedKindAcceptsNoMutation() {
-        let state = StoryStateDefinition(name: "Mood", kind: .unsupported(raw: "colour"))
+        let state = StoryStateDefinition(name: "Mood", kind: .unsupported(raw: "color"))
         let refused = StoryStateArithmetic.apply(.setYesNo(true),
-                                                 to: .unsupported(kind: "colour", raw: nil),
+                                                 to: .unsupported(kind: "color", raw: nil),
                                                  definition: state)
         guard case .failure(.unsupported(let kind)) = refused else {
             return XCTFail("An unsupported kind must refuse every operation.")
         }
-        XCTAssertEqual(kind, "colour")
+        XCTAssertEqual(kind, "color")
     }
 
     func testAnUnknownOperationIsUnsupportedAndInert() throws {

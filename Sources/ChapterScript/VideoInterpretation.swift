@@ -36,6 +36,30 @@
 
 import Foundation
 
+/// What the source's pixels MEAN geometrically.
+///
+/// Carried so that a projected source can be recognised, never so that it can
+/// be silently pasted onto a rectangle: half-equirectangular pixels on a flat
+/// panel are a distorted picture, not a window into a scene.
+public enum SourceProjection: String, Codable, Sendable, Equatable, CaseIterable {
+    case rectilinear
+    case halfEquirectangular
+    case equirectangular
+    case appleImmersive
+
+    public var isProjected: Bool { self != .rectilinear }
+
+    /// How this reads in a message to an author.
+    public var displayName: String {
+        switch self {
+        case .rectilinear:         return "Rectilinear"
+        case .halfEquirectangular: return "180° Equirectangular"
+        case .equirectangular:     return "360° Equirectangular"
+        case .appleImmersive:      return "Apple Immersive Video"
+        }
+    }
+}
+
 /// Which eye a frame-packed source puts first.
 ///
 /// Only meaningful for `sideBySide` and `overUnder`: a multiview file tags its
@@ -118,17 +142,39 @@ public struct VideoInterpretation: Codable, Sendable, Equatable {
     /// Where the author wants this source presented.
     public var placement: VideoPlacementPreference?
 
+    /// WHAT THE PIXELS MEAN, when the container does not say.
+    ///
+    /// This file's own header has always named projection as one of the three
+    /// separate properties of a source, and this struct did not store it — so a
+    /// 360 or 180 master whose container declares no `ProjectionKind` could
+    /// never be told what it was. Two such files sit in the owner's corpus:
+    /// both are exactly 2:1 and both classified as flat, correctly and
+    /// uselessly.
+    ///
+    /// IT IS A DECISION, NOT A DETECTION, and it is stored for exactly the
+    /// reason `layout` is: the fact is unrecoverable by inspection. A declared
+    /// `ProjectionKind` still WINS — a document must never out-argue the
+    /// container about something the container states — so this is consulted
+    /// only when the file is silent. Absent means Automatic.
+    ///
+    /// NOTHING GUESSES IT. An aspect ratio is not evidence: a 2:1 movie may be
+    /// a letterboxed panorama, a scan, or a title card. Detection recommends
+    /// and the author decides.
+    public var projection: SourceProjection?
+
     public init(layout: VideoLayout? = nil,
                 eyeOrder: StereoEyeOrder? = nil,
-                placement: VideoPlacementPreference? = nil) {
+                placement: VideoPlacementPreference? = nil,
+                projection: SourceProjection? = nil) {
         self.layout = layout
         self.eyeOrder = eyeOrder
         self.placement = placement
+        self.projection = projection
     }
 
     /// True when the author has decided nothing — so the record can be dropped
     /// rather than written as an empty object.
     public var isEmpty: Bool {
-        layout == nil && eyeOrder == nil && placement == nil
+        layout == nil && eyeOrder == nil && placement == nil && projection == nil
     }
 }

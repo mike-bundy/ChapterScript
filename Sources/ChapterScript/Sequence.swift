@@ -46,17 +46,17 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     public var storyRegions: [StoryRegion]
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
-    /// EDITOR-ONLY organizational colour, as an index into the authoring
-    /// tool's sequence palette. `nil` means "no explicit colour" — editors
-    /// fall back to colouring by sequence position.
+    /// EDITOR-ONLY organizational color, as an index into the authoring
+    /// tool's sequence palette. `nil` means "no explicit color" — editors
+    /// fall back to coloring by sequence position.
     ///
-    /// Runtime MUST ignore this. It exists so an author can colour-code a
+    /// Runtime MUST ignore this. It exists so an author can color-code a
     /// long chapter in Chapter Studio / ChapterVision and have that survive
     /// save, reopen, and live sync. It has no visual effect on playback and
     /// ChapterPlayer never reads it.
     ///
     /// An index rather than an RGB triple, so the two editors agree on the
-    /// same palette and a colour can't arrive as an unrenderable value.
+    /// same palette and a color can't arrive as an unrenderable value.
     public var editorColorIndex: Int?
 
     public init(
@@ -135,7 +135,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
         self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
         // Tolerant, like every other additive field: documents written before
-        // sequence colours existed simply have no colour.
+        // sequence colors existed simply have no color.
         self.editorColorIndex = try c.decodeIfPresent(Int.self, forKey: .editorColorIndex)
     }
 }

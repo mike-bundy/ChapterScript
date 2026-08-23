@@ -152,10 +152,10 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// playback, gates or animation. Runtime ignores this field entirely.
     public var sceneFolderTree: [SceneFolderNode]
 
-    /// Author colour tags for individual Timeline clips, keyed by the clip's
+    /// Author color tags for individual Timeline clips, keyed by the clip's
     /// OPENING action id (stable since format v4 — this keying is one of the
     /// things stable action ids exist for). The value is a palette index, not
-    /// an RGB value: colour is organisation, and organisation should not be
+    /// an RGB value: color is organisation, and organisation should not be
     /// able to encode arbitrary meaning. Runtime-inert.
     public var clipColors: [String: Int]
 
@@ -245,6 +245,21 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// Editor-only. Runtime ignores this field entirely.
     public var trackSurfaceOwners: [String: String]
 
+    /// Which Sequence each EMPTY AUDIO TRACK belongs to, keyed by channel.
+    ///
+    /// The exact counterpart of `trackSurfaceOwners`, and separate from it for
+    /// a reason that is not tidiness: a surface is keyed by ENTITY ID and an
+    /// audio track by CHANNEL NAME, and the pruning rule for the first checks
+    /// its key against the chapter's entity list. Sharing one map would prune
+    /// every audio track away the first time a document was cleaned.
+    ///
+    /// An audio track with a clip on it needs no entry — its row comes from
+    /// the clip, exactly as a video destination's does. This answers only
+    /// "who gets the empty row".
+    ///
+    /// Editor-only. Runtime ignores this field entirely.
+    public var audioTrackOwners: [String: String]
+
     public var isEmpty: Bool {
         bins.isEmpty && timelineGroups.isEmpty
             && sceneFolders.isEmpty && sceneFolderTree.isEmpty
@@ -252,6 +267,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
             && audioInterpretations.isEmpty && mediaKindOverrides.isEmpty
             && videoInterpretations.isEmpty
             && trackSurfaceOwners.isEmpty
+            && audioTrackOwners.isEmpty
     }
 
     public init(
@@ -265,7 +281,8 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         audioInterpretations: [String: AudioInterpretation] = [:],
         mediaKindOverrides: [String: MediaKindOverride] = [:],
         videoInterpretations: [String: VideoInterpretation] = [:],
-        trackSurfaceOwners: [String: String] = [:]
+        trackSurfaceOwners: [String: String] = [:],
+        audioTrackOwners: [String: String] = [:]
     ) {
         self.bins = bins
         self.timelineGroups = timelineGroups
@@ -278,13 +295,14 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.mediaKindOverrides = mediaKindOverrides
         self.videoInterpretations = videoInterpretations
         self.trackSurfaceOwners = trackSurfaceOwners
+        self.audioTrackOwners = audioTrackOwners
     }
 
     private enum CodingKeys: String, CodingKey {
         case bins, timelineGroups, sceneFolders, sceneFolderTree
         case clipColors, lockedClips, clipGroups
         case audioInterpretations, mediaKindOverrides, videoInterpretations
-        case trackSurfaceOwners
+        case trackSurfaceOwners, audioTrackOwners
     }
 
     public init(from decoder: Decoder) throws {
@@ -315,6 +333,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners
+        ) ?? [:]
+        self.audioTrackOwners = try c.decodeIfPresent(
+            [String: String].self, forKey: .audioTrackOwners
         ) ?? [:]
     }
 }

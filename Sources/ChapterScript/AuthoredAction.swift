@@ -8,7 +8,7 @@ import Foundation
 ///
 ///   * inserting an action invalidated every later address, including ones in
 ///     flight over the live-sync wire;
-///   * nothing could be attached to a clip — colour, lock, transitions, group
+///   * nothing could be attached to a clip — color, lock, transitions, group
 ///     membership, notes — because the thing it pointed at moved;
 ///   * the two buckets were a second identity domain for what is, to an author,
 ///     the same kind of thing.
