@@ -55,6 +55,23 @@ public struct TransformData: Codable, Sendable, Equatable {
     }
 
     public static let identity = TransformData()
+
+    /// TOLERANT DECODE, like the rest of the format.
+    ///
+    /// The synthesized decoder required all three keys, so a transform
+    /// written with only a position — by an older build, a hand-authored
+    /// fixture, or another tool — failed the whole document. There is
+    /// nothing to guess: an absent rotation is identity and an absent
+    /// scale is unit, which is exactly what `init` already says they are.
+    ///
+    /// ENCODING IS UNCHANGED: all three keys are always written, so
+    /// existing files re-save byte-identically.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.position = try c.decodeIfPresent(Vec3.self, forKey: .position) ?? .zero
+        self.rotation = try c.decodeIfPresent(Quat.self, forKey: .rotation) ?? .identity
+        self.scale = try c.decodeIfPresent(Vec3.self, forKey: .scale) ?? Vec3(1, 1, 1)
+    }
 }
 
 public struct Quat: Codable, Sendable, Equatable, Hashable {

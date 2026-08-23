@@ -98,9 +98,22 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.description = try c.decodeIfPresent(String.self, forKey: .description)
         self.entities = try c.decode([EntityDefinition].self, forKey: .entities)
         self.sequences = try c.decode([SequenceDefinitionDTO].self, forKey: .sequences)
-        self.particlePresets = try c.decode([ParticleEmitterPreset].self, forKey: .particlePresets)
+        // TOLERANT. This field arrived with the particle pass, so every
+        // Chapter saved before it lacks the key — and required, that
+        // meant a document authored in an earlier Maestro could not be
+        // opened at all. Every other late-added field on this type is
+        // already `decodeIfPresent`; this one was the exception.
+        self.particlePresets = try c.decodeIfPresent(
+            [ParticleEmitterPreset].self, forKey: .particlePresets) ?? []
         self.environment = try c.decodeIfPresent(EnvironmentSpec.self, forKey: .environment)
-        self.manifest = try c.decode(AssetManifest.self, forKey: .manifest)
+        // Tolerant: an absent manifest unambiguously means a Chapter with
+        // no asset files, which is what a placeholder-only or
+        // primitives-only Chapter is. `entities` and `sequences` above
+        // stay REQUIRED on purpose — a document without them is not a
+        // Chapter, and decoding it as empty would hide a corrupt file
+        // behind a blank editor.
+        self.manifest = try c.decodeIfPresent(AssetManifest.self, forKey: .manifest)
+            ?? AssetManifest(entries: [])
         self.storyState = try c.decodeIfPresent([StoryStateDefinition].self,
                                                 forKey: .storyState) ?? []
         self.defaultSequenceId = try c.decodeIfPresent(String.self, forKey: .defaultSequenceId)

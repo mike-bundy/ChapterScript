@@ -138,6 +138,58 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.interactions = (interactions?.isEmpty ?? true) ? nil : interactions
         self.interactionFeedback = interactionFeedback
     }
+
+    /// TOLERANT DECODE.
+    ///
+    /// This used the synthesized decoder, which makes EVERY non-optional
+    /// stored property a required key — so each field added over the
+    /// life of the format silently became mandatory, and a Chapter
+    /// written before it could no longer be opened at all.
+    /// `initiallyEnabled` is the one that surfaced it; the fix is the
+    /// class of problem, not that field.
+    ///
+    /// `id` and `kind` stay REQUIRED: an entity without them is not an
+    /// entity, and defaulting them would turn a corrupt file into a
+    /// silently wrong scene. Everything else takes the same default the
+    /// memberwise initializer already declares — so an absent field
+    /// means exactly what it has always meant.
+    ///
+    /// ENCODING IS UNCHANGED, so existing documents re-save
+    /// byte-identically.
+    ///
+    /// THE COST OF WRITING THIS BY HAND: a property added later and not
+    /// added HERE is silently dropped on every load — the field encodes,
+    /// and comes back nil. That happened while this was being written
+    /// (`interactionFeedback`), and the round-trip test caught it. Any
+    /// new stored property must be added to this decoder, and the
+    /// round-trip tests are what will tell you if it was not.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.kind = try c.decode(EntityKind.self, forKey: .kind)
+        self.displayName = try c.decodeIfPresent(String.self, forKey: .displayName)
+        self.transform = try c.decodeIfPresent(TransformData.self, forKey: .transform)
+            ?? .identity
+        self.initiallyEnabled = try c.decodeIfPresent(Bool.self, forKey: .initiallyEnabled)
+            ?? false
+        self.gestureEnabled = try c.decodeIfPresent(Bool.self, forKey: .gestureEnabled)
+            ?? false
+        self.primitive = try c.decodeIfPresent(PrimitiveSpec.self, forKey: .primitive)
+        self.usdzAssetId = try c.decodeIfPresent(String.self, forKey: .usdzAssetId)
+        self.usdzAnimation = try c.decodeIfPresent(UsdzAnimationSpec.self, forKey: .usdzAnimation)
+        self.text = try c.decodeIfPresent(TextSpec.self, forKey: .text)
+        self.light = try c.decodeIfPresent(LightSpec.self, forKey: .light)
+        self.videoPanel = try c.decodeIfPresent(VideoPanelSpec.self, forKey: .videoPanel)
+        self.placeholder = try c.decodeIfPresent(PlaceholderSpec.self, forKey: .placeholder)
+        self.particlePresetId = try c.decodeIfPresent(String.self, forKey: .particlePresetId)
+        self.customFactoryId = try c.decodeIfPresent(String.self, forKey: .customFactoryId)
+        self.customParameters = try c.decodeIfPresent(
+            [String: AnyCodableValue].self, forKey: .customParameters)
+        self.interactions = try c.decodeIfPresent(
+            [InteractionSpec].self, forKey: .interactions)
+        self.interactionFeedback = try c.decodeIfPresent(
+            InteractionFeedbackSpec.self, forKey: .interactionFeedback)
+    }
 }
 
 /// Playback settings for a USDZ model's EMBEDDED animation clips.
@@ -226,6 +278,19 @@ public struct PrimitiveSpec: Codable, Sendable, Equatable {
         self.size = size
         self.material = material
         self.attachedParticlePresetId = attachedParticlePresetId
+    }
+
+    /// Tolerant, for the reason `EntityDefinition`'s decoder is: `shape`
+    /// and `size` define the primitive and stay required; `material` has
+    /// an unambiguous default and became mandatory only because the
+    /// synthesized decoder made it so.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.shape = try c.decode(PrimitiveShape.self, forKey: .shape)
+        self.size = try c.decode(Vec3.self, forKey: .size)
+        self.material = try c.decodeIfPresent(MaterialSpec.self, forKey: .material) ?? .default
+        self.attachedParticlePresetId = try c.decodeIfPresent(
+            String.self, forKey: .attachedParticlePresetId)
     }
 }
 
