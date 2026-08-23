@@ -44,6 +44,29 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// region of its own — an author never draws a block to get ordinary
     /// playback. See `StoryRegion`.
     public var storyRegions: [StoryRegion]
+    /// SEQUENCE-LOCAL REST PLACEMENT, keyed by entity id: where an
+    /// object sits IN THIS SEQUENCE when nothing animates it.
+    ///
+    /// The entity's own `transform` is the Chapter-global rest — one
+    /// object, one pose, every Sequence. That was the recorded defect
+    /// (EDITOR_CONTRACTS §18): moving a prop at rest in Sequence 1
+    /// silently moved it in Sequences 2 and 3. An entry here OVERRIDES
+    /// the global rest for this Sequence only; an absent entry falls
+    /// back to it, so every existing Chapter behaves identically.
+    ///
+    /// Additive and tolerant: `nil` (every document written before this
+    /// existed) emits NO key on save, and an emptied map normalizes to
+    /// `nil` (`didSet`) so a Chapter never told about local placement
+    /// re-saves byte-identically. Animation composes ON TOP of the
+    /// resolved rest — keys still override channels wholesale, and a
+    /// keyed channel never reads rest at all.
+    ///
+    /// This map is AUTHORED CONTENT (document truth, synced, undoable) —
+    /// never a place for editor view state, Stage scale, or Viewer
+    /// alignment offsets.
+    public var restPlacements: [String: TransformData]? {
+        didSet { if restPlacements?.isEmpty == true { restPlacements = nil } }
+    }
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
     /// EDITOR-ONLY organizational color, as an index into the authoring
@@ -71,6 +94,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         stereoTracks: [StereoAutomationTrack] = [],
         backdropTrack: [BackdropCue] = [],
         storyRegions: [StoryRegion] = [],
+        restPlacements: [String: TransformData]? = nil,
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
         onComplete: CompletionActionDTO = .holdOnLastStep,
         editorColorIndex: Int? = nil
@@ -87,12 +111,22 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.stereoTracks = stereoTracks
         self.backdropTrack = backdropTrack
         self.storyRegions = storyRegions
+        self.restPlacements = (restPlacements?.isEmpty == true) ? nil : restPlacements
         self.visibility = visibility
         self.onComplete = onComplete
     }
 
     public var totalDuration: Double {
         steps.reduce(0) { $0 + $1.duration }
+    }
+
+    /// THE one resolution of an entity's rest pose in this Sequence:
+    /// the Sequence-local placement when one exists, the given
+    /// Chapter-global rest otherwise. Every consumer — evaluator hosts,
+    /// editors, the runtime — resolves through this so no two surfaces
+    /// can disagree about where an unanimated object sits.
+    public func restTransform(for entityId: String, chapterRest: TransformData) -> TransformData {
+        restPlacements?[entityId] ?? chapterRest
     }
 
     // Decode-if-present for `presentation` and `immersiveBackdrop` so docs
@@ -103,6 +137,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case id, name, phase, presentation, immersiveBackdrop
         case steps, animationTracks, audioTracks, stereoTracks, backdropTrack, visibility, onComplete
         case storyRegions
+        case restPlacements
         case editorColorIndex
     }
 
@@ -132,6 +167,11 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         // Absent in every document written before Explore existed. An empty
         // list is a fully Directed Sequence — exactly the previous behaviour.
         self.storyRegions = try c.decodeIfPresent([StoryRegion].self, forKey: .storyRegions) ?? []
+        // Absent in every document written before Sequence-local rest
+        // placement existed — and normalized so empty and absent are the
+        // same fact.
+        let decodedPlacements = try c.decodeIfPresent([String: TransformData].self, forKey: .restPlacements)
+        self.restPlacements = (decodedPlacements?.isEmpty == true) ? nil : decodedPlacements
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
         self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
         // Tolerant, like every other additive field: documents written before
