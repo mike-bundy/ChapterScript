@@ -41,6 +41,11 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     public var text: TextSpec?
     public var light: LightSpec?
     public var videoPanel: VideoPanelSpec?
+    /// Set only when `kind == .imagePanel`: a still shown on a flat plate in
+    /// the scene, at the source's own aspect ratio. Additive — an older
+    /// player decodes the kind as `.custom`, finds no factory and builds
+    /// nothing, which is the right degradation for a picture it cannot draw.
+    public var imagePanel: ImagePanelSpec?
     /// Set only when `kind == .placeholder`: blocking content standing in for
     /// media that does not exist yet. Carries NO file reference — see
     /// `PlaceholderSpec`.
@@ -109,6 +114,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         text: TextSpec? = nil,
         light: LightSpec? = nil,
         videoPanel: VideoPanelSpec? = nil,
+        imagePanel: ImagePanelSpec? = nil,
         placeholder: PlaceholderSpec? = nil,
         particlePresetId: String? = nil,
         customFactoryId: String? = nil,
@@ -128,6 +134,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.text = text
         self.light = light
         self.videoPanel = videoPanel
+        self.imagePanel = imagePanel
         self.placeholder = placeholder
         self.particlePresetId = particlePresetId
         self.customFactoryId = customFactoryId
@@ -180,6 +187,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.text = try c.decodeIfPresent(TextSpec.self, forKey: .text)
         self.light = try c.decodeIfPresent(LightSpec.self, forKey: .light)
         self.videoPanel = try c.decodeIfPresent(VideoPanelSpec.self, forKey: .videoPanel)
+        self.imagePanel = try c.decodeIfPresent(ImagePanelSpec.self, forKey: .imagePanel)
         self.placeholder = try c.decodeIfPresent(PlaceholderSpec.self, forKey: .placeholder)
         self.particlePresetId = try c.decodeIfPresent(String.self, forKey: .particlePresetId)
         self.customFactoryId = try c.decodeIfPresent(String.self, forKey: .customFactoryId)
@@ -215,6 +223,11 @@ public enum EntityKind: String, Codable, Sendable, Equatable {
     case text3D
     case light
     case videoPanel
+    /// A STILL SHOWN ON A FLAT PLATE. The image sibling of `.videoPanel`, and
+    /// a real kind rather than a tagged `.custom`, because an image that can
+    /// only ever feed a skybox picker is not first-class media. Carries
+    /// `EntityDefinition.imagePanel`.
+    case imagePanel
     case particles
     /// Blocking content — an authored stand-in for media that does not exist
     /// yet. Carries `EntityDefinition.placeholder`. A player that does not
@@ -444,6 +457,53 @@ public struct VideoPanelSpec: Codable, Sendable, Equatable {
         self.cornerRadius = cornerRadius
         self.spatialPresentation = spatialPresentation
         self.passthroughTinting = passthroughTinting
+    }
+}
+
+/// A still image shown on a flat plate in the scene.
+///
+/// `width` and `height` are METRES and carry the source's own aspect ratio —
+/// an image panel is a photograph on a wall, so it is never cropped and never
+/// stretched to a house shape. The authoring side computes them from the
+/// probed pixel dimensions once, at import; the runtime just builds the quad.
+public struct ImagePanelSpec: Codable, Sendable, Equatable {
+    /// Manifest filename of the still. The panel IS this file — replacing it
+    /// is a media replacement, not a property edit.
+    public var file: String
+    public var width: Float
+    public var height: Float
+    /// Rounded corners, in metres. nil/0 = square.
+    public var cornerRadius: Float?
+    /// PRESENT THE TWO EYES OF AN APPLE SPATIAL PHOTO, where the platform can.
+    ///
+    /// `nil` means "whatever the platform does by default", which on a runtime
+    /// with no stereo image path is a monoscopic plate. It is deliberately NOT
+    /// a claim that the file IS spatial — that is read from the bytes every
+    /// time and never stored.
+    public var preferStereoPresentation: Bool?
+
+    public init(file: String,
+                width: Float,
+                height: Float,
+                cornerRadius: Float? = nil,
+                preferStereoPresentation: Bool? = nil) {
+        self.file = file
+        self.width = width
+        self.height = height
+        self.cornerRadius = cornerRadius
+        self.preferStereoPresentation = preferStereoPresentation
+    }
+
+    /// Tolerant for the reason every spec here is: a field added later must
+    /// not make an existing document unopenable.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.file = try c.decode(String.self, forKey: .file)
+        self.width = try c.decodeIfPresent(Float.self, forKey: .width) ?? 1.6
+        self.height = try c.decodeIfPresent(Float.self, forKey: .height) ?? 0.9
+        self.cornerRadius = try c.decodeIfPresent(Float.self, forKey: .cornerRadius)
+        self.preferStereoPresentation = try c.decodeIfPresent(
+            Bool.self, forKey: .preferStereoPresentation)
     }
 }
 

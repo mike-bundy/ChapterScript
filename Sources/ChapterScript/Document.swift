@@ -233,6 +233,21 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// are re-read from the bytes on every open and never stored here.
     public var videoInterpretations: [String: VideoInterpretation]
 
+    /// AUTHOR INTERPRETATION OF AN IMAGE SOURCE, keyed by filename.
+    ///
+    /// The still sibling of `videoInterpretations`, for the one fact about a
+    /// picture that inspection can never establish: whether its pixels are a
+    /// flat photograph or a horizontal sweep, and how wide that sweep is. A
+    /// 2:1 image may be an equirectangular 360 and may equally be a panorama,
+    /// so somebody has to say, and what they say has to survive a reopen. The
+    /// author's preferred presentation rides along for the same reason.
+    ///
+    /// Absent (the common case) means Automatic. Detected facts — pixel
+    /// dimensions, format, whether the file is an Apple Spatial Photo, a
+    /// projection the container DECLARES — are re-read from the bytes on every
+    /// open and never stored here.
+    public var imageInterpretations: [String: ImageInterpretation]
+
     /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
     /// surface's entity id.
     ///
@@ -279,6 +294,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
             && clipColors.isEmpty && lockedClips.isEmpty && clipGroups.isEmpty
             && audioInterpretations.isEmpty && mediaKindOverrides.isEmpty
             && videoInterpretations.isEmpty
+            && imageInterpretations.isEmpty
             && trackSurfaceOwners.isEmpty
             && audioTrackOwners.isEmpty
     }
@@ -294,6 +310,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         audioInterpretations: [String: AudioInterpretation] = [:],
         mediaKindOverrides: [String: MediaKindOverride] = [:],
         videoInterpretations: [String: VideoInterpretation] = [:],
+        imageInterpretations: [String: ImageInterpretation] = [:],
         trackSurfaceOwners: [String: String] = [:],
         audioTrackOwners: [String: String] = [:]
     ) {
@@ -307,6 +324,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.audioInterpretations = audioInterpretations
         self.mediaKindOverrides = mediaKindOverrides
         self.videoInterpretations = videoInterpretations
+        self.imageInterpretations = imageInterpretations
         self.trackSurfaceOwners = trackSurfaceOwners
         self.audioTrackOwners = audioTrackOwners
     }
@@ -315,6 +333,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         case bins, timelineGroups, sceneFolders, sceneFolderTree
         case clipColors, lockedClips, clipGroups
         case audioInterpretations, mediaKindOverrides, videoInterpretations
+        case imageInterpretations
         case trackSurfaceOwners, audioTrackOwners
     }
 
@@ -343,6 +362,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.videoInterpretations = try c.decodeIfPresent(
             [String: VideoInterpretation].self, forKey: .videoInterpretations
+        ) ?? [:]
+        self.imageInterpretations = try c.decodeIfPresent(
+            [String: ImageInterpretation].self, forKey: .imageInterpretations
         ) ?? [:]
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners
