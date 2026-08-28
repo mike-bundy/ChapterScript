@@ -228,6 +228,26 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
         self.continuations = continuations
     }
 
+    /// WHERE A LOOPING TARGET IS SAMPLED, given how long the story has been
+    /// parked at this region's boundary.
+    ///
+    ///     regionStart + (dwell modulo regionSpan)
+    ///
+    /// REGION-RELATIVE, and that is the whole point: looping repeats THIS
+    /// REGION'S SPAN, not the Sequence from zero. It moves no key and rewinds
+    /// no clock — the authored clock stays parked at the boundary and this is
+    /// an overlay the sampler alone reads.
+    ///
+    /// Pure and static so BOTH runtimes call it: `StoryRegionRuntime` on the
+    /// device, and the Mac's preview compositor. The rule for what an author
+    /// sees when they press play must not be a second implementation of the
+    /// rule for what the audience sees.
+    public static func loopSampleTime(region: StoryRegion, dwell: TimeInterval) -> Double {
+        let span = region.previewDuration
+        guard span > 0.0001 else { return region.startTime }
+        return region.startTime + max(0, dwell).truncatingRemainder(dividingBy: span)
+    }
+
     public static func newID() -> String { "sr_" + UUID().uuidString.prefix(12).lowercased() }
 
     /// A region shorter than a frame is not a span the author can see or aim

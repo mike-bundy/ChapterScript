@@ -167,10 +167,8 @@ public struct StoryRegionRuntime: Sendable, Equatable {
     /// authored time is doing the job itself.
     public func loopSampleTime(authoredTime: Double, atRuntimeTime now: TimeInterval) -> Double? {
         guard phase(authoredTime: authoredTime) == .held else { return nil }
-        let span = region.previewDuration
-        guard span > 0.0001 else { return region.startTime }
-        let dwell = max(0, elapsed(atRuntimeTime: now) - span)
-        return region.startTime + dwell.truncatingRemainder(dividingBy: span)
+        return StoryRegion.loopSampleTime(
+            region: region, dwell: max(0, elapsed(atRuntimeTime: now) - region.previewDuration))
     }
 
     /// How long the story has been parked at the boundary. What a runtime
