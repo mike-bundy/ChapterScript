@@ -709,20 +709,49 @@ public struct AssetEntry: Codable, Sendable, Equatable {
     public var isExternal: Bool { external != nil }
 }
 
-public enum AssetKind: String, Codable, Sendable, Equatable {
+public enum AssetKind: Codable, Sendable, Equatable, Hashable {
     case audio
     case video
     case usdz
     case image
     case other
+    /// A kind this build does not know, preserved VERBATIM. Tolerant decode
+    /// alone (degrading to `.other`) would silently rewrite a newer tool's
+    /// kind on the next save — the `NavigationIntent.unsupported` rule
+    /// applies: an older build must not downgrade a newer build's document.
+    /// Treat it as `.other` for behavior; re-emit the original raw value.
+    case unknown(String)
 
-    /// Tolerant decode: an unrecognized kind from a newer tool degrades to
-    /// `.other` instead of failing the whole document load — the same rule
-    /// `EntityKind`, `GateType` and `MediaKindOverride` already follow. This
-    /// was the one media-side format enum without it.
+    public var rawValue: String {
+        switch self {
+        case .audio: return "audio"
+        case .video: return "video"
+        case .usdz: return "usdz"
+        case .image: return "image"
+        case .other: return "other"
+        case .unknown(let raw): return raw
+        }
+    }
+
+    public init(rawValue: String) {
+        switch rawValue {
+        case "audio": self = .audio
+        case "video": self = .video
+        case "usdz": self = .usdz
+        case "image": self = .image
+        case "other": self = .other
+        default: self = .unknown(rawValue)
+        }
+    }
+
     public init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
-        self = AssetKind(rawValue: raw) ?? .other
+        self = AssetKind(rawValue: raw)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }
 

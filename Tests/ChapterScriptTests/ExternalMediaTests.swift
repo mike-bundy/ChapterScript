@@ -102,12 +102,14 @@ final class ExternalMediaTests: XCTestCase {
         XCTAssertEqual(loc.volumeName, "X")
     }
 
-    func testUnknownAssetKindDegradesToOtherInsteadOfThrowing() throws {
+    func testUnknownAssetKindIsPreservedInsteadOfThrowing() throws {
         let entry = """
         {"id": "x.newthing", "kind": "hologram", "relativePath": "x.newthing"}
         """
         let decoded = try ChapterScriptFormat.makeDecoder().decode(AssetEntry.self, from: Data(entry.utf8))
-        XCTAssertEqual(decoded.kind, .other)
+        // Tolerant AND faithful: the load never fails, and the unknown kind
+        // is carried verbatim so a re-save cannot downgrade the document.
+        XCTAssertEqual(decoded.kind, .unknown("hologram"))
     }
 
     func testKnownAssetKindsStillDecodeExactly() throws {
@@ -116,5 +118,27 @@ final class ExternalMediaTests: XCTestCase {
             let decoded = try ChapterScriptFormat.makeDecoder().decode([AssetKind].self, from: data)
             XCTAssertEqual(decoded, [kind])
         }
+    }
+
+    /// An unrecognized kind from a newer tool is PRESERVED verbatim, not
+    /// rewritten to "other" on the next save — the NavigationIntent rule:
+    /// an older build must never downgrade a newer build's document.
+    func testUnknownAssetKindRawValueSurvivesRoundTrip() throws {
+        let json = Data(#"["futureAmazingKind"]"#.utf8)
+        let decoded = try ChapterScriptFormat.makeDecoder().decode([AssetKind].self, from: json)
+        XCTAssertEqual(decoded, [.unknown("futureAmazingKind")])
+        let re = try ChapterScriptFormat.makeEncoder().encode(decoded)
+        XCTAssertTrue(String(data: re, encoding: .utf8)!.contains("futureAmazingKind"))
+        let again = try ChapterScriptFormat.makeDecoder().decode([AssetKind].self, from: re)
+        XCTAssertEqual(again, decoded)
+    }
+
+    /// Ordinary "other" is still the plain known case, never wrapped.
+    func testOtherStaysOther() throws {
+        let decoded = try ChapterScriptFormat.makeDecoder().decode(
+            [AssetKind].self, from: Data(#"["other"]"#.utf8))
+        XCTAssertEqual(decoded, [.other])
+        XCTAssertEqual(AssetKind(rawValue: "other"), .other)
+        XCTAssertEqual(AssetKind.unknown("futureAmazingKind").rawValue, "futureAmazingKind")
     }
 }
