@@ -67,6 +67,28 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     public var restPlacements: [String: TransformData]? {
         didSet { if restPlacements?.isEmpty == true { restPlacements = nil } }
     }
+    /// SEQUENCE-LOCAL PANEL STYLE, keyed by entity id: how a video panel
+    /// PRESENTS in this Sequence — corner radius, spatial presentation,
+    /// passthrough tinting.
+    ///
+    /// The entity's own `VideoPanelSpec` / `PlaceholderSpec` is the
+    /// Chapter-global default — one object, one style, every Sequence.
+    /// That was the recorded defect's second half (EDITOR_CONTRACTS §26a):
+    /// rounding "Main Screen" while editing one Sequence silently rounded
+    /// it in every other, because style had no Sequence-local layer the
+    /// way the transform does. An entry here OVERRIDES the global style
+    /// for this Sequence only, PER FIELD: a `nil` field inherits the
+    /// Chapter value, a present field wins — including explicit "square"
+    /// (radius 0) and explicit "flat", which are different facts from
+    /// "no opinion".
+    ///
+    /// Additive and tolerant, exactly like `restPlacements`: absent in
+    /// every earlier document, emits no key when nil, and an emptied map
+    /// normalizes to nil so untouched Chapters re-save byte-identically.
+    /// AUTHORED CONTENT — document truth, synced, undoable.
+    public var panelStyles: [String: PanelStyleOverride]? {
+        didSet { if panelStyles?.isEmpty == true { panelStyles = nil } }
+    }
     public var visibility: VisibilityStateDTO
     public var onComplete: CompletionActionDTO
     /// EDITOR-ONLY organizational color, as an index into the authoring
@@ -95,6 +117,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         backdropTrack: [BackdropCue] = [],
         storyRegions: [StoryRegion] = [],
         restPlacements: [String: TransformData]? = nil,
+        panelStyles: [String: PanelStyleOverride]? = nil,
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
         onComplete: CompletionActionDTO = .holdOnLastStep,
         editorColorIndex: Int? = nil
@@ -112,6 +135,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.backdropTrack = backdropTrack
         self.storyRegions = storyRegions
         self.restPlacements = (restPlacements?.isEmpty == true) ? nil : restPlacements
+        self.panelStyles = (panelStyles?.isEmpty == true) ? nil : panelStyles
         self.visibility = visibility
         self.onComplete = onComplete
     }
@@ -129,6 +153,20 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         restPlacements?[entityId] ?? chapterRest
     }
 
+    /// THE one resolution of an entity's panel style in this Sequence —
+    /// the Sequence-local override composed over the Chapter default, per
+    /// field. Every consumer (both editors' inspectors and viewports, and
+    /// the runtime's sequence entry) resolves through this so no two
+    /// surfaces can disagree about how a panel presents.
+    public func panelStyle(for entityId: String,
+                           base: PanelStyleOverride) -> PanelStyleOverride {
+        guard let override = panelStyles?[entityId] else { return base }
+        return PanelStyleOverride(
+            cornerRadius: override.cornerRadius ?? base.cornerRadius,
+            spatialPresentation: override.spatialPresentation ?? base.spatialPresentation,
+            passthroughTinting: override.passthroughTinting ?? base.passthroughTinting)
+    }
+
     // Decode-if-present for `presentation` and `immersiveBackdrop` so docs
     // authored before this format revision keep loading. `phase` is kept
     // independent — it remains a free-form routing tag — but if a legacy
@@ -138,6 +176,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case steps, animationTracks, audioTracks, stereoTracks, backdropTrack, visibility, onComplete
         case storyRegions
         case restPlacements
+        case panelStyles
         case editorColorIndex
     }
 
@@ -172,11 +211,47 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         // same fact.
         let decodedPlacements = try c.decodeIfPresent([String: TransformData].self, forKey: .restPlacements)
         self.restPlacements = (decodedPlacements?.isEmpty == true) ? nil : decodedPlacements
+        // Absent in every document written before Sequence-local panel
+        // style existed — normalized so empty and absent are the same fact.
+        let decodedStyles = try c.decodeIfPresent([String: PanelStyleOverride].self, forKey: .panelStyles)
+        self.panelStyles = (decodedStyles?.isEmpty == true) ? nil : decodedStyles
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
         self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
         // Tolerant, like every other additive field: documents written before
         // sequence colors existed simply have no color.
         self.editorColorIndex = try c.decodeIfPresent(Int.self, forKey: .editorColorIndex)
+    }
+}
+
+/// HOW A VIDEO PANEL PRESENTS IN ONE SEQUENCE — the Sequence-local style
+/// layer over the entity's Chapter-global `VideoPanelSpec` /
+/// `PlaceholderSpec`, exactly as `restPlacements` layers over the
+/// Chapter-global transform.
+///
+/// PER-FIELD SEMANTICS: `nil` INHERITS the Chapter value; a present value
+/// WINS for this Sequence — and explicit "square" (`cornerRadius: 0`),
+/// explicit `.flat` and explicit `false` are all expressible, because
+/// "this Sequence turns it off" is a different fact from "this Sequence
+/// has no opinion". An override whose every field is nil is empty and is
+/// normalized away.
+public struct PanelStyleOverride: Codable, Sendable, Equatable {
+    /// Rounded panel corners in meters for this Sequence. 0 = square.
+    public var cornerRadius: Float?
+    /// How this Sequence presents a spatial (MV-HEVC) source on the panel.
+    public var spatialPresentation: SpatialVideoPresentation?
+    /// Whether the picture tints the passthrough in this Sequence.
+    public var passthroughTinting: Bool?
+
+    public var isEmpty: Bool {
+        cornerRadius == nil && spatialPresentation == nil && passthroughTinting == nil
+    }
+
+    public init(cornerRadius: Float? = nil,
+                spatialPresentation: SpatialVideoPresentation? = nil,
+                passthroughTinting: Bool? = nil) {
+        self.cornerRadius = cornerRadius
+        self.spatialPresentation = spatialPresentation
+        self.passthroughTinting = passthroughTinting
     }
 }
 

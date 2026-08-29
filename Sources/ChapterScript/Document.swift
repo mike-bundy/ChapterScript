@@ -613,6 +613,61 @@ public struct AssetManifest: Codable, Sendable, Equatable {
     }
 }
 
+/// Where an externally stored source was last found on the authoring machine.
+///
+/// A Source is not a pathname: the manifest entry's `id` is the stable identity
+/// every authored use references, and this record only describes where the
+/// BYTES currently live when the author chose to leave the file in place
+/// instead of copying it into the bundle's `assets/` folder.
+///
+/// Machine-affine by design: `bookmark` is macOS bookmark data (tracks a file
+/// across moves and renames on the same volume) and `lastKnownPath` is an
+/// absolute path on the machine that authored the reference. A player, or a
+/// Mac that cannot resolve either, treats the source as not currently linked;
+/// nothing here is required for a self-contained bundle, whose entries simply
+/// carry no `external` record. All fields decode tolerantly so a future field
+/// can be added without stranding older documents.
+public struct ExternalMediaLocation: Codable, Sendable, Equatable {
+    /// Absolute POSIX path where the source was last successfully resolved.
+    public var lastKnownPath: String
+    /// Earlier resolved paths, most recent first. Bounded by writers.
+    public var previousPaths: [String]?
+    /// macOS bookmark data for move/rename tracking. Opaque to players.
+    public var bookmark: Data?
+    /// Volume name at last resolution, so an unplugged disk can be told apart
+    /// from a deleted file.
+    public var volumeName: String?
+    /// Content modification date at last resolution, milliseconds since 1970.
+    public var contentModifiedMs: Int?
+
+    public init(
+        lastKnownPath: String,
+        previousPaths: [String]? = nil,
+        bookmark: Data? = nil,
+        volumeName: String? = nil,
+        contentModifiedMs: Int? = nil
+    ) {
+        self.lastKnownPath = lastKnownPath
+        self.previousPaths = previousPaths
+        self.bookmark = bookmark
+        self.volumeName = volumeName
+        self.contentModifiedMs = contentModifiedMs
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case lastKnownPath, previousPaths, bookmark, volumeName, contentModifiedMs
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.lastKnownPath = try c.decodeIfPresent(String.self, forKey: .lastKnownPath) ?? ""
+        self.previousPaths = try c.decodeIfPresent([String].self, forKey: .previousPaths)
+        self.bookmark = try c.decodeIfPresent(Data.self, forKey: .bookmark)
+        self.volumeName = try c.decodeIfPresent(String.self, forKey: .volumeName)
+        self.contentModifiedMs = try c.decodeIfPresent(Int.self, forKey: .contentModifiedMs)
+    }
+}
+
 public struct AssetEntry: Codable, Sendable, Equatable {
     public var id: String
     public var relativePath: String      // path within the .chapterscript/assets/ folder
@@ -622,6 +677,11 @@ public struct AssetEntry: Codable, Sendable, Equatable {
     public var durationMs: Int?           // for audio/video
     public var width: Int?                 // for images/video
     public var height: Int?
+    /// Present when the source's bytes live OUTSIDE the bundle (the author
+    /// chose to leave the file in place). Absent means the bytes are stored
+    /// at `assets/<relativePath>` inside the bundle, exactly as before this
+    /// field existed. `relativePath` remains the serving key either way.
+    public var external: ExternalMediaLocation?
 
     public init(
         id: String,
@@ -631,7 +691,8 @@ public struct AssetEntry: Codable, Sendable, Equatable {
         byteSize: Int64? = nil,
         durationMs: Int? = nil,
         width: Int? = nil,
-        height: Int? = nil
+        height: Int? = nil,
+        external: ExternalMediaLocation? = nil
     ) {
         self.id = id
         self.relativePath = relativePath
@@ -641,7 +702,11 @@ public struct AssetEntry: Codable, Sendable, Equatable {
         self.durationMs = durationMs
         self.width = width
         self.height = height
+        self.external = external
     }
+
+    /// True when the entry's bytes are stored outside the bundle.
+    public var isExternal: Bool { external != nil }
 }
 
 public enum AssetKind: String, Codable, Sendable, Equatable {
@@ -650,6 +715,15 @@ public enum AssetKind: String, Codable, Sendable, Equatable {
     case usdz
     case image
     case other
+
+    /// Tolerant decode: an unrecognized kind from a newer tool degrades to
+    /// `.other` instead of failing the whole document load — the same rule
+    /// `EntityKind`, `GateType` and `MediaKindOverride` already follow. This
+    /// was the one media-side format enum without it.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = AssetKind(rawValue: raw) ?? .other
+    }
 }
 
 /// Particle emitter preset reference. Authored by editors (e.g. Maestro's Afterburn UI),
