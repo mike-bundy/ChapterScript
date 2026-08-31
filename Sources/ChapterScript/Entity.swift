@@ -66,6 +66,9 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     /// with it. Absent means what today means: no members.
     public var members: [RigMember]?
 
+    /// A VECTOR OBJECT'S SPEC (FL-22). Set only when `kind == .vector`.
+    public var vector: VectorSpec?
+
     /// USD SUB-ELEMENT OVERRIDES (FL-16): which named parts of an imported
     /// model the author addressed, by PRIM PATH. Additive and
     /// UNCONDITIONAL - the reference is written and read whether or not
@@ -141,6 +144,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         materialOverrides: [MaterialOverrideSpec]? = nil,
         members: [RigMember]? = nil,
         subElements: [SubElementOverride]? = nil,
+        vector: VectorSpec? = nil,
         interactions: [InteractionSpec]? = nil,
         interactionFeedback: InteractionFeedbackSpec? = nil
     ) {
@@ -164,6 +168,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.materialOverrides = materialOverrides
         self.members = members
         self.subElements = subElements
+        self.vector = vector
         // Normalized here as well as in `didSet`: a property observer does not
         // run during initialization, so an empty array passed in would
         // otherwise encode as `"interactions": []`.
@@ -231,6 +236,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         }
         self.subElements = try c.decodeIfPresent([SubElementOverride].self,
                                                   forKey: .subElements)
+        self.vector = try c.decodeIfPresent(VectorSpec.self, forKey: .vector)
         self.interactions = try c.decodeIfPresent(
             [InteractionSpec].self, forKey: .interactions)
         self.interactionFeedback = try c.decodeIfPresent(
@@ -306,6 +312,12 @@ public enum EntityKind: String, Codable, Sendable, Equatable {
     /// degradation for a parent that does not exist there.
     case rig
     case audioEmitter
+    /// AN IMPORTED SVG AS A THING IN A ROOM (FL-22): generated geometry
+    /// from a vector Source, extruded like a Title. Carries
+    /// `EntityDefinition.vector`. An older player decodes it as `.custom`,
+    /// builds nothing, and every authored fact survives — restored the
+    /// moment a newer build opens it, because the raw value round-trips.
+    case vector
     case custom
 
     /// Unknown kinds decode as `.custom` rather than throwing. A `.custom`
@@ -435,6 +447,70 @@ public struct TextSlotMaterials: Codable, Sendable, Equatable {
     public var isEmpty: Bool {
         front == nil && back == nil && sides == nil
             && frontBevel == nil && backBevel == nil
+    }
+}
+
+/// AN IMPORTED VECTOR OBJECT (FL-22). The SVG is an ORDINARY Source
+/// (`sourceId`); the parsed contours are NEVER persisted — they are
+/// re-derived from the Source's bytes on every open, the same rule that
+/// keeps a prim tree out of the format. Four of these fields are the
+/// SAME TYPES a Title uses — one cap-fill enum, one bevel-profile
+/// reference, one five-slot material assignment — which is the shared
+/// contour-to-mesh contract delivering.
+public struct VectorSpec: Codable, Sendable, Equatable {
+    /// The SVG, an ordinary Source — relinks, replaces and consolidates
+    /// exactly as media does. Missing keeps every authored fact.
+    public var sourceId: String
+    /// nil ⇒ 0 ⇒ FLAT (both caps) — the same toggle-not-mode as a Title.
+    public var extrusionDepth: Float?
+    /// SHARED with TextSpec. Unrecognised ⇒ `.both`, the most complete shape.
+    public var capFill: TextCapFill?
+    public var bevelRadius: Float?
+    /// A preset-library reference, shared with a Title. Unresolved ⇒ no
+    /// bevel, reference KEPT and reported.
+    public var bevelProfileId: String?
+    public var bevelSegments: Int?
+    /// SHARED — the extruder's five slots.
+    public var slotMaterials: TextSlotMaterials?
+    /// Metres; nil ⇒ derived from the viewBox at a default scale.
+    public var physicalWidth: Float?
+
+    public init(sourceId: String,
+                extrusionDepth: Float? = nil,
+                capFill: TextCapFill? = nil,
+                bevelRadius: Float? = nil,
+                bevelProfileId: String? = nil,
+                bevelSegments: Int? = nil,
+                slotMaterials: TextSlotMaterials? = nil,
+                physicalWidth: Float? = nil) {
+        self.sourceId = sourceId
+        self.extrusionDepth = extrusionDepth
+        self.capFill = capFill
+        self.bevelRadius = bevelRadius
+        self.bevelProfileId = bevelProfileId
+        self.bevelSegments = bevelSegments
+        self.slotMaterials = slotMaterials
+        self.physicalWidth = physicalWidth
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sourceId, extrusionDepth, capFill, bevelRadius
+        case bevelProfileId, bevelSegments, slotMaterials, physicalWidth
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.sourceId = try c.decode(String.self, forKey: .sourceId)
+        self.extrusionDepth = try c.decodeIfPresent(Float.self, forKey: .extrusionDepth)
+        // Tolerant enum: a cap written by a newer tool reads as absent
+        // (⇒ .both at build time), never as a failed document.
+        self.capFill = (try? c.decodeIfPresent(String.self, forKey: .capFill))
+            .flatMap { TextCapFill(rawValue: $0) }
+        self.bevelRadius = try c.decodeIfPresent(Float.self, forKey: .bevelRadius)
+        self.bevelProfileId = try c.decodeIfPresent(String.self, forKey: .bevelProfileId)
+        self.bevelSegments = try c.decodeIfPresent(Int.self, forKey: .bevelSegments)
+        self.slotMaterials = try c.decodeIfPresent(TextSlotMaterials.self, forKey: .slotMaterials)
+        self.physicalWidth = try c.decodeIfPresent(Float.self, forKey: .physicalWidth)
     }
 }
 
