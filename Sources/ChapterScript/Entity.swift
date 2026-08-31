@@ -60,6 +60,12 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     /// `PrimitiveSpec.material`; Titles keep `TextSpec.slotMaterials`.
     public var materialOverrides: [MaterialOverrideSpec]?
 
+    /// RIG MEMBERS (FL-15), by ID, in a FLAT array - `entities` stays a
+    /// flat lookup table and nesting definitions is still forbidden. The
+    /// bind lives on the MEMBERSHIP record: a member that leaves takes it
+    /// with it. Absent means what today means: no members.
+    public var members: [RigMember]?
+
     /// WHAT THE VIEWER CAN DO TO THIS OBJECT.
     ///
     /// Interactions attach to the OBJECT, not to a timeline position and not to
@@ -125,6 +131,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         customFactoryId: String? = nil,
         customParameters: [String: AnyCodableValue]? = nil,
         materialOverrides: [MaterialOverrideSpec]? = nil,
+        members: [RigMember]? = nil,
         interactions: [InteractionSpec]? = nil,
         interactionFeedback: InteractionFeedbackSpec? = nil
     ) {
@@ -146,6 +153,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.customFactoryId = customFactoryId
         self.customParameters = customParameters
         self.materialOverrides = materialOverrides
+        self.members = members
         // Normalized here as well as in `didSet`: a property observer does not
         // run during initialization, so an empty array passed in would
         // otherwise encode as `"interactions": []`.
@@ -202,6 +210,15 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
             [String: AnyCodableValue].self, forKey: .customParameters)
         self.materialOverrides = try c.decodeIfPresent(
             [MaterialOverrideSpec].self, forKey: .materialOverrides)
+        // Tolerant: the shape GROUP_RIGS.md originally proposed was a bare
+        // [String]; each id reads as a member with an identity bind.
+        if let full = try? c.decodeIfPresent([RigMember].self, forKey: .members) {
+            self.members = full
+        } else if let bare = try? c.decodeIfPresent([String].self, forKey: .members) {
+            self.members = bare.map { RigMember(id: $0) }
+        } else {
+            self.members = nil
+        }
         self.interactions = try c.decodeIfPresent(
             [InteractionSpec].self, forKey: .interactions)
         self.interactionFeedback = try c.decodeIfPresent(
@@ -263,6 +280,12 @@ public enum EntityKind: String, Codable, Sendable, Equatable {
     /// not playing at all. That is the right degradation.
     ///
     /// See `docs/AUDIO_ARCHITECTURE.md` §2.
+    /// A RIG (FL-15): an Object with a transform, NO geometry, and
+    /// members. It composes their world pose and never rewrites them. An
+    /// older player decodes it as `.custom`, builds nothing, and the
+    /// members simply keep their own authored motion - the right
+    /// degradation for a parent that does not exist there.
+    case rig
     case audioEmitter
     case custom
 
@@ -733,5 +756,33 @@ public enum AnyCodableValue: Codable, Sendable, Equatable {
         case .array(let v): try c.encode(v)
         case .object(let v): try c.encode(v)
         }
+    }
+}
+
+/// One Rig membership (FL-15). `bindParentRest` is the Rig's AUTHORED rest
+/// as it was when this member joined - the frozen bind correction's input.
+/// Stored as the rest (always TRS-representable, and it READS: "this member
+/// joined when the Rig was here"); the inverse is taken at evaluation, in
+/// matrix space. nil means identity - a join at the origin, and what the
+/// bare-[String] proposal shape means.
+///
+/// NOTHING here ever touches the member's own transform or its keys:
+/// joining is byte-identity on the member, by construction.
+public struct RigMember: Codable, Sendable, Equatable {
+    public var id: String
+    public var bindParentRest: TransformData?
+
+    public init(id: String, bindParentRest: TransformData? = nil) {
+        self.id = id
+        self.bindParentRest = bindParentRest
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, bindParentRest }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.bindParentRest = try c.decodeIfPresent(TransformData.self,
+                                                    forKey: .bindParentRest)
     }
 }
