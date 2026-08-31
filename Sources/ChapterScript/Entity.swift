@@ -491,6 +491,12 @@ public struct TextSpec: Codable, Sendable, Equatable {
     public var material: MaterialSpec?
     public var slotMaterials: TextSlotMaterials?
 
+    /// K12: the two-tier template split, expressed as an EXPLICIT FLAG ON
+    /// THE FIELD — never a magic-string sentinel. In a LOCKED template the
+    /// consumer edits exactly the flagged text and nothing else. Absent
+    /// means `false`: locked by default in a locked template.
+    public var isConsumerEditable: Bool?
+
     public init(text: String, fontSize: Float = 0.1, color: ColorRGBA = .white,
                 maxWidth: Float? = nil,
                 fontFamily: String? = nil, fontWeight: Int? = nil,
@@ -501,7 +507,8 @@ public struct TextSpec: Codable, Sendable, Equatable {
                 bevelRadius: Float? = nil, bevelProfileId: String? = nil,
                 bevelSegments: Int? = nil,
                 material: MaterialSpec? = nil,
-                slotMaterials: TextSlotMaterials? = nil) {
+                slotMaterials: TextSlotMaterials? = nil,
+                isConsumerEditable: Bool? = nil) {
         self.text = text
         self.fontSize = fontSize
         self.color = color
@@ -521,6 +528,7 @@ public struct TextSpec: Codable, Sendable, Equatable {
         self.bevelSegments = bevelSegments
         self.material = material
         self.slotMaterials = slotMaterials
+        self.isConsumerEditable = isConsumerEditable
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -529,6 +537,7 @@ public struct TextSpec: Codable, Sendable, Equatable {
         case alignmentX, alignmentY
         case extrusionDepth, capFill, bevelRadius, bevelProfileId, bevelSegments
         case material, slotMaterials
+        case isConsumerEditable
     }
 
     public init(from decoder: Decoder) throws {
@@ -557,6 +566,7 @@ public struct TextSpec: Codable, Sendable, Equatable {
         self.bevelSegments = try c.decodeIfPresent(Int.self, forKey: .bevelSegments)
         self.material = try c.decodeIfPresent(MaterialSpec.self, forKey: .material)
         self.slotMaterials = try c.decodeIfPresent(TextSlotMaterials.self, forKey: .slotMaterials)
+        self.isConsumerEditable = try c.decodeIfPresent(Bool.self, forKey: .isConsumerEditable)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -580,6 +590,7 @@ public struct TextSpec: Codable, Sendable, Equatable {
         try c.encodeIfPresent(bevelSegments, forKey: .bevelSegments)
         try c.encodeIfPresent(material, forKey: .material)
         try c.encodeIfPresent(slotMaterials, forKey: .slotMaterials)
+        try c.encodeIfPresent(isConsumerEditable, forKey: .isConsumerEditable)
     }
 }
 
