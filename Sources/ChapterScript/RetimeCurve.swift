@@ -216,6 +216,12 @@ public struct RetimeCurve: Codable, Sendable, Equatable, Hashable {
                 return a.sourcePosition + (b.sourcePosition - a.sourcePosition) * t
             case .bezier:
                 return Self.bezier(a: a, b: b, t: t, span: span)
+            case .easeIn, .easeOut, .easeInOut, .easeInOutBack, .easeInOutElastic:
+                // A named ease shapes the traversal between the two source
+                // positions - the same defined factor every host evaluates.
+                let f = Double(SequenceAnimationEvaluator.easeFactor(
+                    a.interpolation, Float(t)))
+                return a.sourcePosition + (b.sourcePosition - a.sourcePosition) * f
             }
         }
         return last.sourcePosition

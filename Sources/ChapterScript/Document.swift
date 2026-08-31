@@ -341,6 +341,14 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// audience sees or hears (mute, which does, lives on the Sequence).
     public var trackProperties: [String: TrackProperties]
 
+    /// PER-CHANNEL ANIMATION MUTES (FL-19), entityId -> muted channel raw
+    /// names. EDITOR-ONLY working state: a muted channel resolves exactly
+    /// as an unkeyed one does (the rest value) while an author isolates a
+    /// problem - it never reaches the runtime, Chapter Preview or export,
+    /// because a shipped Chapter silently ignoring authored Keys with
+    /// nothing on screen saying so is the failure this rule prevents.
+    public var channelMutes: [String: [String]]
+
     /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
     /// surface's entity id.
     ///
@@ -391,6 +399,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
             && imageInterpretations.isEmpty
             && trackSurfaceOwners.isEmpty
             && trackProperties.isEmpty
+            && channelMutes.isEmpty
             && audioTrackOwners.isEmpty
     }
 
@@ -422,6 +431,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.imageInterpretations = imageInterpretations
         self.sourceSeedEffects = [:]
         self.trackProperties = [:]
+        self.channelMutes = [:]
         self.trackSurfaceOwners = trackSurfaceOwners
         self.audioTrackOwners = audioTrackOwners
     }
@@ -434,6 +444,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         case trackSurfaceOwners, audioTrackOwners
         case sourceSeedEffects
         case trackProperties
+        case channelMutes
     }
 
     public init(from decoder: Decoder) throws {
@@ -470,6 +481,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.trackProperties = try c.decodeIfPresent(
             [String: TrackProperties].self, forKey: .trackProperties
+        ) ?? [:]
+        self.channelMutes = try c.decodeIfPresent(
+            [String: [String]].self, forKey: .channelMutes
         ) ?? [:]
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners

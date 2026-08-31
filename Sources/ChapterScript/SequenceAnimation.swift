@@ -87,6 +87,15 @@ public enum AnimationInterpolation: String, Codable, Sendable, Equatable {
     case bezier     // default — smooth spline shaped by tangent handles
     case linear
     case stepped    // hold until the next key
+    // NAMED EASING (FL-19): five, and the list does not grow by
+    // accretion — a curve not in it is authored with tangents. Evaluated
+    // as DEFINED SHAPES, never as synthesized tangents, so two hosts
+    // cannot disagree about what "Ease In" means.
+    case easeIn
+    case easeOut
+    case easeInOut
+    case easeInOutBack
+    case easeInOutElastic
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
@@ -120,6 +129,10 @@ public struct AnimationKey: Codable, Sendable, Equatable, Hashable {
     /// edits); false = the author shaped them by hand — auto-refresh keeps
     /// hands off.
     public var autoTangents: Bool?
+    /// A FUTURE interpolation this build does not know, preserved verbatim
+    /// (FL-19): the Key renders as .bezier here - the most general shape -
+    /// and a newer build restores the real curve on round-trip.
+    public var unknownInterpolation: String?
 
     public init(
         time: Double,
@@ -137,17 +150,44 @@ public struct AnimationKey: Codable, Sendable, Equatable, Hashable {
         self.outTangent = outTangent
         self.tangentMode = tangentMode
         self.autoTangents = autoTangents
+        self.unknownInterpolation = nil
     }
 
     private enum CodingKeys: String, CodingKey {
         case time, value, interpolation, inTangent, outTangent, tangentMode, autoTangents
     }
 
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(time, forKey: .time)
+        try c.encode(value, forKey: .value)
+        if let unknownInterpolation {
+            try c.encode(unknownInterpolation, forKey: .interpolation)
+        } else {
+            try c.encode(interpolation, forKey: .interpolation)
+        }
+        try c.encode(inTangent, forKey: .inTangent)
+        try c.encode(outTangent, forKey: .outTangent)
+        try c.encode(tangentMode, forKey: .tangentMode)
+        try c.encodeIfPresent(autoTangents, forKey: .autoTangents)
+    }
+
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.time = try c.decode(Double.self, forKey: .time)
         self.value = try c.decode(Float.self, forKey: .value)
-        self.interpolation = try c.decodeIfPresent(AnimationInterpolation.self, forKey: .interpolation) ?? .bezier
+        if let raw = try c.decodeIfPresent(String.self, forKey: .interpolation) {
+            if let known = AnimationInterpolation(rawValue: raw) {
+                self.interpolation = known
+                self.unknownInterpolation = nil
+            } else {
+                self.interpolation = .bezier
+                self.unknownInterpolation = raw
+            }
+        } else {
+            self.interpolation = .bezier
+            self.unknownInterpolation = nil
+        }
         self.inTangent = try c.decodeIfPresent(AnimationTangent.self, forKey: .inTangent) ?? AnimationTangent()
         self.outTangent = try c.decodeIfPresent(AnimationTangent.self, forKey: .outTangent) ?? AnimationTangent()
         self.tangentMode = try c.decodeIfPresent(AnimationTangentMode.self, forKey: .tangentMode) ?? .unified
@@ -334,6 +374,37 @@ public enum SequenceAnimationEvaluator {
             return k0.value + (k1.value - k0.value) * t
         case .bezier:
             return bezier(from: k0, to: k1, at: time)
+        case .easeIn, .easeOut, .easeInOut, .easeInOutBack, .easeInOutElastic:
+            let t = Float((time - k0.time) / max(k1.time - k0.time, 1e-6))
+            return k0.value + (k1.value - k0.value) * easeFactor(k0.interpolation, t)
+        }
+    }
+
+    /// THE DEFINED SHAPES (FL-19). Closed-form, sampled identically on
+    /// every host — never synthesized into tangents.
+    static func easeFactor(_ kind: AnimationInterpolation, _ t: Float) -> Float {
+        switch kind {
+        case .easeIn:
+            return t * t
+        case .easeOut:
+            return 1 - (1 - t) * (1 - t)
+        case .easeInOut:
+            return t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
+        case .easeInOutBack:
+            let c1: Float = 1.70158
+            let c2 = c1 * 1.525
+            return t < 0.5
+                ? (pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2
+                : (pow(2 * t - 2, 2) * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2
+        case .easeInOutElastic:
+            if t <= 0 { return 0 }
+            if t >= 1 { return 1 }
+            let c5 = Float(2 * Double.pi) / 4.5
+            return t < 0.5
+                ? -(pow(2, 20 * t - 10) * sin((20 * t - 11.125) * c5)) / 2
+                : (pow(2, -20 * t + 10) * sin((20 * t - 11.125) * c5)) / 2 + 1
+        case .bezier, .linear, .stepped:
+            return t
         }
     }
 
@@ -456,6 +527,17 @@ public enum SequenceAnimationEvaluator {
             let t = Float((time - k0.time) / max(k1.time - k0.time, 1e-6))
             let value = k0.value + (k1.value - k0.value) * t
             curve.setKey(AnimationKey(time: time, value: value, interpolation: .linear))
+            return curve.indexOfKey(near: time)
+
+        case .easeIn, .easeOut, .easeInOut, .easeInOutBack, .easeInOutElastic:
+            // A named ease is a shape over ITS OWN span: splitting re-times
+            // both halves' eases over their shorter spans (there is no exact
+            // named-ease split, unlike a line). The inserted Key lands ON
+            // the current shape; both halves keep the name - stated so the
+            // re-timing is a documented consequence, not a surprise.
+            let value = evaluate(AnimationCurve(keys: [k0, k1]), at: time, rest: k0.value)
+            curve.setKey(AnimationKey(time: time, value: value,
+                                      interpolation: k0.interpolation))
             return curve.indexOfKey(near: time)
 
         case .bezier:

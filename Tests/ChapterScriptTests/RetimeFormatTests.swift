@@ -161,3 +161,45 @@ final class RetimeFormatTests: XCTestCase {
         XCTAssertEqual(mapped, 2, accuracy: 1e-12)
     }
 }
+
+// MARK: - FL-19: named easing
+
+final class NamedEasingTests: XCTestCase {
+
+    private func curve(_ kind: AnimationInterpolation) -> AnimationCurve {
+        AnimationCurve(keys: [
+            AnimationKey(time: 0, value: 0, interpolation: kind),
+            AnimationKey(time: 1, value: 1)])
+    }
+
+    func testTheFiveDefinedShapesAtSampledPoints() {
+        let e = { (k: AnimationInterpolation, t: Double) -> Float in
+            SequenceAnimationEvaluator.evaluate(self.curve(k), at: t, rest: 0) }
+        XCTAssertEqual(e(.easeIn, 0.5), 0.25, accuracy: 1e-5)
+        XCTAssertEqual(e(.easeOut, 0.5), 0.75, accuracy: 1e-5)
+        XCTAssertEqual(e(.easeInOut, 0.25), 0.125, accuracy: 1e-5)
+        XCTAssertEqual(e(.easeInOut, 0.75), 0.875, accuracy: 1e-5)
+        XCTAssertLessThan(e(.easeInOutBack, 0.15), 0,
+                          "back overshoots below zero on the way in")
+        XCTAssertEqual(e(.easeInOutElastic, 1.0), 1, accuracy: 1e-5)
+        XCTAssertEqual(e(.easeInOutElastic, 0), 0, accuracy: 1e-5)
+    }
+
+    func testUnknownInterpolationRendersBezierAndRoundTripsVerbatim() throws {
+        let data = Data(#"{"time": 1, "value": 2, "interpolation": "easeQuantum"}"#.utf8)
+        let key = try JSONDecoder().decode(AnimationKey.self, from: data)
+        XCTAssertEqual(key.interpolation, .bezier, "the most general shape")
+        XCTAssertEqual(key.unknownInterpolation, "easeQuantum")
+        let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]
+        let json = String(data: try e.encode(key), encoding: .utf8)!
+        XCTAssertTrue(json.contains("easeQuantum"), "a newer build restores it")
+    }
+
+    func testExistingThreeReSaveByteIdentically() throws {
+        let key = AnimationKey(time: 2, value: 5, interpolation: .linear)
+        let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]
+        let first = try e.encode(key)
+        let back = try JSONDecoder().decode(AnimationKey.self, from: first)
+        XCTAssertEqual(try e.encode(back), first)
+    }
+}
