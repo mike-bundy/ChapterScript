@@ -66,6 +66,14 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     /// with it. Absent means what today means: no members.
     public var members: [RigMember]?
 
+    /// USD SUB-ELEMENT OVERRIDES (FL-16): which named parts of an imported
+    /// model the author addressed, by PRIM PATH. Additive and
+    /// UNCONDITIONAL - the reference is written and read whether or not
+    /// this system can resolve it (Option C's whole obligation), so a
+    /// Chapter authored where USDKit exists opens elsewhere with its
+    /// references kept and reported, never dropped.
+    public var subElements: [SubElementOverride]?
+
     /// WHAT THE VIEWER CAN DO TO THIS OBJECT.
     ///
     /// Interactions attach to the OBJECT, not to a timeline position and not to
@@ -132,6 +140,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         customParameters: [String: AnyCodableValue]? = nil,
         materialOverrides: [MaterialOverrideSpec]? = nil,
         members: [RigMember]? = nil,
+        subElements: [SubElementOverride]? = nil,
         interactions: [InteractionSpec]? = nil,
         interactionFeedback: InteractionFeedbackSpec? = nil
     ) {
@@ -154,6 +163,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.customParameters = customParameters
         self.materialOverrides = materialOverrides
         self.members = members
+        self.subElements = subElements
         // Normalized here as well as in `didSet`: a property observer does not
         // run during initialization, so an empty array passed in would
         // otherwise encode as `"interactions": []`.
@@ -219,6 +229,8 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         } else {
             self.members = nil
         }
+        self.subElements = try c.decodeIfPresent([SubElementOverride].self,
+                                                  forKey: .subElements)
         self.interactions = try c.decodeIfPresent(
             [InteractionSpec].self, forKey: .interactions)
         self.interactionFeedback = try c.decodeIfPresent(
@@ -235,11 +247,18 @@ public struct UsdzAnimationSpec: Codable, Sendable, Equatable {
     public var loop: Bool
     /// Playback rate multiplier (1 = authored speed).
     public var speed: Float
+    /// CD-25 (FL-16): play ONE embedded clip, by the file's own name.
+    /// Absent = today's behaviour, every clip - checked deliberately: the
+    /// other fallback would silently stop existing models animating.
+    /// Naming a clip the file does not have plays NOTHING, and reports.
+    public var clipName: String?
 
-    public init(enabled: Bool = true, loop: Bool = true, speed: Float = 1) {
+    public init(enabled: Bool = true, loop: Bool = true, speed: Float = 1,
+                clipName: String? = nil) {
         self.enabled = enabled
         self.loop = loop
         self.speed = speed
+        self.clipName = clipName
     }
 }
 
