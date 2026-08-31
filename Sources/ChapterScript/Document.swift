@@ -1,5 +1,42 @@
 import Foundation
 
+/// THE CHAPTER'S ONE TIMEBASE (FL-03): an exact rational frame rate — an
+/// integer numerator over an integer denominator, e.g. 30000/1001 for 29.97.
+/// The grid the author EDITS on; Sequence time itself stays seconds, and the
+/// runtime consumes seconds and never sees this field.
+///
+/// Why a pair and not a `CMTime`: this format is pure and cross-platform and
+/// must decode with no Core Media; and `CMTime`'s flags (indefinite,
+/// infinity) are states a timebase must not be able to hold. Every adapter
+/// builds a `CMTime` FROM the pair; nothing stores one. The NTSC family are
+/// exact fractions here, never rounded decimals.
+///
+/// ABSENT MEANS 24/1 — byte-for-byte today's behaviour. Validation lives at
+/// the AUTHORING boundary; the decoder is tolerant and consumers resolve an
+/// invalid pair to 24/1 and REPORT it, never silently accept it.
+public struct ChapterTimebase: Codable, Sendable, Equatable {
+    public var numerator: Int      // e.g. 30000
+    public var denominator: Int    // e.g. 1001
+
+    public init(numerator: Int, denominator: Int) {
+        self.numerator = numerator
+        self.denominator = denominator
+    }
+
+    /// The default every untold Chapter edits on.
+    public static let `default` = ChapterTimebase(numerator: 24, denominator: 1)
+
+    /// Display convenience ONLY — never the source of truth.
+    public var fps: Double { Double(numerator) / Double(denominator) }
+
+    /// Whether this pair may be authored: positive, and in a sane authoring
+    /// range. (The DECODER does not enforce this — tolerance is the
+    /// decoder's job; refusing nonsense is the authoring boundary's.)
+    public var isValid: Bool {
+        numerator > 0 && denominator > 0 && fps >= 1 && fps <= 1000
+    }
+}
+
 /// Top-level immersive experience document. Lives at `chapter.json` inside a `.chapterscript` bundle.
 public struct ChapterDocument: Codable, Sendable, Equatable {
     public var formatVersion: Int
@@ -34,6 +71,13 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     /// `.chapterscript` on another Mac and the Bins are still there.
     public var editorMetadata: EditorMetadata?
 
+    /// The Chapter's one editing timebase (FL-03). ABSENT ⇒ 24/1, and absent
+    /// re-saves absent — see `ChapterTimebase` and PD-1
+    /// (`architecture-resolution/11`). There is no per-Sequence and no
+    /// per-Track override, by decision. ChapterPlayer never reads this: the
+    /// timebase is an authoring concept, not a playback concept.
+    public var timebase: ChapterTimebase?
+
     public init(
         formatVersion: Int = ChapterScriptFormat.currentFormatVersion,
         id: String,
@@ -46,7 +90,8 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         manifest: AssetManifest = AssetManifest(),
         storyState: [StoryStateDefinition] = [],
         defaultSequenceId: String? = nil,
-        editorMetadata: EditorMetadata? = nil
+        editorMetadata: EditorMetadata? = nil,
+        timebase: ChapterTimebase? = nil
     ) {
         self.formatVersion = formatVersion
         self.id = id
@@ -60,6 +105,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.storyState = storyState
         self.defaultSequenceId = defaultSequenceId
         self.editorMetadata = editorMetadata
+        self.timebase = timebase
     }
 
     // Decode-if-present for `environment` so documents authored before
@@ -68,6 +114,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         case formatVersion, id, displayName, description
         case entities, sequences, particlePresets, environment
         case manifest, storyState, defaultSequenceId, editorMetadata
+        case timebase
     }
 
     /// Hand-written so `storyState` emits NO key when empty — every Chapter
@@ -88,6 +135,10 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         if !storyState.isEmpty { try c.encode(storyState, forKey: .storyState) }
         try c.encodeIfPresent(defaultSequenceId, forKey: .defaultSequenceId)
         try c.encodeIfPresent(editorMetadata, forKey: .editorMetadata)
+        // ABSENT NEVER BECOMES PRESENT BY ACCIDENT (PD-1): only the rate
+        // control writes this field, and a Chapter never told a rate
+        // re-saves byte-identically.
+        try c.encodeIfPresent(timebase, forKey: .timebase)
     }
 
     public init(from decoder: Decoder) throws {
@@ -118,6 +169,12 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
                                                 forKey: .storyState) ?? []
         self.defaultSequenceId = try c.decodeIfPresent(String.self, forKey: .defaultSequenceId)
         self.editorMetadata = try c.decodeIfPresent(EditorMetadata.self, forKey: .editorMetadata)
+        // Tolerant: absent means 24/1 (PD-1 — no migration on open, and an
+        // old build ignores the unknown key the other way). An INVALID pair
+        // is kept as decoded here; consumers resolve it to 24/1 and REPORT —
+        // the validator belongs at the authoring boundary, not in the
+        // decoder's tolerance path.
+        self.timebase = try c.decodeIfPresent(ChapterTimebase.self, forKey: .timebase)
     }
 }
 
