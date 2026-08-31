@@ -178,16 +178,20 @@ public enum SequenceAudioAutomation {
         channel: String,
         at time: Double,
         in tracks: [AudioAutomationTrack],
-        muted: Bool = false
+        muted: Bool = false,
+        trackGainDB: Float = 0
     ) -> Float {
         // TRACK MUTE (FL-17): one more scope of THE one formula, never a
         // second one. A muted destination is silent on the very next
         // evaluation - no derived data is consulted.
         if muted { return 0 }
+        // TRACK GAIN (FL-18): one more multiply in THE one formula. dB to
+        // linear; 0 dB is exactly 1 and costs nothing.
+        let trackGain: Float = trackGainDB == 0 ? 1 : pow(10, trackGainDB / 20)
         // Clamped: curve handles can overshoot past a key (that is what makes
         // bezier interpolation useful), and a negative or >1 volume is either
         // a runtime error or silent clipping depending on the platform.
-        return min(max(base * volumeMultiplier(for: channel, at: time, in: tracks), 0), 1)
+        return min(max(base * trackGain * volumeMultiplier(for: channel, at: time, in: tracks), 0), 1)
     }
 
     /// Stereo placement for `channel` at `time`, −1 (hard left) … +1 (hard

@@ -53,3 +53,35 @@ final class TrackModelFormatTests: XCTestCase {
                        "solo appears in NO document type - the sharpest rule here")
     }
 }
+
+extension TrackModelFormatTests {
+
+    func testTrackGainsAndDuckersRoundTrip() throws {
+        var sequence = SequenceDefinitionDTO(
+            id: "s", name: "S", phase: "immersive",
+            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+        sequence.trackGains = ["music": -6]
+        sequence.duckers = [DuckerSpec(id: "duck_1",
+                                       targetDestinationId: "music",
+                                       triggerDestinationId: "narration")]
+        let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]
+        let back = try JSONDecoder().decode(SequenceDefinitionDTO.self,
+                                            from: e.encode(sequence))
+        XCTAssertEqual(back.trackGains?["music"], -6)
+        XCTAssertEqual(back.duckers?.first?.depthDB, -12)
+        // A dangling target is KEPT through a re-save.
+        XCTAssertEqual(back.duckers?.first?.targetDestinationId, "music")
+    }
+
+    func testTrackGainIsOneMoreMultiplyInTheOneFormula() {
+        let unity = SequenceAudioAutomation.effectiveVolume(
+            base: 1, channel: "music", at: 0, in: [], trackGainDB: 0)
+        XCTAssertEqual(unity, 1, accuracy: 1e-6)
+        let dimmed = SequenceAudioAutomation.effectiveVolume(
+            base: 1, channel: "music", at: 0, in: [], trackGainDB: -6)
+        XCTAssertEqual(dimmed, 0.501, accuracy: 0.01, "-6 dB is half power")
+        let mutedWins = SequenceAudioAutomation.effectiveVolume(
+            base: 1, channel: "music", at: 0, in: [], muted: true, trackGainDB: 12)
+        XCTAssertEqual(mutedWins, 0, "mute is absolute")
+    }
+}

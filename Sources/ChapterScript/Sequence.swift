@@ -128,6 +128,17 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// longer exists is KEPT and reported, never dropped.
     public var mutedDestinations: [String]?
 
+    /// TRACK GAINS (FL-18), in dB, keyed by track-surface id - a DOCUMENT
+    /// fact, one more scope of the one gain formula. Absent = 0 dB.
+    public var trackGains: [String: Float]?
+
+    /// AUTHORED DUCKERS (FL-18): explicit and NAMED - the author says what
+    /// ducks and what triggers it. No implicit geometry, no track-order
+    /// convention (in a spatial scene there is no "above"). Absent = the
+    /// runtime's existing behaviour, unchanged. A ducker referencing a
+    /// destination that no longer exists is KEPT and reported.
+    public var duckers: [DuckerSpec]?
+
     public init(
         id: String,
         name: String,
@@ -148,13 +159,17 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         markers: [Marker]? = nil,
         captionTracks: [CaptionTrack]? = nil,
         effectKeyTracks: [EffectKeyTrack]? = nil,
-        mutedDestinations: [String]? = nil
+        mutedDestinations: [String]? = nil,
+        trackGains: [String: Float]? = nil,
+        duckers: [DuckerSpec]? = nil
     ) {
         self.editorColorIndex = editorColorIndex
         self.markers = markers
         self.captionTracks = captionTracks
         self.effectKeyTracks = effectKeyTracks
         self.mutedDestinations = mutedDestinations
+        self.trackGains = trackGains
+        self.duckers = duckers
         self.id = id
         self.name = name
         self.phase = phase
@@ -214,6 +229,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case captionTracks
         case effectKeyTracks
         case mutedDestinations
+        case trackGains, duckers
     }
 
     public init(from decoder: Decoder) throws {
@@ -263,6 +279,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.effectKeyTracks = try c.decodeIfPresent([EffectKeyTrack].self, forKey: .effectKeyTracks)
         self.mutedDestinations = try c.decodeIfPresent([String].self,
                                                         forKey: .mutedDestinations)
+        self.trackGains = try c.decodeIfPresent([String: Float].self, forKey: .trackGains)
+        self.duckers = try c.decodeIfPresent([DuckerSpec].self, forKey: .duckers)
     }
 }
 
@@ -835,5 +853,33 @@ public struct VisibilityStateDTO: Codable, Sendable, Equatable {
     public func encode(to encoder: Encoder) throws {
         var c = encoder.singleValueContainer()
         try c.encode(entities)
+    }
+}
+
+/// One authored ducker (FL-18): WHAT ducks, WHAT triggers it, how deep
+/// and how it recovers. A durable minted id so it survives rename and
+/// reorder. The runtime already performs ducking; this is the surface
+/// that authors it, adding no runtime cost.
+public struct DuckerSpec: Codable, Sendable, Equatable, Identifiable {
+    public var id: String
+    public var targetDestinationId: String
+    public var triggerDestinationId: String
+    /// How far the target dips while the trigger sounds, in dB (negative).
+    public var depthDB: Float
+    public var attack: Double
+    public var release: Double
+
+    public init(id: String,
+                targetDestinationId: String,
+                triggerDestinationId: String,
+                depthDB: Float = -12,
+                attack: Double = 0.1,
+                release: Double = 0.5) {
+        self.id = id
+        self.targetDestinationId = targetDestinationId
+        self.triggerDestinationId = triggerDestinationId
+        self.depthDB = depthDB
+        self.attack = attack
+        self.release = release
     }
 }

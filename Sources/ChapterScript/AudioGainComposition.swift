@@ -88,15 +88,17 @@ public enum AudioGainComposition {
         at time: Double,
         in tracks: [AudioAutomationTrack]
     ,
-        muted: Bool = false
+        muted: Bool = false,
+        trackGainDB: Float = 0
     ) -> Float {
         if muted { return 0 }
+        let trackGain: Float = trackGainDB == 0 ? 1 : pow(10, trackGainDB / 20)
         let level = self.level(base: base, fades: fades, at: time)
         let ride = SequenceAudioAutomation.volumeMultiplier(for: channel, at: time, in: tracks)
         // Clamped once, at the end. Bezier handles overshoot past a key on
         // purpose, and a negative or >1 gain is a runtime error rather than a
         // louder sound.
-        return min(max(level * ride, 0), 1)
+        return trackGain * min(max(level * ride, 0), 1)
     }
 
     /// The clip's level at `time`, with every fade in force applied in order.
