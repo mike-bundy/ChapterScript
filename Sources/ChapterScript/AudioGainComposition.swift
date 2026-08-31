@@ -87,7 +87,10 @@ public enum AudioGainComposition {
         channel: String,
         at time: Double,
         in tracks: [AudioAutomationTrack]
+    ,
+        muted: Bool = false
     ) -> Float {
+        if muted { return 0 }
         let level = self.level(base: base, fades: fades, at: time)
         let ride = SequenceAudioAutomation.volumeMultiplier(for: channel, at: time, in: tracks)
         // Clamped once, at the end. Bezier handles overshoot past a key on

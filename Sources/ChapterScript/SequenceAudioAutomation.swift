@@ -177,12 +177,17 @@ public enum SequenceAudioAutomation {
         base: Float,
         channel: String,
         at time: Double,
-        in tracks: [AudioAutomationTrack]
+        in tracks: [AudioAutomationTrack],
+        muted: Bool = false
     ) -> Float {
+        // TRACK MUTE (FL-17): one more scope of THE one formula, never a
+        // second one. A muted destination is silent on the very next
+        // evaluation - no derived data is consulted.
+        if muted { return 0 }
         // Clamped: curve handles can overshoot past a key (that is what makes
         // bezier interpolation useful), and a negative or >1 volume is either
         // a runtime error or silent clipping depending on the platform.
-        min(max(base * volumeMultiplier(for: channel, at: time, in: tracks), 0), 1)
+        return min(max(base * volumeMultiplier(for: channel, at: time, in: tracks), 0), 1)
     }
 
     /// Stereo placement for `channel` at `time`, −1 (hard left) … +1 (hard

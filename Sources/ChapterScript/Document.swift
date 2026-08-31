@@ -335,6 +335,12 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// runtime never reads it — placement copies are what play.
     public var sourceSeedEffects: [String: [EffectInstance]]
 
+    /// PER-TRACK EDITOR PROPERTIES (FL-17), keyed by TRACK SURFACE ID -
+    /// the same key trackSurfaceOwners uses, so a rename never disturbs
+    /// them. Editor-only: height, colour and lock change nothing the
+    /// audience sees or hears (mute, which does, lives on the Sequence).
+    public var trackProperties: [String: TrackProperties]
+
     /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
     /// surface's entity id.
     ///
@@ -384,6 +390,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
             && videoInterpretations.isEmpty
             && imageInterpretations.isEmpty
             && trackSurfaceOwners.isEmpty
+            && trackProperties.isEmpty
             && audioTrackOwners.isEmpty
     }
 
@@ -414,6 +421,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.videoInterpretations = videoInterpretations
         self.imageInterpretations = imageInterpretations
         self.sourceSeedEffects = [:]
+        self.trackProperties = [:]
         self.trackSurfaceOwners = trackSurfaceOwners
         self.audioTrackOwners = audioTrackOwners
     }
@@ -425,6 +433,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         case imageInterpretations
         case trackSurfaceOwners, audioTrackOwners
         case sourceSeedEffects
+        case trackProperties
     }
 
     public init(from decoder: Decoder) throws {
@@ -458,6 +467,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.sourceSeedEffects = try c.decodeIfPresent(
             [String: [EffectInstance]].self, forKey: .sourceSeedEffects
+        ) ?? [:]
+        self.trackProperties = try c.decodeIfPresent(
+            [String: TrackProperties].self, forKey: .trackProperties
         ) ?? [:]
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners
@@ -1421,5 +1433,29 @@ public enum ChapterScriptFormat {
     /// Decoder configured for the format. Currently default; reserved for future tuning.
     public static func makeDecoder() -> JSONDecoder {
         JSONDecoder()
+    }
+}
+
+/// One track's editor-side properties (FL-17). Every field optional:
+/// nil is the default, so an untouched track stores nothing.
+public struct TrackProperties: Codable, Sendable, Equatable {
+    /// Row height in points. nil = the editor's default (the old global
+    /// multiplier becomes that default; per-track heights deviate from it).
+    public var height: Double?
+    /// A colour tag name. Decorative - no state may depend on it.
+    public var colorTag: String?
+    /// LOCK PROTECTS CONTENT, NOT STACKING POSITION: a locked track
+    /// refuses edits in the one arbiter and can still be reordered.
+    public var isLocked: Bool?
+
+    public init(height: Double? = nil, colorTag: String? = nil,
+                isLocked: Bool? = nil) {
+        self.height = height
+        self.colorTag = colorTag
+        self.isLocked = isLocked
+    }
+
+    public var isEmpty: Bool {
+        height == nil && colorTag == nil && isLocked == nil
     }
 }

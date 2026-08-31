@@ -122,6 +122,12 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// Effect Keys and re-saves byte-identically.
     public var effectKeyTracks: [EffectKeyTrack]?
 
+    /// MUTED DESTINATIONS (FL-17): a DOCUMENT fact - muting changes what
+    /// the audience hears, unlike solo, which appears in no document type.
+    /// Keyed by destination/track-surface id. A muted destination that no
+    /// longer exists is KEPT and reported, never dropped.
+    public var mutedDestinations: [String]?
+
     public init(
         id: String,
         name: String,
@@ -141,12 +147,14 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         editorColorIndex: Int? = nil,
         markers: [Marker]? = nil,
         captionTracks: [CaptionTrack]? = nil,
-        effectKeyTracks: [EffectKeyTrack]? = nil
+        effectKeyTracks: [EffectKeyTrack]? = nil,
+        mutedDestinations: [String]? = nil
     ) {
         self.editorColorIndex = editorColorIndex
         self.markers = markers
         self.captionTracks = captionTracks
         self.effectKeyTracks = effectKeyTracks
+        self.mutedDestinations = mutedDestinations
         self.id = id
         self.name = name
         self.phase = phase
@@ -205,6 +213,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case markers
         case captionTracks
         case effectKeyTracks
+        case mutedDestinations
     }
 
     public init(from decoder: Decoder) throws {
@@ -252,6 +261,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         // Absent in every document written before Captions existed (FL-08).
         self.captionTracks = try c.decodeIfPresent([CaptionTrack].self, forKey: .captionTracks)
         self.effectKeyTracks = try c.decodeIfPresent([EffectKeyTrack].self, forKey: .effectKeyTracks)
+        self.mutedDestinations = try c.decodeIfPresent([String].self,
+                                                        forKey: .mutedDestinations)
     }
 }
 
