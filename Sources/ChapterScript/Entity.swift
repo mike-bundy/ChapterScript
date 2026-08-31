@@ -55,6 +55,11 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     /// Free-form parameters passed to a custom factory. Players may interpret as JSON.
     public var customParameters: [String: AnyCodableValue]?
 
+    /// PER-SLOT MATERIAL OVERRIDES (FL-14) for imported models. Absent
+    /// means the file's own materials, byte-identically. Primitives keep
+    /// `PrimitiveSpec.material`; Titles keep `TextSpec.slotMaterials`.
+    public var materialOverrides: [MaterialOverrideSpec]?
+
     /// WHAT THE VIEWER CAN DO TO THIS OBJECT.
     ///
     /// Interactions attach to the OBJECT, not to a timeline position and not to
@@ -119,6 +124,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         particlePresetId: String? = nil,
         customFactoryId: String? = nil,
         customParameters: [String: AnyCodableValue]? = nil,
+        materialOverrides: [MaterialOverrideSpec]? = nil,
         interactions: [InteractionSpec]? = nil,
         interactionFeedback: InteractionFeedbackSpec? = nil
     ) {
@@ -139,6 +145,7 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.particlePresetId = particlePresetId
         self.customFactoryId = customFactoryId
         self.customParameters = customParameters
+        self.materialOverrides = materialOverrides
         // Normalized here as well as in `didSet`: a property observer does not
         // run during initialization, so an empty array passed in would
         // otherwise encode as `"interactions": []`.
@@ -193,6 +200,8 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
         self.customFactoryId = try c.decodeIfPresent(String.self, forKey: .customFactoryId)
         self.customParameters = try c.decodeIfPresent(
             [String: AnyCodableValue].self, forKey: .customParameters)
+        self.materialOverrides = try c.decodeIfPresent(
+            [MaterialOverrideSpec].self, forKey: .materialOverrides)
         self.interactions = try c.decodeIfPresent(
             [InteractionSpec].self, forKey: .interactions)
         self.interactionFeedback = try c.decodeIfPresent(
