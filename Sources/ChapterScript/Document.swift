@@ -83,6 +83,14 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     /// the bundled default is in use and nothing is written.
     public var markerCategories: [MarkerCategory]?
 
+    /// THE CAPTION STYLE LIBRARY (FL-08): the presentation layer, one
+    /// Chapter-wide list referenced BY ID from every Caption Track. A style
+    /// is reused across Tracks and Sequences — putting it beside the Track
+    /// would give two Tracks two copies of one look. Absent means the
+    /// bundled default is in use and nothing is written. (FL-21's preset
+    /// catalog adopts this array when it lands.)
+    public var captionStyles: [CaptionStyle]?
+
     public init(
         formatVersion: Int = ChapterScriptFormat.currentFormatVersion,
         id: String,
@@ -97,7 +105,8 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         defaultSequenceId: String? = nil,
         editorMetadata: EditorMetadata? = nil,
         timebase: ChapterTimebase? = nil,
-        markerCategories: [MarkerCategory]? = nil
+        markerCategories: [MarkerCategory]? = nil,
+        captionStyles: [CaptionStyle]? = nil
     ) {
         self.formatVersion = formatVersion
         self.id = id
@@ -113,6 +122,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.editorMetadata = editorMetadata
         self.timebase = timebase
         self.markerCategories = markerCategories
+        self.captionStyles = captionStyles
     }
 
     // Decode-if-present for `environment` so documents authored before
@@ -123,6 +133,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         case manifest, storyState, defaultSequenceId, editorMetadata
         case timebase
         case markerCategories
+        case captionStyles
     }
 
     /// Hand-written so `storyState` emits NO key when empty — every Chapter
@@ -148,6 +159,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         // re-saves byte-identically.
         try c.encodeIfPresent(timebase, forKey: .timebase)
         try c.encodeIfPresent(markerCategories, forKey: .markerCategories)
+        try c.encodeIfPresent(captionStyles, forKey: .captionStyles)
     }
 
     public init(from decoder: Decoder) throws {
@@ -185,6 +197,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         // decoder's tolerance path.
         self.timebase = try c.decodeIfPresent(ChapterTimebase.self, forKey: .timebase)
         self.markerCategories = try c.decodeIfPresent([MarkerCategory].self, forKey: .markerCategories)
+        self.captionStyles = try c.decodeIfPresent([CaptionStyle].self, forKey: .captionStyles)
     }
 }
 

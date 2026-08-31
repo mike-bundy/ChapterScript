@@ -109,6 +109,13 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// Markers re-saves byte-identically.
     public var markers: [Marker]?
 
+    /// CAPTION TRACKS (FL-08): timed text, one Track per BCP-47 language.
+    /// Caption timing truth lives HERE and nowhere else; cue times are
+    /// absolute Sequence seconds, so a cue never moves because something
+    /// else moved. Additive and tolerant; absent means no captions, and a
+    /// Chapter never told about captions re-saves byte-identically.
+    public var captionTracks: [CaptionTrack]?
+
     public init(
         id: String,
         name: String,
@@ -126,10 +133,12 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
         onComplete: CompletionActionDTO = .holdOnLastStep,
         editorColorIndex: Int? = nil,
-        markers: [Marker]? = nil
+        markers: [Marker]? = nil,
+        captionTracks: [CaptionTrack]? = nil
     ) {
         self.editorColorIndex = editorColorIndex
         self.markers = markers
+        self.captionTracks = captionTracks
         self.id = id
         self.name = name
         self.phase = phase
@@ -186,6 +195,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case panelStyles
         case editorColorIndex
         case markers
+        case captionTracks
     }
 
     public init(from decoder: Decoder) throws {
@@ -230,6 +240,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.editorColorIndex = try c.decodeIfPresent(Int.self, forKey: .editorColorIndex)
         // Absent in every document written before Markers existed (FL-06).
         self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
+        // Absent in every document written before Captions existed (FL-08).
+        self.captionTracks = try c.decodeIfPresent([CaptionTrack].self, forKey: .captionTracks)
     }
 }
 
