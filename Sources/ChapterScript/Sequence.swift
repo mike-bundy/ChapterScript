@@ -104,6 +104,11 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// same palette and a color can't arrive as an unrenderable value.
     public var editorColorIndex: Int?
 
+    /// SEQUENCE MARKERS (FL-06): notes at absolute Sequence seconds.
+    /// Additive and tolerant; absent means none, and a Chapter with no
+    /// Markers re-saves byte-identically.
+    public var markers: [Marker]?
+
     public init(
         id: String,
         name: String,
@@ -120,9 +125,11 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         panelStyles: [String: PanelStyleOverride]? = nil,
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
         onComplete: CompletionActionDTO = .holdOnLastStep,
-        editorColorIndex: Int? = nil
+        editorColorIndex: Int? = nil,
+        markers: [Marker]? = nil
     ) {
         self.editorColorIndex = editorColorIndex
+        self.markers = markers
         self.id = id
         self.name = name
         self.phase = phase
@@ -178,6 +185,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case restPlacements
         case panelStyles
         case editorColorIndex
+        case markers
     }
 
     public init(from decoder: Decoder) throws {
@@ -220,6 +228,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         // Tolerant, like every other additive field: documents written before
         // sequence colors existed simply have no color.
         self.editorColorIndex = try c.decodeIfPresent(Int.self, forKey: .editorColorIndex)
+        // Absent in every document written before Markers existed (FL-06).
+        self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
     }
 }
 

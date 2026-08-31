@@ -182,6 +182,10 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     /// stays absent, so existing bundles re-save byte-identically.
     public var spatialPresentation: AudioSpatialPresentation?
 
+    /// CLIP MARKERS (FL-06) — see `VideoActionDTO.markers`. Same clock,
+    /// same rules, because a sound's beat is a note about its source too.
+    public var markers: [Marker]?
+
     public init(
         file: String,
         channel: String,
@@ -196,7 +200,8 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         sourceIn: Double? = nil,
         sourceOut: Double? = nil,
         playbackModel: AudioPlaybackModel? = nil,
-        spatialPresentation: AudioSpatialPresentation? = nil
+        spatialPresentation: AudioSpatialPresentation? = nil,
+        markers: [Marker]? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -212,6 +217,7 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         self.sourceOut = sourceOut
         self.playbackModel = playbackModel
         self.spatialPresentation = spatialPresentation
+        self.markers = markers
     }
 }
 
@@ -400,6 +406,12 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// combines them.
     public var convergence: Float?
 
+    /// CLIP MARKERS (FL-06): notes at SOURCE seconds on THIS occurrence.
+    /// Source-relative so a slip moves the note with the picture and a trim
+    /// hides rather than destroys; per occurrence because two uses of one
+    /// master legitimately carry different notes. Additive, tolerant.
+    public var markers: [Marker]?
+
     public init(
         file: String,
         channel: String,
@@ -410,7 +422,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         sourceIn: Double? = nil,
         sourceOut: Double? = nil,
         crop: VideoCropRect? = nil,
-        convergence: Float? = nil
+        convergence: Float? = nil,
+        markers: [Marker]? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -422,11 +435,12 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.sourceOut = sourceOut
         self.crop = crop
         self.convergence = convergence
+        self.markers = markers
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
-        case convergence
+        case convergence, markers
     }
 
     public init(from decoder: Decoder) throws {
@@ -442,6 +456,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.sourceOut = try c.decodeIfPresent(Double.self, forKey: .sourceOut)
         self.crop = try c.decodeIfPresent(VideoCropRect.self, forKey: .crop)
         self.convergence = try c.decodeIfPresent(Float.self, forKey: .convergence)
+        self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.

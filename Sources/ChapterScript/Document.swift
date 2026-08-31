@@ -78,6 +78,11 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     /// timebase is an authoring concept, not a playback concept.
     public var timebase: ChapterTimebase?
 
+    /// THE MARKER CATEGORY TABLE (FL-06): one Chapter-wide, author-editable
+    /// list of name + colour, referenced BY ID from every Marker. Absent ⇒
+    /// the bundled default is in use and nothing is written.
+    public var markerCategories: [MarkerCategory]?
+
     public init(
         formatVersion: Int = ChapterScriptFormat.currentFormatVersion,
         id: String,
@@ -91,7 +96,8 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         storyState: [StoryStateDefinition] = [],
         defaultSequenceId: String? = nil,
         editorMetadata: EditorMetadata? = nil,
-        timebase: ChapterTimebase? = nil
+        timebase: ChapterTimebase? = nil,
+        markerCategories: [MarkerCategory]? = nil
     ) {
         self.formatVersion = formatVersion
         self.id = id
@@ -106,6 +112,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         self.defaultSequenceId = defaultSequenceId
         self.editorMetadata = editorMetadata
         self.timebase = timebase
+        self.markerCategories = markerCategories
     }
 
     // Decode-if-present for `environment` so documents authored before
@@ -115,6 +122,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         case entities, sequences, particlePresets, environment
         case manifest, storyState, defaultSequenceId, editorMetadata
         case timebase
+        case markerCategories
     }
 
     /// Hand-written so `storyState` emits NO key when empty — every Chapter
@@ -139,6 +147,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         // control writes this field, and a Chapter never told a rate
         // re-saves byte-identically.
         try c.encodeIfPresent(timebase, forKey: .timebase)
+        try c.encodeIfPresent(markerCategories, forKey: .markerCategories)
     }
 
     public init(from decoder: Decoder) throws {
@@ -175,6 +184,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
         // the validator belongs at the authoring boundary, not in the
         // decoder's tolerance path.
         self.timebase = try c.decodeIfPresent(ChapterTimebase.self, forKey: .timebase)
+        self.markerCategories = try c.decodeIfPresent([MarkerCategory].self, forKey: .markerCategories)
     }
 }
 
