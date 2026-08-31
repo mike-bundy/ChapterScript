@@ -185,3 +185,43 @@ final class EffectCarrierFormatTests: XCTestCase {
         XCTAssertFalse(EditorMetadata().isEmpty == false, "empty stays empty")
     }
 }
+
+// MARK: - The display blend (FL-11)
+
+final class BlendModeFormatTests: XCTestCase {
+
+    private func encode<T: Encodable>(_ value: T) throws -> Data {
+        try ChapterScriptFormat.makeEncoder().encode(value)
+    }
+
+    func testAbsentBlendWritesNothing() throws {
+        let video = VideoActionDTO(file: "a.mov", channel: "v")
+        XCTAssertFalse(String(decoding: try encode(video), as: UTF8.self)
+            .contains("blendMode"))
+    }
+
+    func testUnknownModeRendersNormalAndRoundTripsVerbatim() throws {
+        let json = #"{"file":"a.mov","channel":"v","blendMode":"hologramBlend"}"#
+        let back = try JSONDecoder().decode(VideoActionDTO.self,
+                                            from: Data(json.utf8))
+        XCTAssertEqual(back.blendMode?.renderedMode, BlendMode.normal,
+                       "the weakest visual claim")
+        let bytes = try encode(back)
+        XCTAssertTrue(String(decoding: bytes, as: UTF8.self)
+            .contains("hologramBlend"),
+                      "an older build never rewrites a newer build's blend")
+        let again = try JSONDecoder().decode(VideoActionDTO.self, from: bytes)
+        XCTAssertEqual(try encode(again), bytes)
+    }
+
+    func testTheElevenModesRoundTrip() throws {
+        let modes: [BlendMode] = [.normal, .replace, .darken, .multiply,
+                                  .lighten, .screen, .overlay, .softLight,
+                                  .hardLight, .add, .subtract, .difference]
+        for mode in modes {
+            let back = try JSONDecoder().decode(
+                BlendMode.self, from: encode(mode))
+            XCTAssertEqual(back, mode)
+        }
+    }
+}

@@ -415,6 +415,10 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// IS evaluation order. Additive and tolerant; absent means none, and
     /// an unrecognised Effect round-trips losslessly (G7).
     public var effects: [EffectInstance]?
+    /// THE DISPLAY BLEND (FL-11): stage 5, a property of the occurrence.
+    /// Absent ⇒ `.normal`; an unrecognised mode renders as `.normal` and
+    /// its raw value round-trips verbatim.
+    public var blendMode: BlendMode?
 
     public init(
         file: String,
@@ -428,7 +432,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         crop: VideoCropRect? = nil,
         convergence: Float? = nil,
         markers: [Marker]? = nil,
-        effects: [EffectInstance]? = nil
+        effects: [EffectInstance]? = nil,
+        blendMode: BlendMode? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -442,11 +447,12 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.convergence = convergence
         self.markers = markers
         self.effects = effects
+        self.blendMode = blendMode
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
-        case convergence, markers, effects
+        case convergence, markers, effects, blendMode
     }
 
     public init(from decoder: Decoder) throws {
@@ -464,6 +470,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.convergence = try c.decodeIfPresent(Float.self, forKey: .convergence)
         self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
         self.effects = try c.decodeIfPresent([EffectInstance].self, forKey: .effects)
+        self.blendMode = try c.decodeIfPresent(BlendMode.self, forKey: .blendMode)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.
