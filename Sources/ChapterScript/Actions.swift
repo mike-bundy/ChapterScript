@@ -414,6 +414,15 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// combines them.
     public var convergence: Float?
 
+    /// THE VIRTUAL CAMERA (FL-23, O3): a keyframeable aim and field of
+    /// view on the EXISTING immersive-to-panel reroute, so a flat
+    /// delivery can be cut out of an immersive master. OCCURRENCE level
+    /// on purpose - two Sequences may extract differently from one
+    /// master, and the Source is untouched. Absent means today's
+    /// reroute, unchanged. Refused at the authoring boundary on a flat
+    /// source: there is no sphere to aim at.
+    public var virtualCamera: VirtualCameraSpec?
+
     /// CLIP MARKERS (FL-06): notes at SOURCE seconds on THIS occurrence.
     /// Source-relative so a slip moves the note with the picture and a trim
     /// hides rather than destroys; per occurrence because two uses of one
@@ -456,7 +465,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         blendMode: BlendMode? = nil,
         videoTransition: VideoTransitionSpec? = nil,
         retime: RetimeCurve? = nil,
-        pitch: PitchHandling? = nil
+        pitch: PitchHandling? = nil,
+        virtualCamera: VirtualCameraSpec? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -474,11 +484,13 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.videoTransition = videoTransition
         self.retime = retime
         self.pitch = pitch
+        self.virtualCamera = virtualCamera
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
         case convergence, markers, effects, blendMode, videoTransition, retime, pitch
+        case virtualCamera
     }
 
     public init(from decoder: Decoder) throws {
@@ -494,6 +506,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.sourceOut = try c.decodeIfPresent(Double.self, forKey: .sourceOut)
         self.crop = try c.decodeIfPresent(VideoCropRect.self, forKey: .crop)
         self.convergence = try c.decodeIfPresent(Float.self, forKey: .convergence)
+        self.virtualCamera = try c.decodeIfPresent(VirtualCameraSpec.self,
+                                                   forKey: .virtualCamera)
         self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
         self.effects = try c.decodeIfPresent([EffectInstance].self, forKey: .effects)
         self.blendMode = try c.decodeIfPresent(BlendMode.self, forKey: .blendMode)
@@ -512,6 +526,58 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// lets two source-time answers drift apart.
     public var sourceWindowDuration: Double? {
         sourceOut == nil ? nil : sourceRange.duration(masterDuration: nil)
+    }
+}
+
+/// How the virtual camera samples the sphere (FL-23). An unrecognised
+/// future mode decodes as `.bilinear` — the CHEAPER of the two, so an
+/// unknown mode never silently costs an author playback performance.
+public enum ProjectionSampling: String, Codable, Sendable, Equatable, CaseIterable {
+    case bilinear, bicubic
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        self = ProjectionSampling(rawValue: (try? c.decode(String.self)) ?? "bilinear")
+            ?? .bilinear
+    }
+}
+
+/// A keyframeable virtual camera over an immersive master (FL-23, O3):
+/// aim in degrees plus a horizontal field of view. `sampling` nil means
+/// bicubic (the quality default for a final; a scrub may choose
+/// bilinear at render time).
+public struct VirtualCameraSpec: Codable, Sendable, Equatable {
+    public var yaw: Float
+    public var pitch: Float
+    public var roll: Float
+    public var fovDegrees: Float
+    public var sampling: ProjectionSampling?
+
+    /// The sane FOV window: outside it the values are clamped and
+    /// REPORTED at the authoring boundary, never silently rewritten in
+    /// the decoder.
+    public static let fovRange: ClosedRange<Float> = 20...120
+
+    public init(yaw: Float = 0, pitch: Float = 0, roll: Float = 0,
+                fovDegrees: Float = 65, sampling: ProjectionSampling? = nil) {
+        self.yaw = yaw
+        self.pitch = pitch
+        self.roll = roll
+        self.fovDegrees = fovDegrees
+        self.sampling = sampling
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case yaw, pitch, roll, fovDegrees, sampling
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.yaw = try c.decodeIfPresent(Float.self, forKey: .yaw) ?? 0
+        self.pitch = try c.decodeIfPresent(Float.self, forKey: .pitch) ?? 0
+        self.roll = try c.decodeIfPresent(Float.self, forKey: .roll) ?? 0
+        self.fovDegrees = try c.decodeIfPresent(Float.self, forKey: .fovDegrees) ?? 65
+        self.sampling = try c.decodeIfPresent(ProjectionSampling.self, forKey: .sampling)
     }
 }
 

@@ -366,6 +366,11 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// build stamps them onto each AssetEntry for the wire.
     public var sourceMetadata: [String: SourceMetadata]
 
+    /// THE DEFAULT STILL DURATION (FL-23, P2), seconds. Absent means the
+    /// bundled default. Editor metadata: it decides what a DROP creates,
+    /// never what an authored clip already says.
+    public var defaultStillDuration: Double?
+
     /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
     /// surface's entity id.
     ///
@@ -418,6 +423,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
             && trackProperties.isEmpty
             && channelMutes.isEmpty
             && sourceMetadata.isEmpty
+            && defaultStillDuration == nil
             && audioTrackOwners.isEmpty
     }
 
@@ -451,6 +457,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.trackProperties = [:]
         self.channelMutes = [:]
         self.sourceMetadata = [:]
+        self.defaultStillDuration = nil
         self.trackSurfaceOwners = trackSurfaceOwners
         self.audioTrackOwners = audioTrackOwners
     }
@@ -465,6 +472,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         case trackProperties
         case channelMutes
         case sourceMetadata
+        case defaultStillDuration
     }
 
     public init(from decoder: Decoder) throws {
@@ -508,6 +516,8 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.sourceMetadata = try c.decodeIfPresent(
             [String: SourceMetadata].self, forKey: .sourceMetadata
         ) ?? [:]
+        self.defaultStillDuration = try c.decodeIfPresent(
+            Double.self, forKey: .defaultStillDuration)
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners
         ) ?? [:]
