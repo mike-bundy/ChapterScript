@@ -344,17 +344,191 @@ public enum MaterialBlending: String, Codable, Sendable, Equatable {
     case alpha
 }
 
+/// Horizontal text alignment (FL-07). `natural` follows the string's own
+/// direction — an RTL string leads from the right.
+public enum TextAlignmentX: String, Codable, Sendable, Equatable, CaseIterable {
+    case leading, centre, trailing, justified, natural
+}
+
+/// Vertical anchoring of the laid-out block within the Object.
+public enum TextAlignmentY: String, Codable, Sendable, Equatable, CaseIterable {
+    case top, centre, baseline, bottom
+}
+
+/// Which extrusion caps are filled. Flat text is zero extrusion with BOTH
+/// caps; `.none` with zero depth draws nothing and is refused at the
+/// authoring boundary.
+public enum TextCapFill: String, Codable, Sendable, Equatable, CaseIterable {
+    case front, back, both, none
+}
+
+/// Per-face materials for an extruded Title (FL-07): the five slots the
+/// extruder assigns. A nil slot takes the spec's base `material`.
+public struct TextSlotMaterials: Codable, Sendable, Equatable {
+    public var front: MaterialSpec?
+    public var back: MaterialSpec?
+    public var sides: MaterialSpec?
+    public var frontBevel: MaterialSpec?
+    public var backBevel: MaterialSpec?
+
+    public init(front: MaterialSpec? = nil, back: MaterialSpec? = nil,
+                sides: MaterialSpec? = nil, frontBevel: MaterialSpec? = nil,
+                backBevel: MaterialSpec? = nil) {
+        self.front = front
+        self.back = back
+        self.sides = sides
+        self.frontBevel = frontBevel
+        self.backBevel = backBevel
+    }
+
+    public var isEmpty: Bool {
+        front == nil && back == nil && sides == nil
+            && frontBevel == nil && backBevel == nil
+    }
+}
+
+/// A TITLE'S AUTHORED SPEC (FL-07). The string and its typographic
+/// parameters are the source of truth; geometry is derived, wholesale
+/// regenerated on change, never itself authoritative.
+///
+/// Every field beyond the original four is optional and TOLERANTLY decoded
+/// (an unrecognised enum case reads as absent), and ABSENT means the
+/// constant the Mac hardcoded before this campaign — so a Chapter written
+/// earlier renders exactly as it did and re-saves byte-identically.
+///
+/// `fontSize` is METRES OF CAP HEIGHT in Object space, before the Object's
+/// own scale (F-2): a Title is an Object in a room, and points are a
+/// 2D-display unit with no meaning at a distance. Existing values were
+/// already effectively metres, so no migration.
 public struct TextSpec: Codable, Sendable, Equatable {
     public var text: String
     public var fontSize: Float
     public var color: ColorRGBA
     public var maxWidth: Float?
 
-    public init(text: String, fontSize: Float = 0.1, color: ColorRGBA = .white, maxWidth: Float? = nil) {
+    // Typography (FL-07). Absent ⇒ the system font, regular, the font's own
+    // tracking and leading.
+    public var fontFamily: String?
+    /// A numeric weight (100…900, 400 = regular), never a filename.
+    public var fontWeight: Int?
+    public var fontIsItalic: Bool?
+    /// K11: a font as an ordinary Source. Carried now; resolution rides the
+    /// Source pipeline.
+    public var fontSourceId: String?
+    /// Additional tracking in metres (at cap-height scale). Absent ⇒ the
+    /// font's own.
+    public var tracking: Float?
+    /// Line height in metres. Absent ⇒ the font's own leading.
+    public var leading: Float?
+
+    // Layout. Absent ⇒ centre / centre — today's `alignment: .center`.
+    public var alignmentX: TextAlignmentX?
+    public var alignmentY: TextAlignmentY?
+
+    // Geometry. Absent extrusion ⇒ 0.02 — today's MAC constant, chosen
+    // because the editor is where the author judged it; device playback of
+    // an old Chapter changes 0.005 → 0.02 as a correction toward what they
+    // saw. 0 ⇒ flat (with both caps).
+    public var extrusionDepth: Float?
+    public var capFill: TextCapFill?
+    public var bevelRadius: Float?
+    /// A preset-library reference. Unresolved ⇒ no bevel, reference KEPT.
+    public var bevelProfileId: String?
+    public var bevelSegments: Int?
+
+    // Material. Absent ⇒ a lit material tinted by `color`.
+    public var material: MaterialSpec?
+    public var slotMaterials: TextSlotMaterials?
+
+    public init(text: String, fontSize: Float = 0.1, color: ColorRGBA = .white,
+                maxWidth: Float? = nil,
+                fontFamily: String? = nil, fontWeight: Int? = nil,
+                fontIsItalic: Bool? = nil, fontSourceId: String? = nil,
+                tracking: Float? = nil, leading: Float? = nil,
+                alignmentX: TextAlignmentX? = nil, alignmentY: TextAlignmentY? = nil,
+                extrusionDepth: Float? = nil, capFill: TextCapFill? = nil,
+                bevelRadius: Float? = nil, bevelProfileId: String? = nil,
+                bevelSegments: Int? = nil,
+                material: MaterialSpec? = nil,
+                slotMaterials: TextSlotMaterials? = nil) {
         self.text = text
         self.fontSize = fontSize
         self.color = color
         self.maxWidth = maxWidth
+        self.fontFamily = fontFamily
+        self.fontWeight = fontWeight
+        self.fontIsItalic = fontIsItalic
+        self.fontSourceId = fontSourceId
+        self.tracking = tracking
+        self.leading = leading
+        self.alignmentX = alignmentX
+        self.alignmentY = alignmentY
+        self.extrusionDepth = extrusionDepth
+        self.capFill = capFill
+        self.bevelRadius = bevelRadius
+        self.bevelProfileId = bevelProfileId
+        self.bevelSegments = bevelSegments
+        self.material = material
+        self.slotMaterials = slotMaterials
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case text, fontSize, color, maxWidth
+        case fontFamily, fontWeight, fontIsItalic, fontSourceId, tracking, leading
+        case alignmentX, alignmentY
+        case extrusionDepth, capFill, bevelRadius, bevelProfileId, bevelSegments
+        case material, slotMaterials
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.text = try c.decode(String.self, forKey: .text)
+        self.fontSize = try c.decodeIfPresent(Float.self, forKey: .fontSize) ?? 0.1
+        self.color = try c.decodeIfPresent(ColorRGBA.self, forKey: .color) ?? .white
+        self.maxWidth = try c.decodeIfPresent(Float.self, forKey: .maxWidth)
+        self.fontFamily = try c.decodeIfPresent(String.self, forKey: .fontFamily)
+        self.fontWeight = try c.decodeIfPresent(Int.self, forKey: .fontWeight)
+        self.fontIsItalic = try c.decodeIfPresent(Bool.self, forKey: .fontIsItalic)
+        self.fontSourceId = try c.decodeIfPresent(String.self, forKey: .fontSourceId)
+        self.tracking = try c.decodeIfPresent(Float.self, forKey: .tracking)
+        self.leading = try c.decodeIfPresent(Float.self, forKey: .leading)
+        // ENUMS DECODE TOLERANTLY: a case written by a newer tool reads as
+        // absent (today's constant), never as a failed document.
+        self.alignmentX = (try? c.decodeIfPresent(String.self, forKey: .alignmentX))
+            .flatMap { TextAlignmentX(rawValue: $0) }
+        self.alignmentY = (try? c.decodeIfPresent(String.self, forKey: .alignmentY))
+            .flatMap { TextAlignmentY(rawValue: $0) }
+        self.extrusionDepth = try c.decodeIfPresent(Float.self, forKey: .extrusionDepth)
+        self.capFill = (try? c.decodeIfPresent(String.self, forKey: .capFill))
+            .flatMap { TextCapFill(rawValue: $0) }
+        self.bevelRadius = try c.decodeIfPresent(Float.self, forKey: .bevelRadius)
+        self.bevelProfileId = try c.decodeIfPresent(String.self, forKey: .bevelProfileId)
+        self.bevelSegments = try c.decodeIfPresent(Int.self, forKey: .bevelSegments)
+        self.material = try c.decodeIfPresent(MaterialSpec.self, forKey: .material)
+        self.slotMaterials = try c.decodeIfPresent(TextSlotMaterials.self, forKey: .slotMaterials)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(text, forKey: .text)
+        try c.encode(fontSize, forKey: .fontSize)
+        try c.encode(color, forKey: .color)
+        try c.encodeIfPresent(maxWidth, forKey: .maxWidth)
+        try c.encodeIfPresent(fontFamily, forKey: .fontFamily)
+        try c.encodeIfPresent(fontWeight, forKey: .fontWeight)
+        try c.encodeIfPresent(fontIsItalic, forKey: .fontIsItalic)
+        try c.encodeIfPresent(fontSourceId, forKey: .fontSourceId)
+        try c.encodeIfPresent(tracking, forKey: .tracking)
+        try c.encodeIfPresent(leading, forKey: .leading)
+        try c.encodeIfPresent(alignmentX, forKey: .alignmentX)
+        try c.encodeIfPresent(alignmentY, forKey: .alignmentY)
+        try c.encodeIfPresent(extrusionDepth, forKey: .extrusionDepth)
+        try c.encodeIfPresent(capFill, forKey: .capFill)
+        try c.encodeIfPresent(bevelRadius, forKey: .bevelRadius)
+        try c.encodeIfPresent(bevelProfileId, forKey: .bevelProfileId)
+        try c.encodeIfPresent(bevelSegments, forKey: .bevelSegments)
+        try c.encodeIfPresent(material, forKey: .material)
+        try c.encodeIfPresent(slotMaterials, forKey: .slotMaterials)
     }
 }
 
