@@ -185,6 +185,10 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     /// CLIP MARKERS (FL-06) — see `VideoActionDTO.markers`. Same clock,
     /// same rules, because a sound's beat is a note about its source too.
     public var markers: [Marker]?
+    /// THE RETIME CURVE (FL-13) — same rules as `VideoActionDTO.retime`.
+    public var retime: RetimeCurve?
+    /// Pitch under retime. Absent means `.followsSpeed`.
+    public var pitch: PitchHandling?
 
     public init(
         file: String,
@@ -201,7 +205,9 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         sourceOut: Double? = nil,
         playbackModel: AudioPlaybackModel? = nil,
         spatialPresentation: AudioSpatialPresentation? = nil,
-        markers: [Marker]? = nil
+        markers: [Marker]? = nil,
+        retime: RetimeCurve? = nil,
+        pitch: PitchHandling? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -218,6 +224,8 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         self.playbackModel = playbackModel
         self.spatialPresentation = spatialPresentation
         self.markers = markers
+        self.retime = retime
+        self.pitch = pitch
     }
 }
 
@@ -424,6 +432,13 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// transition; an unrecognised kind means NO transition (never a look
     /// the author did not author) and the raw value round-trips.
     public var videoTransition: VideoTransitionSpec?
+    /// THE RETIME CURVE (FL-13): the occurrence's own Sequence-time to
+    /// source-time statement. Absent means the identity — today's exact
+    /// behaviour at zero cost. See `RetimeCurve`.
+    public var retime: RetimeCurve?
+    /// How a retimed occurrence's embedded audio handles pitch. Absent
+    /// means `.followsSpeed`.
+    public var pitch: PitchHandling?
 
     public init(
         file: String,
@@ -439,7 +454,9 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         markers: [Marker]? = nil,
         effects: [EffectInstance]? = nil,
         blendMode: BlendMode? = nil,
-        videoTransition: VideoTransitionSpec? = nil
+        videoTransition: VideoTransitionSpec? = nil,
+        retime: RetimeCurve? = nil,
+        pitch: PitchHandling? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -455,11 +472,13 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.effects = effects
         self.blendMode = blendMode
         self.videoTransition = videoTransition
+        self.retime = retime
+        self.pitch = pitch
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
-        case convergence, markers, effects, blendMode, videoTransition
+        case convergence, markers, effects, blendMode, videoTransition, retime, pitch
     }
 
     public init(from decoder: Decoder) throws {
@@ -480,6 +499,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.blendMode = try c.decodeIfPresent(BlendMode.self, forKey: .blendMode)
         self.videoTransition = try c.decodeIfPresent(VideoTransitionSpec.self,
                                                      forKey: .videoTransition)
+        self.retime = try c.decodeIfPresent(RetimeCurve.self, forKey: .retime)
+        self.pitch = try c.decodeIfPresent(PitchHandling.self, forKey: .pitch)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.

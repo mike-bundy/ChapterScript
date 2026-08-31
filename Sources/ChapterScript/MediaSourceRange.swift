@@ -129,13 +129,45 @@ public struct MediaSourceRange: Codable, Sendable, Equatable {
     ///     the in-point — looping the SELECTED window, not the whole file.
     ///     When false, time past the end holds the last available instant,
     ///     which is what a held tail shows.
+    /// FL-13: THE ONE MAPPING GAINS PARAMETERS — NEVER A SIBLING.
+    ///
+    ///   - retime: the occurrence's authored curve. `.identity` (the
+    ///     default) is a branch and costs nothing — today's exact
+    ///     behaviour for every existing Chapter.
+    ///   - clipSpan: the occurrence's CURRENT Timeline span in seconds.
+    ///     The curve's domain is normalized 0…1 across the span, so a
+    ///     keyed curve needs it; identity ignores it.
+    ///   - nativeRateCorrection: FL-03's A5 factor (chapter ÷ source fps),
+    ///     composed multiplicatively with ELAPSED on the identity path. A
+    ///     keyed curve states ABSOLUTE source positions — authored facts —
+    ///     and is not corrected.
+    ///
+    /// Under a keyed curve the result is clamped to the authored window:
+    /// the curve chooses WHEN within the window each output frame samples,
+    /// and can never sample outside it. Looping does not apply under a
+    /// keyed curve — the curve is the complete statement of the mapping.
     public func sourceTime(
         forElapsed elapsed: Double,
         masterDuration: Double?,
-        looping: Bool = false
+        looping: Bool = false,
+        retime: RetimeCurve = .identity,
+        clipSpan: Double? = nil,
+        nativeRateCorrection: Double = 1
     ) -> Double {
+        if !retime.isIdentity, let span = clipSpan, span > 0 {
+            let fraction = min(max(elapsed / span, 0), 1)
+            if let position = retime.sourcePosition(atFraction: fraction) {
+                let lower = resolvedIn
+                if let upper = resolvedOut(masterDuration: masterDuration) {
+                    return min(max(position, lower), upper)
+                }
+                return max(position, lower)
+            }
+        }
         let start = resolvedIn
-        let offset = max(0, elapsed)
+        let factor = (nativeRateCorrection > 0 && nativeRateCorrection.isFinite)
+            ? nativeRateCorrection : 1
+        let offset = max(0, elapsed) * factor
         guard let window = duration(masterDuration: masterDuration), window > 0 else {
             // No known end: the window is open, so elapsed maps straight
             // through. This is the unprobed-master case, and it degrades to
