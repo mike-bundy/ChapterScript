@@ -225,3 +225,44 @@ final class BlendModeFormatTests: XCTestCase {
         }
     }
 }
+
+// MARK: - The two-source transition (FL-12)
+
+final class VideoTransitionFormatTests: XCTestCase {
+
+    private func encode<T: Encodable>(_ value: T) throws -> Data {
+        try ChapterScriptFormat.makeEncoder().encode(value)
+    }
+
+    func testAbsentTransitionWritesNothing() throws {
+        let video = VideoActionDTO(file: "a.mov", channel: "v")
+        XCTAssertFalse(String(decoding: try encode(video), as: UTF8.self)
+            .contains("videoTransition"))
+    }
+
+    func testTransitionRidesTheIncomingOccurrence() throws {
+        var video = VideoActionDTO(file: "b.mov", channel: "v")
+        video.videoTransition = VideoTransitionSpec(duration: 1.5)
+        let back = try ChapterScriptFormat.makeDecoder()
+            .decode(VideoActionDTO.self, from: encode(video))
+        XCTAssertEqual(back.videoTransition?.duration, 1.5)
+        XCTAssertTrue(back.videoTransition?.isRenderable == true)
+        XCTAssertEqual(try encode(back), try encode(video))
+    }
+
+    /// An unrecognised kind decodes to NO renderable transition — never
+    /// a dip and never a dissolve the author did not author — and the
+    /// raw value survives a re-save verbatim.
+    func testUnknownKindIsNoTransitionAndRoundTrips() throws {
+        let json = #"{"file":"a.mov","channel":"v","videoTransition":{"duration":2,"kind":"pageCurl"}}"#
+        let back = try JSONDecoder().decode(VideoActionDTO.self,
+                                            from: Data(json.utf8))
+        XCTAssertEqual(back.videoTransition?.isRenderable, false,
+                       "an unknown kind renders NOTHING")
+        XCTAssertEqual(back.videoTransition?.kindRaw, "pageCurl")
+        let bytes = try encode(back)
+        XCTAssertTrue(String(decoding: bytes, as: UTF8.self).contains("pageCurl"))
+        let again = try JSONDecoder().decode(VideoActionDTO.self, from: bytes)
+        XCTAssertEqual(try encode(again), bytes)
+    }
+}

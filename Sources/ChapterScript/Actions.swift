@@ -419,6 +419,11 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// Absent ⇒ `.normal`; an unrecognised mode renders as `.normal` and
     /// its raw value round-trips verbatim.
     public var blendMode: BlendMode?
+    /// A TWO-SOURCE TRANSITION (FL-12), stored on the INCOMING
+    /// occurrence — the one whose arrival does the fading. Absent ⇒ no
+    /// transition; an unrecognised kind means NO transition (never a look
+    /// the author did not author) and the raw value round-trips.
+    public var videoTransition: VideoTransitionSpec?
 
     public init(
         file: String,
@@ -433,7 +438,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         convergence: Float? = nil,
         markers: [Marker]? = nil,
         effects: [EffectInstance]? = nil,
-        blendMode: BlendMode? = nil
+        blendMode: BlendMode? = nil,
+        videoTransition: VideoTransitionSpec? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -448,11 +454,12 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.markers = markers
         self.effects = effects
         self.blendMode = blendMode
+        self.videoTransition = videoTransition
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
-        case convergence, markers, effects, blendMode
+        case convergence, markers, effects, blendMode, videoTransition
     }
 
     public init(from decoder: Decoder) throws {
@@ -471,6 +478,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
         self.effects = try c.decodeIfPresent([EffectInstance].self, forKey: .effects)
         self.blendMode = try c.decodeIfPresent(BlendMode.self, forKey: .blendMode)
+        self.videoTransition = try c.decodeIfPresent(VideoTransitionSpec.self,
+                                                     forKey: .videoTransition)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.
