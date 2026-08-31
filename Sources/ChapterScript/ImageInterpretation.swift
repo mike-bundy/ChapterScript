@@ -74,15 +74,41 @@ public struct ImageInterpretation: Codable, Sendable, Equatable {
     /// never be derived from the other.
     public var placement: ImagePlacementPreference?
 
+    /// HOW THE COLOUR RELATES TO THE COVERAGE (FL-04), when the container
+    /// does not say. Same rule as video: a declared alpha info wins, absent
+    /// means Automatic, and nothing guesses it from a channel count.
+    public var alpha: SourceAlpha?
+
     public init(projection: ImmersiveField? = nil,
-                placement: ImagePlacementPreference? = nil) {
+                placement: ImagePlacementPreference? = nil,
+                alpha: SourceAlpha? = nil) {
         self.projection = projection
         self.placement = placement
+        self.alpha = alpha
     }
 
     /// True when the author has decided nothing — so the record can be dropped
     /// rather than written as an empty object.
-    public var isEmpty: Bool { projection == nil && placement == nil }
+    public var isEmpty: Bool { projection == nil && placement == nil && alpha == nil }
+
+    // Tolerant by hand — see `VideoInterpretation`: an unrecognised future
+    // `alpha` decodes as absent (Automatic), never as a failed document.
+    private enum CodingKeys: String, CodingKey { case projection, placement, alpha }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.projection = try c.decodeIfPresent(ImmersiveField.self, forKey: .projection)
+        self.placement = try c.decodeIfPresent(ImagePlacementPreference.self, forKey: .placement)
+        self.alpha = (try? c.decodeIfPresent(String.self, forKey: .alpha))
+            .flatMap { SourceAlpha(rawValue: $0) }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(projection, forKey: .projection)
+        try c.encodeIfPresent(placement, forKey: .placement)
+        try c.encodeIfPresent(alpha, forKey: .alpha)
+    }
 }
 
 // MARK: - The coverages Maestro offers

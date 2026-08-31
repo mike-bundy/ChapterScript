@@ -162,19 +162,56 @@ public struct VideoInterpretation: Codable, Sendable, Equatable {
     /// and the author decides.
     public var projection: SourceProjection?
 
+    /// HOW THE SOURCE'S COLOUR RELATES TO ITS COVERAGE (FL-04), when the
+    /// container does not say. A DECISION, stored for the reason `layout` is:
+    /// where the file is silent, no inspection can settle it. A declared
+    /// alpha mode still wins. Absent means Automatic.
+    public var alpha: SourceAlpha?
+
     public init(layout: VideoLayout? = nil,
                 eyeOrder: StereoEyeOrder? = nil,
                 placement: VideoPlacementPreference? = nil,
-                projection: SourceProjection? = nil) {
+                projection: SourceProjection? = nil,
+                alpha: SourceAlpha? = nil) {
         self.layout = layout
         self.eyeOrder = eyeOrder
         self.placement = placement
         self.projection = projection
+        self.alpha = alpha
     }
 
     /// True when the author has decided nothing — so the record can be dropped
     /// rather than written as an empty object.
     public var isEmpty: Bool {
         layout == nil && eyeOrder == nil && placement == nil && projection == nil
+            && alpha == nil
+    }
+
+    // Tolerant by hand: an `alpha` case written by a NEWER tool decodes as
+    // ABSENT (Automatic) rather than failing the document — and Automatic is
+    // the fallback that MEANS the right thing here, per the standing rule
+    // that a tolerant decoder that merely parses is not automatically
+    // correct. The other fields keep their synthesized strictness.
+    private enum CodingKeys: String, CodingKey {
+        case layout, eyeOrder, placement, projection, alpha
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.layout = try c.decodeIfPresent(VideoLayout.self, forKey: .layout)
+        self.eyeOrder = try c.decodeIfPresent(StereoEyeOrder.self, forKey: .eyeOrder)
+        self.placement = try c.decodeIfPresent(VideoPlacementPreference.self, forKey: .placement)
+        self.projection = try c.decodeIfPresent(SourceProjection.self, forKey: .projection)
+        self.alpha = (try? c.decodeIfPresent(String.self, forKey: .alpha))
+            .flatMap { SourceAlpha(rawValue: $0) }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(layout, forKey: .layout)
+        try c.encodeIfPresent(eyeOrder, forKey: .eyeOrder)
+        try c.encodeIfPresent(placement, forKey: .placement)
+        try c.encodeIfPresent(projection, forKey: .projection)
+        try c.encodeIfPresent(alpha, forKey: .alpha)
     }
 }
