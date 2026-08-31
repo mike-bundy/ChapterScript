@@ -85,3 +85,27 @@ extension TrackModelFormatTests {
         XCTAssertEqual(mutedWins, 0, "mute is absolute")
     }
 }
+
+// MARK: - FL-20: Source metadata
+
+final class SourceMetadataFormatTests: XCTestCase {
+
+    func testMetadataRoundTripsAndAbsentWritesNothing() throws {
+        let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]
+        let bare = AssetEntry(id: "a.mov", relativePath: "a.mov", kind: .video)
+        let bareJSON = String(data: try e.encode(bare), encoding: .utf8)!
+        XCTAssertFalse(bareJSON.contains("keywords"))
+        XCTAssertFalse(bareJSON.contains("rating"))
+        var tagged = bare
+        tagged.keywords = ["interview", "day"]
+        tagged.rating = 4
+        tagged.isFavorite = true
+        let back = try JSONDecoder().decode(AssetEntry.self, from: e.encode(tagged))
+        XCTAssertEqual(back.keywords, ["interview", "day"])
+        XCTAssertEqual(back.rating, 4)
+        XCTAssertEqual(back.isFavorite, true)
+        // And the pre-FL-20 shape decodes untouched.
+        let legacy = try JSONDecoder().decode(AssetEntry.self, from: e.encode(bare))
+        XCTAssertNil(legacy.keywords)
+    }
+}

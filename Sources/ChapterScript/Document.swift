@@ -349,6 +349,12 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// nothing on screen saying so is the failure this rule prevents.
     public var channelMutes: [String: [String]]
 
+    /// AUTHORED SOURCE METADATA (FL-20), keyed by Source id (filename).
+    /// The manifest is REBUILT from disk at save, so authored keywords,
+    /// ratings and favourites live HERE - the one durable home - and the
+    /// build stamps them onto each AssetEntry for the wire.
+    public var sourceMetadata: [String: SourceMetadata]
+
     /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
     /// surface's entity id.
     ///
@@ -400,6 +406,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
             && trackSurfaceOwners.isEmpty
             && trackProperties.isEmpty
             && channelMutes.isEmpty
+            && sourceMetadata.isEmpty
             && audioTrackOwners.isEmpty
     }
 
@@ -432,6 +439,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.sourceSeedEffects = [:]
         self.trackProperties = [:]
         self.channelMutes = [:]
+        self.sourceMetadata = [:]
         self.trackSurfaceOwners = trackSurfaceOwners
         self.audioTrackOwners = audioTrackOwners
     }
@@ -445,6 +453,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         case sourceSeedEffects
         case trackProperties
         case channelMutes
+        case sourceMetadata
     }
 
     public init(from decoder: Decoder) throws {
@@ -484,6 +493,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.channelMutes = try c.decodeIfPresent(
             [String: [String]].self, forKey: .channelMutes
+        ) ?? [:]
+        self.sourceMetadata = try c.decodeIfPresent(
+            [String: SourceMetadata].self, forKey: .sourceMetadata
         ) ?? [:]
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners
@@ -802,6 +814,14 @@ public struct AssetEntry: Codable, Sendable, Equatable {
     /// field existed. `relativePath` remains the serving key either way.
     public var external: ExternalMediaLocation?
 
+    /// AUTHORED SOURCE METADATA (FL-20): findable by more than a name.
+    /// All optional and additive; absent means none / unrated / not a
+    /// favourite, and existing manifests re-save byte-identically.
+    public var keywords: [String]?
+    /// 0...5; the write path clamps and reports an out-of-range value.
+    public var rating: Int?
+    public var isFavorite: Bool?
+
     public init(
         id: String,
         relativePath: String,
@@ -811,7 +831,10 @@ public struct AssetEntry: Codable, Sendable, Equatable {
         durationMs: Int? = nil,
         width: Int? = nil,
         height: Int? = nil,
-        external: ExternalMediaLocation? = nil
+        external: ExternalMediaLocation? = nil,
+        keywords: [String]? = nil,
+        rating: Int? = nil,
+        isFavorite: Bool? = nil
     ) {
         self.id = id
         self.relativePath = relativePath
@@ -822,6 +845,9 @@ public struct AssetEntry: Codable, Sendable, Equatable {
         self.width = width
         self.height = height
         self.external = external
+        self.keywords = keywords
+        self.rating = rating
+        self.isFavorite = isFavorite
     }
 
     /// True when the entry's bytes are stored outside the bundle.
@@ -1471,5 +1497,25 @@ public struct TrackProperties: Codable, Sendable, Equatable {
 
     public var isEmpty: Bool {
         height == nil && colorTag == nil && isLocked == nil
+    }
+}
+
+/// One Source's authored, findable metadata (FL-20). All optional; an
+/// empty record is dropped by the write path rather than stored.
+public struct SourceMetadata: Codable, Sendable, Equatable {
+    public var keywords: [String]?
+    /// 0...5; the write path clamps and reports.
+    public var rating: Int?
+    public var isFavorite: Bool?
+
+    public init(keywords: [String]? = nil, rating: Int? = nil,
+                isFavorite: Bool? = nil) {
+        self.keywords = keywords
+        self.rating = rating
+        self.isFavorite = isFavorite
+    }
+
+    public var isEmpty: Bool {
+        (keywords?.isEmpty ?? true) && rating == nil && (isFavorite != true)
     }
 }
