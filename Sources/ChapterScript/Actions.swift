@@ -411,6 +411,10 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// hides rather than destroys; per occurrence because two uses of one
     /// master legitimately carry different notes. Additive, tolerant.
     public var markers: [Marker]?
+    /// THE EFFECT STACK (FL-09): ordered, owned by THIS occurrence — order
+    /// IS evaluation order. Additive and tolerant; absent means none, and
+    /// an unrecognised Effect round-trips losslessly (G7).
+    public var effects: [EffectInstance]?
 
     public init(
         file: String,
@@ -423,7 +427,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         sourceOut: Double? = nil,
         crop: VideoCropRect? = nil,
         convergence: Float? = nil,
-        markers: [Marker]? = nil
+        markers: [Marker]? = nil,
+        effects: [EffectInstance]? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -436,11 +441,12 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.crop = crop
         self.convergence = convergence
         self.markers = markers
+        self.effects = effects
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
-        case convergence, markers
+        case convergence, markers, effects
     }
 
     public init(from decoder: Decoder) throws {
@@ -457,6 +463,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.crop = try c.decodeIfPresent(VideoCropRect.self, forKey: .crop)
         self.convergence = try c.decodeIfPresent(Float.self, forKey: .convergence)
         self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
+        self.effects = try c.decodeIfPresent([EffectInstance].self, forKey: .effects)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.

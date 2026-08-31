@@ -80,6 +80,9 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
     ///
     /// A player that has never heard of this ignores the key and cuts.
     public var fadeIn: Double?
+    /// THE EFFECT STACK (FL-09) on this backdrop occurrence. Same contract
+    /// as `VideoActionDTO.effects`.
+    public var effects: [EffectInstance]?
 
     public init(
         id: String = UUID().uuidString,
@@ -98,7 +101,7 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, startTime, spec, sourceIn, sourceOut, fadeIn
+        case id, startTime, spec, sourceIn, sourceOut, fadeIn, effects
     }
 
     public init(from decoder: Decoder) throws {
@@ -111,6 +114,7 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
         self.sourceIn = try c.decodeIfPresent(Double.self, forKey: .sourceIn)
         self.sourceOut = try c.decodeIfPresent(Double.self, forKey: .sourceOut)
         self.fadeIn = try c.decodeIfPresent(Double.self, forKey: .fadeIn).map { max(0, $0) }
+        self.effects = try c.decodeIfPresent([EffectInstance].self, forKey: .effects)
     }
 
     /// Whether this cue actually fades rather than cutting. The one place that

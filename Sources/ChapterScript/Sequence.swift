@@ -116,6 +116,12 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// Chapter never told about captions re-saves byte-identically.
     public var captionTracks: [CaptionTrack]?
 
+    /// EFFECT PARAMETER KEYS (FL-09, G6): a sibling CONTAINER, evaluated
+    /// by the one existing animation evaluator, addressed by
+    /// (instanceId, parameterKey). Additive and tolerant; absent means no
+    /// Effect Keys and re-saves byte-identically.
+    public var effectKeyTracks: [EffectKeyTrack]?
+
     public init(
         id: String,
         name: String,
@@ -134,11 +140,13 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         onComplete: CompletionActionDTO = .holdOnLastStep,
         editorColorIndex: Int? = nil,
         markers: [Marker]? = nil,
-        captionTracks: [CaptionTrack]? = nil
+        captionTracks: [CaptionTrack]? = nil,
+        effectKeyTracks: [EffectKeyTrack]? = nil
     ) {
         self.editorColorIndex = editorColorIndex
         self.markers = markers
         self.captionTracks = captionTracks
+        self.effectKeyTracks = effectKeyTracks
         self.id = id
         self.name = name
         self.phase = phase
@@ -196,6 +204,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case editorColorIndex
         case markers
         case captionTracks
+        case effectKeyTracks
     }
 
     public init(from decoder: Decoder) throws {
@@ -242,6 +251,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.markers = try c.decodeIfPresent([Marker].self, forKey: .markers)
         // Absent in every document written before Captions existed (FL-08).
         self.captionTracks = try c.decodeIfPresent([CaptionTrack].self, forKey: .captionTracks)
+        self.effectKeyTracks = try c.decodeIfPresent([EffectKeyTrack].self, forKey: .effectKeyTracks)
     }
 }
 

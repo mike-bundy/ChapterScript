@@ -328,6 +328,13 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// open and never stored here.
     public var imageInterpretations: [String: ImageInterpretation]
 
+    /// A SOURCE-LEVEL EFFECT SEEDS A NEW PLACEMENT AND NEVER LIVE-LINKS
+    /// (FL-09, G2). Keyed by filename like every interpretation; the stack
+    /// here is a DEFAULT copied (with fresh instance ids) into each new
+    /// occurrence. Editing an occurrence never touches this, and the
+    /// runtime never reads it — placement copies are what play.
+    public var sourceSeedEffects: [String: [EffectInstance]]
+
     /// WHICH SEQUENCE A TIMELINE TRACK SURFACE WAS CREATED FOR, keyed by the
     /// surface's entity id.
     ///
@@ -369,6 +376,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     public var audioTrackOwners: [String: String]
 
     public var isEmpty: Bool {
+        sourceSeedEffects.isEmpty &&
         bins.isEmpty && timelineGroups.isEmpty
             && sceneFolders.isEmpty && sceneFolderTree.isEmpty
             && clipColors.isEmpty && lockedClips.isEmpty && clipGroups.isEmpty
@@ -405,6 +413,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         self.mediaKindOverrides = mediaKindOverrides
         self.videoInterpretations = videoInterpretations
         self.imageInterpretations = imageInterpretations
+        self.sourceSeedEffects = [:]
         self.trackSurfaceOwners = trackSurfaceOwners
         self.audioTrackOwners = audioTrackOwners
     }
@@ -415,6 +424,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         case audioInterpretations, mediaKindOverrides, videoInterpretations
         case imageInterpretations
         case trackSurfaceOwners, audioTrackOwners
+        case sourceSeedEffects
     }
 
     public init(from decoder: Decoder) throws {
@@ -445,6 +455,9 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
         ) ?? [:]
         self.imageInterpretations = try c.decodeIfPresent(
             [String: ImageInterpretation].self, forKey: .imageInterpretations
+        ) ?? [:]
+        self.sourceSeedEffects = try c.decodeIfPresent(
+            [String: [EffectInstance]].self, forKey: .sourceSeedEffects
         ) ?? [:]
         self.trackSurfaceOwners = try c.decodeIfPresent(
             [String: String].self, forKey: .trackSurfaceOwners
