@@ -448,6 +448,11 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// How a retimed occurrence's embedded audio handles pitch. Absent
     /// means `.followsSpeed`.
     public var pitch: PitchHandling?
+    /// THE FILE'S OWN SUBTITLES: when true, the player selects the media
+    /// file's embedded legible track and lets AVFoundation draw it, as a
+    /// thing of its own beside the Chapter's authored caption Tracks.
+    /// Absent means off — exactly the previous behaviour.
+    public var embeddedSubtitles: Bool?
 
     public init(
         file: String,
@@ -466,7 +471,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         videoTransition: VideoTransitionSpec? = nil,
         retime: RetimeCurve? = nil,
         pitch: PitchHandling? = nil,
-        virtualCamera: VirtualCameraSpec? = nil
+        virtualCamera: VirtualCameraSpec? = nil,
+        embeddedSubtitles: Bool? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -485,12 +491,13 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.retime = retime
         self.pitch = pitch
         self.virtualCamera = virtualCamera
+        self.embeddedSubtitles = embeddedSubtitles
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
         case convergence, markers, effects, blendMode, videoTransition, retime, pitch
-        case virtualCamera
+        case virtualCamera, embeddedSubtitles
     }
 
     public init(from decoder: Decoder) throws {
@@ -515,6 +522,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
                                                      forKey: .videoTransition)
         self.retime = try c.decodeIfPresent(RetimeCurve.self, forKey: .retime)
         self.pitch = try c.decodeIfPresent(PitchHandling.self, forKey: .pitch)
+        self.embeddedSubtitles = try c.decodeIfPresent(Bool.self, forKey: .embeddedSubtitles)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.
