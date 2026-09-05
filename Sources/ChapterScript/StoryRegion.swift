@@ -52,11 +52,11 @@ import Foundation
 ///
 /// Deliberately small, and deliberately explicit: everything not named by a
 /// continuation simply holds. The alternative — inferring "this looks ambient,
-/// it should probably loop" — produces a chapter whose behaviour nobody can
+/// it should probably loop" — produces a chapter whose behavior nobody can
 /// read off the document.
 public enum StoryContinuationBehavior: String, Codable, Sendable, Equatable, CaseIterable {
     /// Freeze where the authored first pass left it. The default for
-    /// everything, because it is the only behaviour that is always honest.
+    /// everything, because it is the only behavior that is always honest.
     case hold
     /// Repeat the region's authored span, using runtime dwell time. The
     /// authored clock does not move; a sampling overlay does.
@@ -177,7 +177,7 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
     /// Absolute sequence seconds where the region begins.
     public var startTime: Double
     /// THE AUTHORED PREVIEW SPAN — how much Timeline room the region occupies
-    /// so its first pass can be composed and its continuation behaviour
+    /// so its first pass can be composed and its continuation behavior
     /// authored. It is NOT how long the viewer will stay; that is runtime dwell
     /// and is not knowable here.
     public var previewDuration: Double
@@ -204,7 +204,7 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
     /// watching the authored first pass has already used ten.
     public var fallbackTimeout: Double?
 
-    /// Explicit per-content behaviour during the hold. Anything not named here
+    /// Explicit per-content behavior during the hold. Anything not named here
     /// holds.
     public var continuations: [StoryContinuation]
 
@@ -254,7 +254,7 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
     /// at. Clamped rather than refused, so a drag can never produce one.
     public static let minimumDuration: Double = 1.0 / 24.0
 
-    /// The behaviour authored for one target, or `.hold` — the default that
+    /// The behavior authored for one target, or `.hold` — the default that
     /// applies to everything nobody said anything about.
     public func behavior(for target: StoryContinuationTarget) -> StoryContinuationBehavior {
         continuations.first { $0.target == target }?.behavior ?? .hold

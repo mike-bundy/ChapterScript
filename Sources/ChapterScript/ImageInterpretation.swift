@@ -74,7 +74,7 @@ public struct ImageInterpretation: Codable, Sendable, Equatable {
     /// never be derived from the other.
     public var placement: ImagePlacementPreference?
 
-    /// HOW THE COLOUR RELATES TO THE COVERAGE (FL-04), when the container
+    /// HOW THE COLOR RELATES TO THE COVERAGE (FL-04), when the container
     /// does not say. Same rule as video: a declared alpha info wins, absent
     /// means Automatic, and nothing guesses it from a channel count.
     public var alpha: SourceAlpha?

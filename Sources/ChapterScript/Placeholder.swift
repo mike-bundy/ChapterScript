@@ -11,7 +11,7 @@
 //
 //  A PLACEHOLDER IS A REAL AUTHORED OBJECT, NOT A STAND-IN FILE.
 //
-//  The tempting shortcut is to drop a grey MP4 into the bundle and treat it as
+//  The tempting shortcut is to drop a gray MP4 into the bundle and treat it as
 //  ordinary media. That is wrong in a way that costs later: the manifest grows
 //  entries for files nobody wants shipped, asset hashes churn, `playVideo`
 //  points at a lie, and "is this real yet?" becomes a filename convention.
@@ -106,7 +106,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
     /// ROUNDED CORNERS FOR A `.videoPanel` STAND-IN, in meters (nil/0 = square).
     ///
     /// The same number `VideoPanelSpec.cornerRadius` carries, held here while
-    /// the shot has no file, so the grey proxy is framed the way the finished
+    /// the shot has no file, so the gray proxy is framed the way the finished
     /// screen will be and REPLACEMENT CHANGES NOTHING ABOUT THE COMPOSITION.
     /// Corner treatment is a property of the SURFACE, never of the source: a
     /// movie is not rounded, the screen showing it is.
@@ -191,7 +191,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
         )
     }
 
-    /// Model proxy: a half-metre neutral box unless the author sizes it.
+    /// Model proxy: a half-meter neutral box unless the author sizes it.
     public static func entity3D(
         label: String,
         size: Vec3 = Vec3(0.5, 0.5, 0.5)

@@ -38,7 +38,7 @@ import Foundation
 
 /// What the source's pixels MEAN geometrically.
 ///
-/// Carried so that a projected source can be recognised, never so that it can
+/// Carried so that a projected source can be recognized, never so that it can
 /// be silently pasted onto a rectangle: half-equirectangular pixels on a flat
 /// panel are a distorted picture, not a window into a scene.
 public enum SourceProjection: String, Codable, Sendable, Equatable, CaseIterable {
@@ -162,7 +162,7 @@ public struct VideoInterpretation: Codable, Sendable, Equatable {
     /// and the author decides.
     public var projection: SourceProjection?
 
-    /// HOW THE SOURCE'S COLOUR RELATES TO ITS COVERAGE (FL-04), when the
+    /// HOW THE SOURCE'S COLOR RELATES TO ITS COVERAGE (FL-04), when the
     /// container does not say. A DECISION, stored for the reason `layout` is:
     /// where the file is silent, no inspection can settle it. A declared
     /// alpha mode still wins. Absent means Automatic.

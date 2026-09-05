@@ -5,7 +5,7 @@
 //  PHASE 8.0 — THE VISIT BOUNDARY.
 //
 //  Phase 6 established what a visit MEANS (`.once` is at most one activation
-//  per visit) and the runtime honoured it by rebuilding state on each play. But
+//  per visit) and the runtime honored it by rebuilding state on each play. But
 //  nothing named a visit, so nothing could tell two apart — which Return and
 //  Resume will need to do. These pin the boundary before those exist.
 //
@@ -38,7 +38,7 @@ final class SequenceVisitTests: XCTestCase {
     }
 
     func testTheSameVisitValueComparesEqualToItself() {
-        // A visit passed around must be recognisable as the SAME visit — that
+        // A visit passed around must be recognizable as the SAME visit — that
         // is what makes "is this still the current one?" answerable.
         let visit = SequenceVisit(sequenceId: "museum")
         let carried = visit

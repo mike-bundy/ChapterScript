@@ -73,7 +73,7 @@ final class CaptionFormatTests: XCTestCase {
     }
 
     /// An unrecognised kind is the WEAKER claim: calling a translation an
-    /// accessibility artefact would over-claim, so the fallback is subtitles.
+    /// accessibility artifact would over-claim, so the fallback is subtitles.
     func testUnknownKindDecodesAsSubtitles() throws {
         let json = #"{"id":"t","language":"en","kind":"karaoke","cues":[]}"#
         let track = try JSONDecoder().decode(CaptionTrack.self,

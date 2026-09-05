@@ -461,7 +461,7 @@ public enum AudioPlaybackModel: String, Codable, Sendable, Equatable, CaseIterab
     /// A surrounding sound field. Has an ORIENTATION, not a position.
     case sceneBased
 
-    /// An already-authored spatial mix whose spatialisation lives in the
+    /// An already-authored spatial mix whose spatialization lives in the
     /// stream. Maestro rides its level and otherwise keeps its hands off.
     case spatialMix
 
@@ -528,7 +528,7 @@ public extension AudioSpatialForm {
     /// first. The Inspector shows exactly these and no others — "only modes
     /// that are actually valid for the media".
     ///
-    /// The judgements, and why:
+    /// The judgments, and why:
     ///
     /// - **Mono** can be anything. It is the classic point source, but a mono
     ///   narration track is head-locked, so both are offered.
@@ -541,7 +541,7 @@ public extension AudioSpatialForm {
     ///   position, and offering "Positional" would invite an author to key XYZ
     ///   on something that cannot have one.
     /// - **ASAF and Atmos** are spatial mixes. They already contain their own
-    ///   spatialisation; the ONLY thing Maestro may do is ride the level.
+    ///   spatialization; the ONLY thing Maestro may do is ride the level.
     /// - **Unknown multichannel** gets head-locked only, until the author
     ///   interprets it. That is the point of the unknown state — it does not
     ///   guess, it asks.
@@ -564,7 +564,7 @@ public extension AudioSpatialForm {
     }
 
     /// Guard for the authored value: an out-of-range model falls back to the
-    /// default rather than being honoured. This is what stops a document that
+    /// default rather than being honored. This is what stops a document that
     /// once said "positional" from keeping XYZ semantics after its source was
     /// reinterpreted as ambisonic.
     func coerce(_ model: AudioPlaybackModel?) -> AudioPlaybackModel {

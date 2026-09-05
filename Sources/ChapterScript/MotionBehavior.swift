@@ -82,7 +82,7 @@ public enum MotionAmbientStyle: String, Codable, Sendable, Equatable, CaseIterab
     /// `ambientAxis`, keeping its distance. One cycle is one full revolution.
     ///
     /// Unlike the other three this needs to know where the object IS: a float
-    /// is the same wherever it happens, an orbit is defined by its centre. The
+    /// is the same wherever it happens, an orbit is defined by its center. The
     /// resolver takes the rest position for exactly this case.
     case orbit
 }
@@ -92,14 +92,14 @@ public enum MotionStartPlace: String, Codable, Sendable, Equatable, CaseIterable
     /// An offset along `direction` by `distance`. Every behavior authored
     /// before this field existed, and still the default.
     case direction
-    /// The world origin — the centre of the scene, and the viewer's own
+    /// The world origin — the center of the scene, and the viewer's own
     /// position in both the Mac Viewer and on device.
     case sceneCentre
 
     public var displayName: String {
         switch self {
         case .direction:   return "A direction"
-        case .sceneCentre: return "The centre of the scene"
+        case .sceneCentre: return "The center of the scene"
         }
     }
 }
@@ -163,7 +163,7 @@ public enum MotionDirection: Codable, Sendable, Equatable {
     /// An explicit vector, always read in the behavior's `space`.
     case custom(Vec3)
 
-    /// Unit vector in the behavior's space. `custom` is normalised so distance
+    /// Unit vector in the behavior's space. `custom` is normalized so distance
     /// is always the authority on how far — a direction says only which way.
     public var unitVector: SIMD3<Float> {
         switch self {
@@ -254,7 +254,7 @@ public enum MotionDirection: Codable, Sendable, Equatable {
 
 /// One authored motion behavior.
 ///
-/// COMFORT IS A DEFAULT, NOT A LIMIT. The initialiser's defaults are the
+/// COMFORT IS A DEFAULT, NOT A LIMIT. The initializer's defaults are the
 /// cinematic, immersive-safe ones (a modest distance over a perceivable
 /// duration, easing that settles rather than snaps); an author may exceed them
 /// deliberately, and `MotionBehaviorLimits` says where the advisory line is.
@@ -266,7 +266,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
     /// Absent for a motion that only fades or scales.
     public var direction: MotionDirection?
     public var space: MotionSpace
-    /// Metres. Ignored when `direction` is nil.
+    /// Meters. Ignored when `direction` is nil.
     public var distance: Float
     public var duration: Double
     public var easing: StepTimingFunction
@@ -305,7 +305,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
     /// `.sceneCentre` is the other thing authors mean by "comes in from the
     /// middle" — the away pose is the world origin itself, wherever the object
     /// rests. It is exact rather than a direction that happens to point at the
-    /// centre, which would need re-aiming every time the object moved.
+    /// center, which would need re-aiming every time the object moved.
     ///
     /// There is deliberately no "out of frame": the format has no camera and
     /// no field of view, so the distance that clears one would be a guess
@@ -317,12 +317,12 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
     /// have to remember to take its absolute value.
     public var ambientReversed: Bool?
 
-    /// How far from the axis an orbit runs, in metres. Absent or zero keeps the
+    /// How far from the axis an orbit runs, in meters. Absent or zero keeps the
     /// object's OWN distance — an orbit that silently moved a carefully placed
     /// prop to a default radius would be the more surprising answer.
     public var orbitRadius: Float?
 
-    /// Whether the object keeps facing the centre as it goes round.
+    /// Whether the object keeps facing the center as it goes round.
     ///
     /// Absent reads as TRUE: an object that orbits without turning drifts
     /// sideways past the viewer, which reads as a mistake rather than as a
@@ -392,7 +392,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
         fade = try c.decodeIfPresent(Bool.self, forKey: .fade) ?? true
         awayScale = try c.decodeIfPresent(Float.self, forKey: .awayScale)
         // TOLERANT, like every other field here: a style written by a newer
-        // tool that this build does not recognise reads as absent, and an
+        // tool that this build does not recognize reads as absent, and an
         // absent style resolves as `.float` rather than as no motion at all.
         ambientStyle = try? c.decodeIfPresent(MotionAmbientStyle.self, forKey: .ambientStyle)
         span = try? c.decodeIfPresent(Double.self, forKey: .span)
@@ -448,7 +448,7 @@ public enum MotionBehaviorLimits {
     /// One cycle. Slow on purpose: an ambient cue that competes for attention
     /// has stopped being a cue.
     public static let defaultAmbientPeriod: Double = 4.0
-    /// Peak rise for an Idle Float, in metres. Small enough to read as "alive"
+    /// Peak rise for an Idle Float, in meters. Small enough to read as "alive"
     /// and never as "moving".
     public static let defaultAmbientRise: Float = 0.02
     /// Peak size for a Pulse.
@@ -514,7 +514,7 @@ public enum MotionBehaviorResolver {
     /// viewer space as world space rather than guessing, which keeps a
     /// preview deterministic before a head pose exists.
     /// - Parameter restPosition: where the object sits when nothing is acting
-    ///   on it. Needed ONLY by `.orbit`, which is defined by its centre rather
+    ///   on it. Needed ONLY by `.orbit`, which is defined by its center rather
     ///   than by a displacement — every other behavior is a delta and does not
     ///   care where it starts. Absent, an orbit falls back to a circle through
     ///   the origin's forward axis rather than guessing.
@@ -555,7 +555,7 @@ public enum MotionBehaviorResolver {
 
         var offset = MotionOffset.identity
 
-        // THE AWAY POSE IS THE SCENE CENTRE, EXACTLY. Expressing it as a
+        // THE AWAY POSE IS THE SCENE CENTER, EXACTLY. Expressing it as a
         // direction that happens to point at the origin would need re-aiming
         // every time the object moved; the away vector is the origin minus
         // where the object rests, so it is right wherever that is.
@@ -563,7 +563,7 @@ public enum MotionBehaviorResolver {
             if let rest = restPosition {
                 offset.positionDelta = -rest * awayness
             }
-            // With no rest position there is no vector to the centre, so the
+            // With no rest position there is no vector to the center, so the
             // behavior contributes no translation rather than an invented one.
         } else if let direction = behavior.direction, behavior.distance != 0 {
             var vector = direction.unitVector * behavior.distance
@@ -664,9 +664,9 @@ public enum MotionBehaviorResolver {
 
         var offset = MotionOffset.identity
         offset.positionDelta = orbited - restInPlane
-        // FACING THE CENTRE IS A TURN, NOT A LOOK-AT. If the object faces the
-        // centre at rest, turning it by the same angle it has travelled keeps
-        // it facing the centre — no world matrix, no camera, nothing that could
+        // FACING THE CENTER IS A TURN, NOT A LOOK-AT. If the object faces the
+        // center at rest, turning it by the same angle it has traveled keeps
+        // it facing the center — no world matrix, no camera, nothing that could
         // disagree between the editor and the device.
         if behavior.orbitFacesCentre ?? true {
             offset.rotationDelta = axis.unitVector

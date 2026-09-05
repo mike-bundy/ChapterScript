@@ -12,7 +12,7 @@
 //    • Reverse         — a negative-slope span. There is NO reverse flag.
 //    • Freeze          — a zero-slope span. There is NO freeze branch.
 //    • No retime       — the ABSENCE of the field (`retime == nil` on the
-//      carrier), which is today's exact behaviour at zero cost. `.identity`
+//      carrier), which is today's exact behavior at zero cost. `.identity`
 //      here is the in-memory stand-in for that absence and is never
 //      persisted as an empty object.
 //

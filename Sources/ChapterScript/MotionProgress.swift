@@ -28,7 +28,7 @@ public enum MotionProgress {
     /// state change, not a division by zero.
     public static let minimumDuration: Double = 0.001
 
-    /// Normalised progress through an action, clamped to `0...1`.
+    /// Normalized progress through an action, clamped to `0...1`.
     ///
     /// - Parameters:
     ///   - startTime: when the action began, on the AUTHORED sequence clock.

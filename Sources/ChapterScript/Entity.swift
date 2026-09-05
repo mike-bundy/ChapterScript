@@ -104,8 +104,8 @@ public struct EntityDefinition: Codable, Sendable, Equatable {
     public var resolvedInteractions: [InteractionSpec] { interactions ?? [] }
 
     /// True when this object does anything at all when the viewer acts on it.
-    /// A disabled interaction still counts as authored behaviour: the Timeline
-    /// and the Scene browser must show that the object HAS behaviour, or the
+    /// A disabled interaction still counts as authored behavior: the Timeline
+    /// and the Scene browser must show that the object HAS behavior, or the
     /// author cannot find the switch that turned it off.
     public var isInteractive: Bool { !(interactions ?? []).isEmpty }
 
@@ -254,7 +254,7 @@ public struct UsdzAnimationSpec: Codable, Sendable, Equatable {
     /// Playback rate multiplier (1 = authored speed).
     public var speed: Float
     /// CD-25 (FL-16): play ONE embedded clip, by the file's own name.
-    /// Absent = today's behaviour, every clip - checked deliberately: the
+    /// Absent = today's behavior, every clip - checked deliberately: the
     /// other fallback would silently stop existing models animating.
     /// Naming a clip the file does not have plays NOTHING, and reports.
     public var clipName: String?
@@ -283,7 +283,7 @@ public enum EntityKind: String, Codable, Sendable, Equatable {
     /// Blocking content — an authored stand-in for media that does not exist
     /// yet. Carries `EntityDefinition.placeholder`. A player that does not
     /// know this case decodes it as `.custom` (below) and, having no factory
-    /// registered for it, renders nothing — which is the right behaviour for
+    /// registered for it, renders nothing — which is the right behavior for
     /// an unfinished shot on an older runtime.
     case placeholder
     /// A POSITIONAL AUDIO SOURCE'S PLACE IN THE SCENE. Carries no geometry
@@ -410,12 +410,12 @@ public enum MaterialBlending: String, Codable, Sendable, Equatable {
 /// Horizontal text alignment (FL-07). `natural` follows the string's own
 /// direction — an RTL string leads from the right.
 public enum TextAlignmentX: String, Codable, Sendable, Equatable, CaseIterable {
-    case leading, centre, trailing, justified, natural
+    case leading, center, trailing, justified, natural
 }
 
 /// Vertical anchoring of the laid-out block within the Object.
 public enum TextAlignmentY: String, Codable, Sendable, Equatable, CaseIterable {
-    case top, centre, baseline, bottom
+    case top, center, baseline, bottom
 }
 
 /// Which extrusion caps are filled. Flat text is zero extrusion with BOTH
@@ -472,7 +472,7 @@ public struct VectorSpec: Codable, Sendable, Equatable {
     public var bevelSegments: Int?
     /// SHARED — the extruder's five slots.
     public var slotMaterials: TextSlotMaterials?
-    /// Metres; nil ⇒ derived from the viewBox at a default scale.
+    /// Meters; nil ⇒ derived from the viewBox at a default scale.
     public var physicalWidth: Float?
 
     public init(sourceId: String,
@@ -523,10 +523,10 @@ public struct VectorSpec: Codable, Sendable, Equatable {
 /// constant the Mac hardcoded before this campaign — so a Chapter written
 /// earlier renders exactly as it did and re-saves byte-identically.
 ///
-/// `fontSize` is METRES OF CAP HEIGHT in Object space, before the Object's
+/// `fontSize` is METERS OF CAP HEIGHT in Object space, before the Object's
 /// own scale (F-2): a Title is an Object in a room, and points are a
 /// 2D-display unit with no meaning at a distance. Existing values were
-/// already effectively metres, so no migration.
+/// already effectively meters, so no migration.
 public struct TextSpec: Codable, Sendable, Equatable {
     public var text: String
     public var fontSize: Float
@@ -542,13 +542,13 @@ public struct TextSpec: Codable, Sendable, Equatable {
     /// K11: a font as an ordinary Source. Carried now; resolution rides the
     /// Source pipeline.
     public var fontSourceId: String?
-    /// Additional tracking in metres (at cap-height scale). Absent ⇒ the
+    /// Additional tracking in meters (at cap-height scale). Absent ⇒ the
     /// font's own.
     public var tracking: Float?
-    /// Line height in metres. Absent ⇒ the font's own leading.
+    /// Line height in meters. Absent ⇒ the font's own leading.
     public var leading: Float?
 
-    // Layout. Absent ⇒ centre / centre — today's `alignment: .center`.
+    // Layout. Absent ⇒ center / center — today's `alignment: .center`.
     public var alignmentX: TextAlignmentX?
     public var alignmentY: TextAlignmentY?
 
@@ -774,7 +774,7 @@ public struct VideoPanelSpec: Codable, Sendable, Equatable {
 
 /// A still image shown on a flat plate in the scene.
 ///
-/// `width` and `height` are METRES and carry the source's own aspect ratio —
+/// `width` and `height` are METERS and carry the source's own aspect ratio —
 /// an image panel is a photograph on a wall, so it is never cropped and never
 /// stretched to a house shape. The authoring side computes them from the
 /// probed pixel dimensions once, at import; the runtime just builds the quad.
@@ -784,7 +784,7 @@ public struct ImagePanelSpec: Codable, Sendable, Equatable {
     public var file: String
     public var width: Float
     public var height: Float
-    /// Rounded corners, in metres. nil/0 = square.
+    /// Rounded corners, in meters. nil/0 = square.
     public var cornerRadius: Float?
     /// PRESENT THE TWO EYES OF AN APPLE SPATIAL PHOTO, where the platform can.
     ///

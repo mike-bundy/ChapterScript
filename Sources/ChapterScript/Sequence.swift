@@ -135,7 +135,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// AUTHORED DUCKERS (FL-18): explicit and NAMED - the author says what
     /// ducks and what triggers it. No implicit geometry, no track-order
     /// convention (in a spatial scene there is no "above"). Absent = the
-    /// runtime's existing behaviour, unchanged. A ducker referencing a
+    /// runtime's existing behavior, unchanged. A ducker referencing a
     /// destination that no longer exists is KEPT and reported.
     public var duckers: [DuckerSpec]?
 
@@ -248,15 +248,15 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.animationTracks = try c.decodeIfPresent([EntityAnimationTrack].self, forKey: .animationTracks) ?? []
         // Absent in every document written before audio automation existed —
         // an empty list means "no rides", which mixes to exactly the previous
-        // behaviour.
+        // behavior.
         self.audioTracks = try c.decodeIfPresent([AudioAutomationTrack].self, forKey: .audioTracks) ?? []
         // Absent in every document written before convergence existed. An
         // empty list means every clip keeps its source's own stereo
-        // relationship — exactly the previous behaviour.
+        // relationship — exactly the previous behavior.
         self.stereoTracks = try c.decodeIfPresent([StereoAutomationTrack].self, forKey: .stereoTracks) ?? []
         self.backdropTrack = try c.decodeIfPresent([BackdropCue].self, forKey: .backdropTrack) ?? []
         // Absent in every document written before Explore existed. An empty
-        // list is a fully Directed Sequence — exactly the previous behaviour.
+        // list is a fully Directed Sequence — exactly the previous behavior.
         self.storyRegions = try c.decodeIfPresent([StoryRegion].self, forKey: .storyRegions) ?? []
         // Absent in every document written before Sequence-local rest
         // placement existed — and normalized so empty and absent are the

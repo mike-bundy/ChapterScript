@@ -30,7 +30,7 @@ final class SequenceMigrationTests: XCTestCase {
         let curve = AnimationCurve(keys: [
             AnimationKey(time: 0.0,  value: 0),
             // Deliberately awkward absolute times: not on a frame boundary, not
-            // round. If anything ever "helpfully" re-quantises animation during a
+            // round. If anything ever "helpfully" re-quantizes animation during a
             // migration, these are the values that catch it.
             AnimationKey(time: 12.5, value: 1.75),
             AnimationKey(time: 41.333333, value: -3.25)
@@ -176,7 +176,7 @@ final class SequenceMigrationTests: XCTestCase {
     // MARK: - The four silent-breakage risks, pinned explicitly
 
     /// Animation keys sit at ABSOLUTE sequence seconds. A migration that rebuilt or
-    /// re-quantised curves would still decode, still play, and be wrong by a frame
+    /// re-quantized curves would still decode, still play, and be wrong by a frame
     /// in a way no one notices until a cut lands late.
     func testAnimationKeyTimesSurviveExactly() throws {
         let migrated = try Migrator.migrate(try v2Data(from: makeRichDocument()))

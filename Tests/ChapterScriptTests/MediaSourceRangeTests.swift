@@ -3,7 +3,7 @@
 //  ChapterScriptTests
 //
 //  The range's own rules, and the wire compatibility that lets old documents
-//  keep working. The composed document behaviour (placement, trimming,
+//  keep working. The composed document behavior (placement, trimming,
 //  backdrop overwrite) is tested in MaestroKit against real documents — these
 //  cover the value type the whole feature stands on.
 //

@@ -70,7 +70,7 @@ final class AudioRuntimeRoutingTests: XCTestCase {
                        .supported(.systemSpatialMedia))
     }
 
-    /// NEITHER IS EVER ROUTED POSITIONAL. Point-spatialising a sound field or a
+    /// NEITHER IS EVER ROUTED POSITIONAL. Point-spatializing a sound field or a
     /// mastered immersive mix is the specific wrong answer — worse than a
     /// downmix, because it invents a location the mix never had.
     func testFieldsAndMixesAreNeverPointSpatialised() {
@@ -79,7 +79,7 @@ final class AudioRuntimeRoutingTests: XCTestCase {
             // when switching models.
             let routed = AudioRuntimeRouting.route(for: cue(model, emitter: "Leftover Emitter"))
             XCTAssertNotEqual(routed.route, .positional,
-                              "\(model.rawValue) must never be point-spatialised")
+                              "\(model.rawValue) must never be point-spatialized")
         }
     }
 
@@ -409,7 +409,7 @@ final class SpatialPresentationWiringTests: XCTestCase {
     }
 
     /// 4. PIPELINE A NEVER TOUCHES THIS. A positional cue's location comes from
-    /// its emitter's transform, and an ordinary cue is not spatialised at all —
+    /// its emitter's transform, and an ordinary cue is not spatialized at all —
     /// neither may be handed a spatial-experience setting.
     func testPipelineACuesHaveNoSpatialExperience() {
         XCTAssertNil(AudioRuntimeRouting.spatialExperience(

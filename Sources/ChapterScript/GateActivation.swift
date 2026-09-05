@@ -6,7 +6,7 @@
 //
 //  A viewer acting on an object can mean two things at once:
 //
-//      the OBJECT'S OWN BEHAVIOUR      an Interaction responds
+//      the OBJECT'S OWN BEHAVIOR      an Interaction responds
 //      PERMISSION TO CONTINUE         a Gate is satisfied
 //
 //  They are different consumers of the same event, with different rules, and
@@ -23,7 +23,7 @@
 //  ACCESSIBILITY IS WHY THIS EXISTS.
 //
 //  Phase 6 established that an accessible activation is another ROUTE to the
-//  same authored intent, not another behaviour engine. Phase 7 then made a
+//  same authored intent, not another behavior engine. Phase 7 then made a
 //  Story Region's exit a `StepGateDTO` — at which point a VoiceOver user could
 //  activate an object and have its Interaction respond while the story stayed
 //  locked, because nothing carried that activation to the gate. A gate BLOCKS

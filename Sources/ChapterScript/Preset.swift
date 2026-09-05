@@ -4,8 +4,8 @@
 //
 //  FL-21 (R4): ONE catalog shape for every preset kind. A preset is a
 //  VALUE — applying it is a copy through that kind's own existing write
-//  path. `PresetEntry.id` exists so a preset can be found, favourited
-//  and organised; it NEVER appears in an authored fact, so deleting a
+//  path. `PresetEntry.id` exists so a preset can be found, favorited
+//  and organized; it NEVER appears in an authored fact, so deleting a
 //  preset breaks nothing that was made from it.
 //
 //  Tolerance is G7's, one level up: an unrecognised `kind` keeps its
@@ -101,7 +101,7 @@ public enum PresetPayload: Codable, Sendable, Equatable {
     /// applying preserves the target's text.
     case title(TextSpec)
     /// One Effect: an `effectId` plus a full parameter snapshot.
-    /// A saved look (H7) is exactly this, over the bundled colour Effect.
+    /// A saved look (H7) is exactly this, over the bundled color Effect.
     case effect(EffectInstance)
     /// One slot's override, minus the slot index — the target's current
     /// slot receives it.
@@ -179,7 +179,7 @@ public struct CurvePresetPayload: Codable, Sendable, Equatable {
 /// USER presets live in Application Support in the SAME shape — the
 /// existing store discipline.
 public struct PresetEntry: Codable, Sendable, Equatable, Identifiable {
-    /// Durable, minted. Used to FIND, FAVOURITE and ORGANISE the preset —
+    /// Durable, minted. Used to FIND, FAVORITE and ORGANISE the preset —
     /// and it NEVER appears in an authored fact. Applying copies values;
     /// the result carries its own identity and no back-reference.
     public var id: String

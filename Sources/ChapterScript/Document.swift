@@ -11,7 +11,7 @@ import Foundation
 /// builds a `CMTime` FROM the pair; nothing stores one. The NTSC family are
 /// exact fractions here, never rounded decimals.
 ///
-/// ABSENT MEANS 24/1 — byte-for-byte today's behaviour. Validation lives at
+/// ABSENT MEANS 24/1 — byte-for-byte today's behavior. Validation lives at
 /// the AUTHORING boundary; the decoder is tolerant and consumers resolve an
 /// invalid pair to 24/1 and REPORT it, never silently accept it.
 public struct ChapterTimebase: Codable, Sendable, Equatable {
@@ -62,12 +62,12 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     public var storyState: [StoryStateDefinition]
     /// Initial sequence id played when the experience loads. Defaults to first sequence.
     public var defaultSequenceId: String?
-    /// EDITOR-ONLY organisation. Never read by ChapterPlayer.
+    /// EDITOR-ONLY organization. Never read by ChapterPlayer.
     ///
     /// Optional and tolerant: documents authored before this field existed
     /// decode as `nil`, and a player that has never heard of it ignores the
     /// key. It lives in the document rather than in `UserDefaults` so a
-    /// project's organisation travels with the bundle — open the same
+    /// project's organization travels with the bundle — open the same
     /// `.chapterscript` on another Mac and the Bins are still there.
     public var editorMetadata: EditorMetadata?
 
@@ -79,7 +79,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     public var timebase: ChapterTimebase?
 
     /// THE MARKER CATEGORY TABLE (FL-06): one Chapter-wide, author-editable
-    /// list of name + colour, referenced BY ID from every Marker. Absent ⇒
+    /// list of name + color, referenced BY ID from every Marker. Absent ⇒
     /// the bundled default is in use and nothing is written.
     public var markerCategories: [MarkerCategory]?
 
@@ -212,7 +212,7 @@ public struct ChapterDocument: Codable, Sendable, Equatable {
     }
 }
 
-/// EDITOR-ONLY project organisation. Runtime-inert by contract: ChapterPlayer
+/// EDITOR-ONLY project organization. Runtime-inert by contract: ChapterPlayer
 /// must never read this, and nothing here may affect playback.
 ///
 /// Kept deliberately small. Anything that changes what the experience DOES
@@ -259,7 +259,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
     /// Author color tags for individual Timeline clips, keyed by the clip's
     /// OPENING action id (stable since format v4 — this keying is one of the
     /// things stable action ids exist for). The value is a palette index, not
-    /// an RGB value: color is organisation, and organisation should not be
+    /// an RGB value: color is organization, and organization should not be
     /// able to encode arbitrary meaning. Runtime-inert.
     public var clipColors: [String: Int]
 
@@ -348,7 +348,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
 
     /// PER-TRACK EDITOR PROPERTIES (FL-17), keyed by TRACK SURFACE ID -
     /// the same key trackSurfaceOwners uses, so a rename never disturbs
-    /// them. Editor-only: height, colour and lock change nothing the
+    /// them. Editor-only: height, color and lock change nothing the
     /// audience sees or hears (mute, which does, lives on the Sequence).
     public var trackProperties: [String: TrackProperties]
 
@@ -362,7 +362,7 @@ public struct EditorMetadata: Codable, Sendable, Equatable {
 
     /// AUTHORED SOURCE METADATA (FL-20), keyed by Source id (filename).
     /// The manifest is REBUILT from disk at save, so authored keywords,
-    /// ratings and favourites live HERE - the one durable home - and the
+    /// ratings and favorites live HERE - the one durable home - and the
     /// build stamps them onto each AssetEntry for the wire.
     public var sourceMetadata: [String: SourceMetadata]
 
@@ -837,7 +837,7 @@ public struct AssetEntry: Codable, Sendable, Equatable {
 
     /// AUTHORED SOURCE METADATA (FL-20): findable by more than a name.
     /// All optional and additive; absent means none / unrated / not a
-    /// favourite, and existing manifests re-save byte-identically.
+    /// favorite, and existing manifests re-save byte-identically.
     public var keywords: [String]?
     /// 0...5; the write path clamps and reports an out-of-range value.
     public var rating: Int?
@@ -1503,7 +1503,7 @@ public struct TrackProperties: Codable, Sendable, Equatable {
     /// Row height in points. nil = the editor's default (the old global
     /// multiplier becomes that default; per-track heights deviate from it).
     public var height: Double?
-    /// A colour tag name. Decorative - no state may depend on it.
+    /// A color tag name. Decorative - no state may depend on it.
     public var colorTag: String?
     /// LOCK PROTECTS CONTENT, NOT STACKING POSITION: a locked track
     /// refuses edits in the one arbiter and can still be reordered.

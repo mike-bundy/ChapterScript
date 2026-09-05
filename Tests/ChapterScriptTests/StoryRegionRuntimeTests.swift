@@ -264,7 +264,7 @@ final class StoryRegionModelTests: XCTestCase {
         r.continuations = [.init(target: .entityAnimation(entity: "Radio"), behavior: .loop)]
         XCTAssertEqual(r.behavior(for: .entityAnimation(entity: "Radio")), .loop)
         XCTAssertEqual(r.behavior(for: .entityAnimation(entity: "Door")), .hold,
-                       "Inferring behaviour would make a chapter nobody can read off the document.")
+                       "Inferring behavior would make a chapter nobody can read off the document.")
         XCTAssertEqual(r.behavior(for: .occurrence(actionId: "act_1")), .hold)
     }
 

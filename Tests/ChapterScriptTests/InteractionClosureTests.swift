@@ -82,7 +82,7 @@ final class InteractionClosureTests: XCTestCase {
     }
 
     func testTheGateWireValueIsPreservedForOlderPlayers() throws {
-        // A gate type an older build does not recognise decodes as `.tap`,
+        // A gate type an older build does not recognize decodes as `.tap`,
         // which would silently turn a facing gate into a tap gate on somebody's
         // device. So the WIRE stays as it was and only the Swift name changed.
         let gate = StepGateDTO(type: .viewerFacing, targetEntity: "Radio")

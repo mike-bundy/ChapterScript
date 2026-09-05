@@ -27,7 +27,7 @@
 //  `level(t)` is the clip's base volume as rewritten by any `fadeAudio` in
 //  force — an ABSOLUTE level, not a multiplier, because that is what the
 //  runtime already meant by it: `fade(channel:to:)` replaced the channel's
-//  target outright. Formalising that rather than inventing a multiplicative
+//  target outright. Formalizing that rather than inventing a multiplicative
 //  fade keeps every existing document sounding the same.
 //
 //  Automation multiplies ON TOP, which is what makes "duck the music under

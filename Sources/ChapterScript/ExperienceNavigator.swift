@@ -46,7 +46,7 @@ public enum NavigationOutcome: Sendable, Equatable {
     /// Nothing to do — the request was a no-op (Hold, or a transition that does
     /// not move between Sequences).
     case stay
-    /// The request could not be honoured, with a reason the author can read.
+    /// The request could not be honored, with a reason the author can read.
     case refused(NavigationRefusal)
 }
 
@@ -147,7 +147,7 @@ public struct ExperienceNavigator: Sendable {
             // A BRANCH IS A DECISION, NOT A DESTINATION. Resolve it to a real
             // intent and perform THAT through the same path everything else
             // takes — so a conditional Go To and a plain one suspend the same
-            // visit, push the same history and honour the same refusals.
+            // visit, push the same history and honor the same refusals.
             //
             // `resolving` never yields another branch, so this recurses once.
             guard let resolved = request.intent.resolving(in: storyState) else {

@@ -11,7 +11,7 @@
 //  Phase 6's rule that touching an unrelated prop must NOT advance the film.
 //
 //  The tests below are about the DECISION only. Whether a headset senses a
-//  facing dwell, an approach or a grab is device behaviour and is asserted
+//  facing dwell, an approach or a grab is device behavior and is asserted
 //  nowhere in this file.
 //
 
@@ -48,7 +48,7 @@ final class GateActivationTests: XCTestCase {
     }
 
     func testAnUntargetedGateIsNotSatisfiedByTouchingAProp() {
-        // THE PHASE 6 RULE. The radio has its own behaviour; making it crackle
+        // THE PHASE 6 RULE. The radio has its own behavior; making it crackle
         // is not permission for the film to continue.
         let gate = StepGateDTO(type: .tap)
         XCTAssertFalse(GateActivation.satisfies(

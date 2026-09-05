@@ -20,7 +20,7 @@ final class EffectFormatTests: XCTestCase {
 
     /// A stack written by an imaginary NEWER build: an unknown effect id,
     /// an unknown parameter key, an unknown value SHAPE (an array and a
-    /// nested object), plus known shapes — including a colour whose float
+    /// nested object), plus known shapes — including a color whose float
     /// values do not survive a Float round trip.
     private var newerBuildJSON: String {
         """
@@ -70,7 +70,7 @@ final class EffectFormatTests: XCTestCase {
             "invert": .bool(true),
             "mode": .string("soft"),
             "tint": .color(ColorRGBA(r: 1, g: 0.5, b: 0.25, a: 1)),
-            "centre": .point(EffectPoint(x: 0.5, y: 0.5)),
+            "center": .point(EffectPoint(x: 0.5, y: 0.5)),
         ]
         let back = try ChapterScriptFormat.makeDecoder()
             .decode(EffectInstance.self, from: encode(instance))
@@ -79,7 +79,7 @@ final class EffectFormatTests: XCTestCase {
         XCTAssertEqual(back.parameters["mode"]?.stringValue, "soft")
         XCTAssertEqual(back.parameters["tint"]?.colorValue,
                        ColorRGBA(r: 1, g: 0.5, b: 0.25, a: 1))
-        XCTAssertEqual(back.parameters["centre"]?.pointValue,
+        XCTAssertEqual(back.parameters["center"]?.pointValue,
                        EffectPoint(x: 0.5, y: 0.5))
         // What this build writes is also a fixed point.
         XCTAssertEqual(try encode(back), try encode(instance))

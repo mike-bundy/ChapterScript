@@ -40,7 +40,7 @@
 //  stereo window with no way to see why.
 //
 //  ZERO MEANS THE SOURCE'S OWN INTENT. It does not mean "no disparity": the
-//  file's embedded adjustment is still honoured underneath. Nothing here ever
+//  file's embedded adjustment is still honored underneath. Nothing here ever
 //  writes to source media.
 //
 

@@ -6,7 +6,7 @@
 //
 //  Two things are pinned here above all others:
 //
-//    1. Legacy `autoAdvance` produces the SAME A → B → C behaviour it always
+//    1. Legacy `autoAdvance` produces the SAME A → B → C behavior it always
 //       did, while going through the new navigator (§10).
 //    2. Return is VISIT-based, so `A1 → B1 → A2 → B2` returns to A2 and not to
 //       A1 (§13). Those are the same authored Sequence.

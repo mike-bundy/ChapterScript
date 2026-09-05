@@ -16,14 +16,14 @@
 
 import Foundation
 
-/// How a source's colour relates to its coverage (alpha).
+/// How a source's color relates to its coverage (alpha).
 public enum SourceAlpha: String, Codable, Sendable, Equatable, CaseIterable {
     /// No usable coverage channel. Alpha is 1 everywhere and is TREATED as 1
     /// rather than read.
     case opaque
-    /// Unassociated. Colour is the surface colour; coverage is separate.
+    /// Unassociated. Color is the surface color; coverage is separate.
     case straight
-    /// Associated. Colour has already been multiplied by coverage.
+    /// Associated. Color has already been multiplied by coverage.
     case premultiplied
 
     /// The author's word for it.

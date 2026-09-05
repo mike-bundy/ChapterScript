@@ -405,7 +405,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     ///
     /// `nil` and `0` mean the same thing and both mean "the source's own
     /// stereo relationship" — the file's embedded disparity adjustment is
-    /// still honoured underneath. It is NOT "no disparity", and nothing here
+    /// still honored underneath. It is NOT "no disparity", and nothing here
     /// ever writes to source media: three occurrences of one file can carry
     /// three different convergences and the file is untouched.
     ///
@@ -443,7 +443,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     public var videoTransition: VideoTransitionSpec?
     /// THE RETIME CURVE (FL-13): the occurrence's own Sequence-time to
     /// source-time statement. Absent means the identity — today's exact
-    /// behaviour at zero cost. See `RetimeCurve`.
+    /// behavior at zero cost. See `RetimeCurve`.
     public var retime: RetimeCurve?
     /// How a retimed occurrence's embedded audio handles pitch. Absent
     /// means `.followsSpeed`.
@@ -451,7 +451,7 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// THE FILE'S OWN SUBTITLES: when true, the player selects the media
     /// file's embedded legible track and lets AVFoundation draw it, as a
     /// thing of its own beside the Chapter's authored caption Tracks.
-    /// Absent means off — exactly the previous behaviour.
+    /// Absent means off — exactly the previous behavior.
     public var embeddedSubtitles: Bool?
 
     public init(

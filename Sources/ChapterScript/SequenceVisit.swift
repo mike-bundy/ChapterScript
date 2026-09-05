@@ -7,12 +7,12 @@
 //  A visit is the boundary every piece of transient playback state hangs from:
 //  the interaction ledger, Story Region runtime, gate state, elapsed time.
 //  Phase 6 established the SEMANTICS ("`.once` means at most one activation per
-//  visit") and the runtime honoured them by rebuilding state on each play — but
+//  visit") and the runtime honored them by rebuilding state on each play — but
 //  nothing ever NAMED a visit, so nothing could tell two of them apart.
 //
 //  That is fine until Phase 8, where Return and Resume have to distinguish
 //  "the museum, again" from "the museum, still" — and where a stale reference
-//  to a finished visit must be recognisable as stale rather than silently
+//  to a finished visit must be recognizable as stale rather than silently
 //  treated as the current one.
 //
 //  DELIBERATELY NOT `Codable`, and asserted so by test. A visit describes a

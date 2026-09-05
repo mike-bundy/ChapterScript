@@ -3,7 +3,7 @@
 //  ChapterScriptTests
 //
 //  The format half of Phase 6. What is asserted here is compatibility, not
-//  behaviour: an old document must be unchanged, a new one must survive a round
+//  behavior: an old document must be unchanged, a new one must survive a round
 //  trip, and a document from a NEWER tool must still open.
 //
 

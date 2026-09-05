@@ -67,7 +67,7 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
     /// Seconds to CROSS-FADE from whatever was showing into this cue.
     ///
     /// `nil` (and 0) mean a hard cut, which is what every cue written before
-    /// this field existed means — so old documents keep their exact behaviour
+    /// this field existed means — so old documents keep their exact behavior
     /// and the key is simply absent unless an author asked for a fade.
     ///
     /// The fade belongs to the INCOMING cue, not to a transition object sitting
@@ -150,7 +150,7 @@ public enum SequenceBackdropTimeline {
     /// A document written before the track existed carries
     /// `immersiveBackdrop` and an empty `backdropTrack`; it resolves to that
     /// one backdrop for the whole sequence, which is exactly the old
-    /// behaviour. When a track IS authored it wins outright — an editor that
+    /// behavior. When a track IS authored it wins outright — an editor that
     /// writes cues also clears the legacy field, and a reader that sees both
     /// must not composite them.
     public static func effectiveCues(
@@ -188,7 +188,7 @@ public enum SequenceBackdropTimeline {
             .last { $0.startTime <= time + AnimationCurve.timeEpsilon }
     }
 
-    /// What is on screen at `time` when cross-fades are honoured.
+    /// What is on screen at `time` when cross-fades are honored.
     ///
     /// `incoming` is the governing cue, exactly as `activeCue` reports it, so a
     /// caller that ignores fades is never wrong — only less pretty. `outgoing`

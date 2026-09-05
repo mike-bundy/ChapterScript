@@ -48,7 +48,7 @@ import Foundation
 /// `docs/AUDIO_ARCHITECTURE.md` §4.
 public enum AudioAutomationChannel: String, Codable, Sendable, CaseIterable, Hashable {
     case volume
-    /// Stereo placement, −1 hard left … 0 centre … +1 hard right.
+    /// Stereo placement, −1 hard left … 0 center … +1 hard right.
     case pan
 
     /// Value used where the curve has no keys — the IDENTITY for this
@@ -195,7 +195,7 @@ public enum SequenceAudioAutomation {
     }
 
     /// Stereo placement for `channel` at `time`, −1 (hard left) … +1 (hard
-    /// right). Returns 0 — dead centre — when the channel has no pan curve, so
+    /// right). Returns 0 — dead center — when the channel has no pan curve, so
     /// this too can be applied unconditionally.
     ///
     /// THERE IS NO MASTER PAN, deliberately. Volume rides compose: ducking the

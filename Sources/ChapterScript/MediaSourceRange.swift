@@ -84,7 +84,7 @@ public struct MediaSourceRange: Codable, Sendable, Equatable {
     /// master duration is unknown — i.e. genuinely "play until it ends".
     ///
     /// A marked out-point past the end of a known master is clamped rather
-    /// than honoured: a player cannot show frames that do not exist, and
+    /// than honored: a player cannot show frames that do not exist, and
     /// silently reporting an unreachable end makes held-tail and loop math
     /// wrong everywhere downstream.
     public func resolvedOut(masterDuration: Double?) -> Double? {
@@ -133,7 +133,7 @@ public struct MediaSourceRange: Codable, Sendable, Equatable {
     ///
     ///   - retime: the occurrence's authored curve. `.identity` (the
     ///     default) is a branch and costs nothing — today's exact
-    ///     behaviour for every existing Chapter.
+    ///     behavior for every existing Chapter.
     ///   - clipSpan: the occurrence's CURRENT Timeline span in seconds.
     ///     The curve's domain is normalized 0…1 across the span, so a
     ///     keyed curve needs it; identity ignores it.
@@ -171,7 +171,7 @@ public struct MediaSourceRange: Codable, Sendable, Equatable {
         guard let window = duration(masterDuration: masterDuration), window > 0 else {
             // No known end: the window is open, so elapsed maps straight
             // through. This is the unprobed-master case, and it degrades to
-            // exactly the pre-source-range behaviour.
+            // exactly the pre-source-range behavior.
             return start + offset
         }
         if offset < window { return start + offset }

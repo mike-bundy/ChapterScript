@@ -56,7 +56,7 @@ final class SubElementFormatTests: XCTestCase {
         let legacy = try JSONDecoder().decode(
             UsdzAnimationSpec.self,
             from: Data(#"{"enabled": true, "loop": true, "speed": 1}"#.utf8))
-        XCTAssertNil(legacy.clipName, "absent = every clip, today's behaviour")
+        XCTAssertNil(legacy.clipName, "absent = every clip, today's behavior")
     }
 
     func testEmptyOverrideIsDetectable() {

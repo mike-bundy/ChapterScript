@@ -23,7 +23,7 @@ import Foundation
 /// them is a loss of meaning.
 ///
 /// An unrecognised kind decodes as `.subtitles` — the WEAKER claim.
-/// Mislabelling a translation as an accessibility artefact would over-claim.
+/// Mislabelling a translation as an accessibility artifact would over-claim.
 public enum CaptionKind: String, Codable, Sendable, Hashable, CaseIterable {
     case captions
     case subtitles
@@ -172,7 +172,7 @@ public struct CaptionStyle: Codable, Sendable, Equatable, Hashable, Identifiable
     // Type
     public var fontFamily: String?
     public var fontWeight: Int?
-    /// Metres of cap height, the FL-07 unit.
+    /// Meters of cap height, the FL-07 unit.
     public var fontSize: Float?
     public var color: ColorRGBA?
     public var backgroundColor: ColorRGBA?
@@ -181,14 +181,14 @@ public struct CaptionStyle: Codable, Sendable, Equatable, Hashable, Identifiable
 
     // Layout
     public var maxLineCount: Int?
-    /// Metres.
+    /// Meters.
     public var maxWidth: Float?
     /// Fraction of the frame kept clear when composited flat.
     public var safeAreaInset: Float?
 
     // Space
     public var mode: CaptionPresentationMode?
-    /// Metres from the viewer, for `.viewerFacing`.
+    /// Meters from the viewer, for `.viewerFacing`.
     public var distance: Float?
     /// Degrees of visual angle the text block should subtend.
     public var angularSize: Float?

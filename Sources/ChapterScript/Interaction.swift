@@ -22,8 +22,8 @@
 //
 //  `actions` is `[StepActionDTO]` — the same list a step fires. There is no
 //  second engine, no interaction-only action set, and no `playAudioOnTap`.
-//  The interaction decides WHEN an existing behaviour runs; it never redefines
-//  what that behaviour means. Editors curate which of those cases they OFFER
+//  The interaction decides WHEN an existing behavior runs; it never redefines
+//  what that behavior means. Editors curate which of those cases they OFFER
 //  (see `MaestroKit.InteractionResponse`), which is a UI decision and not a
 //  format one.
 //
@@ -88,7 +88,7 @@ public enum InteractionTrigger: Sendable, Equatable, Hashable {
     /// `nil` = the player's default (1 s), so a document does not have to
     /// restate a number it never chose.
     case viewerFacing(dwell: Double?)
-    /// Come within `radius` metres of the object, measured horizontally.
+    /// Come within `radius` meters of the object, measured horizontally.
     /// `nil` = the player's default (1 m).
     case approach(radius: Float?)
     /// A new pinch-grab of the object begins.
@@ -180,7 +180,7 @@ public enum InteractionLifetime: String, Codable, Sendable, Equatable, Hashable,
 
 // MARK: - Interaction
 
-/// One authored behaviour on a scene object: a trigger, how often it may fire,
+/// One authored behavior on a scene object: a trigger, how often it may fire,
 /// and what happens.
 ///
 /// **`id` is opaque and stable.** It survives save/reopen, reorder, edits to a
@@ -396,7 +396,7 @@ public enum InteractionSemantics {
         case .disableInteraction(let entity, _): return "Turn off an interaction on \(entity)"
         // NAVIGATION IS NOT "AN ACTION". It fell into the default below, so the
         // single most consequential response an object can carry — the one that
-        // moves the audience to another Sequence — was labelled "Run action" in
+        // moves the audience to another Sequence — was labeled "Run action" in
         // the Inspector row, the Timeline badge and the spoken hint alike.
         //
         // The Sequence is named by its ID here because this package has no

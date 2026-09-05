@@ -10,7 +10,7 @@
 //  re-saves byte-identically. An older build must never destroy a newer
 //  build's work.
 //
-//  Parameters encode as BARE JSON values (a number is 5, a colour is
+//  Parameters encode as BARE JSON values (a number is 5, a color is
 //  {r,g,b,a}, a point is {x,y}), so the format reads naturally and an
 //  unknown shape falls into `.raw` — a lossless JSON tree that re-encodes
 //  identically under the format's sorted-keys encoder.
@@ -73,9 +73,9 @@ public struct EffectPoint: Codable, Sendable, Equatable, Hashable {
 // MARK: - The value union (F-3: typed, with a raw escape)
 
 /// Typed access to everything this build knows; lossless round-tripping
-/// of everything it does not. Object-shaped values (colour, point, and
+/// of everything it does not. Object-shaped values (color, point, and
 /// anything newer) keep their ORIGINAL fragment and re-encode it
-/// verbatim — decoding a colour into Floats and re-printing it would
+/// verbatim — decoding a color into Floats and re-printing it would
 /// change bytes, which is G7's failure mode. Typed access is through the
 /// accessors; `.raw` is never rendered.
 public enum EffectValue: Codable, Sendable, Equatable, Hashable {
@@ -83,7 +83,7 @@ public enum EffectValue: Codable, Sendable, Equatable, Hashable {
     case bool(Bool)
     /// A choice's case name.
     case string(String)
-    /// Any object, array or null — colours and points included, kept
+    /// Any object, array or null — colors and points included, kept
     /// whole. The accessors below interpret it.
     case raw(JSONFragment)
 

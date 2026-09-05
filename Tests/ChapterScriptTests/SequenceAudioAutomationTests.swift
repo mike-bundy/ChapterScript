@@ -105,7 +105,7 @@ final class SequenceAudioAutomationTests: XCTestCase {
         )
     }
 
-    // MARK: - Curve behaviour
+    // MARK: - Curve behavior
 
     /// The duck: full, down under the VO, back up. Sampling between keys
     /// interpolates rather than stepping.

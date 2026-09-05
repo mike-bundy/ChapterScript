@@ -58,7 +58,7 @@ final class RetimeFormatTests: XCTestCase {
         XCTAssertEqual(pitch, .followsSpeed)
     }
 
-    // MARK: - The identity fast path is today's exact behaviour
+    // MARK: - The identity fast path is today's exact behavior
 
     func testIdentityPathMatchesOldMappingExactly() {
         let range = MediaSourceRange(sourceIn: 3, sourceOut: 9)

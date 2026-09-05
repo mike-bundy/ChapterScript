@@ -49,8 +49,8 @@ public enum AudioRuntimeRouting {
 
     /// The playback paths the runtime actually has.
     public enum Route: String, Sendable, Equatable, CaseIterable {
-        /// Straight to the mixer, unspatialised. The runtime calls this
-        /// "ambient", which is a misleading name for a correct behaviour:
+        /// Straight to the mixer, unspatialized. The runtime calls this
+        /// "ambient", which is a misleading name for a correct behavior:
         /// `AVAudioPlayerNode` → bus mixer → main mixer, with no environment
         /// node anywhere, so nothing tracks the head and nothing is placed.
         /// That IS head-locked.
@@ -71,7 +71,7 @@ public enum AudioRuntimeRouting {
         case systemSpatialMedia
     }
 
-    /// Whether the runtime can honour the authored intent on that path.
+    /// Whether the runtime can honor the authored intent on that path.
     ///
     /// `fallback` is deliberately distinct from `supported`. Silently taking an
     /// unrelated path is the defect this file exists to remove; taking a
@@ -106,7 +106,7 @@ public enum AudioRuntimeRouting {
     /// NORMAL AUTHORED DEFAULT. The distinction is load-bearing. The runtime
     /// has no format identity at playback time: it cannot tell a stereo file
     /// from a Dolby Atmos master, so `nil` can only be read as the historic
-    /// behaviour — attachment means positional, everything else unspatialised.
+    /// behavior — attachment means positional, everything else unspatialized.
     /// For an encoded master that reading is WRONG and destructive: it sends
     /// the asset through the interactive mixer, which flattens it.
     ///
@@ -193,7 +193,7 @@ public enum AudioRuntimeRouting {
         /// Anchored to the room, following head motion. The reason an encoded
         /// master exists.
         case headTracked
-        /// Spatialised but not motion-tracked — the mix travels with the
+        /// Spatialized but not motion-tracked — the mix travels with the
         /// listener. NOT "bypassed", which would strip spatial processing and
         /// flatten the master: a different and much worse thing.
         case fixed
@@ -213,7 +213,7 @@ public enum AudioRuntimeRouting {
     ///
     /// `nil` for positional and head-locked is the point: pipeline A's location
     /// comes from the emitter's transform and an ordinary cue is not
-    /// spatialised at all. Neither one may ever be handed a spatial-experience
+    /// spatialized at all. Neither one may ever be handed a spatial-experience
     /// setting.
     public static func spatialExperience(for audio: AudioActionDTO) -> SpatialExperienceIntent? {
         guard route(for: audio).route == .systemSpatialMedia else { return nil }
@@ -244,7 +244,7 @@ public enum AudioRuntimeRouting {
         case .headLocked:
             return Capability(model: model, authoring: true, routing: true,
                               faithfulPlayback: true,
-                              note: "Plays unspatialised, as authored.")
+                              note: "Plays unspatialized, as authored.")
         case .positional:
             return Capability(model: model, authoring: true, routing: true,
                               faithfulPlayback: true,
