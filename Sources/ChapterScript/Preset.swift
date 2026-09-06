@@ -108,6 +108,20 @@ public enum PresetPayload: Codable, Sendable, Equatable {
     case material(MaterialOverrideSpec)
     /// A named-easing choice or a tangent shape, for a Key or a selection.
     case curve(CurvePresetPayload)
+    /// A whole authored pose (FL-21, `P3`). Applied to the selection's
+    /// Objects through the ONE transform writer — never a second pose path.
+    case transform(TransformData)
+    /// One Sequence's panel look (FL-21, `R3`): corner radius, spatial
+    /// presentation, passthrough tinting — the same type the Sequence
+    /// stores, so applying is an assignment rather than a translation.
+    case panelStyle(PanelStyleOverride)
+    /// A Sequence's SHAPE, without its identity (FL-21, `R2`). Carries the
+    /// format's own `SequenceDefinitionDTO`: instantiation mints fresh ids
+    /// and a fresh name, so a template can be applied twice in one Chapter.
+    case sequenceTemplate(SequenceTemplatePayload)
+    /// A whole Chapter's starting shape — the four Welcome starters'
+    /// payload, now document-carried rather than code-carried.
+    case chapterTemplate(ChapterTemplatePayload)
     /// Anything newer, kept whole and re-encoded verbatim.
     case raw(JSONFragment)
 
@@ -128,6 +142,12 @@ public enum PresetPayload: Codable, Sendable, Equatable {
         case "effect":   self = .effect(try c.decode(EffectInstance.self, forKey: .value))
         case "material": self = .material(try c.decode(MaterialOverrideSpec.self, forKey: .value))
         case "curve":    self = .curve(try c.decode(CurvePresetPayload.self, forKey: .value))
+        case "transform": self = .transform(try c.decode(TransformData.self, forKey: .value))
+        case "panelStyle": self = .panelStyle(try c.decode(PanelStyleOverride.self, forKey: .value))
+        case "sequenceTemplate":
+            self = .sequenceTemplate(try c.decode(SequenceTemplatePayload.self, forKey: .value))
+        case "chapterTemplate":
+            self = .chapterTemplate(try c.decode(ChapterTemplatePayload.self, forKey: .value))
         default:         self = .raw(fragment)
         }
     }
@@ -152,7 +172,65 @@ public enum PresetPayload: Codable, Sendable, Equatable {
             var c = encoder.container(keyedBy: CodingKeys.self)
             try c.encode("curve", forKey: .type)
             try c.encode(curve, forKey: .value)
+        case .transform(let transform):
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode("transform", forKey: .type)
+            try c.encode(transform, forKey: .value)
+        case .panelStyle(let style):
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode("panelStyle", forKey: .type)
+            try c.encode(style, forKey: .value)
+        case .sequenceTemplate(let template):
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode("sequenceTemplate", forKey: .type)
+            try c.encode(template, forKey: .value)
+        case .chapterTemplate(let template):
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode("chapterTemplate", forKey: .type)
+            try c.encode(template, forKey: .value)
         }
+    }
+}
+
+// MARK: - Template payloads (FL-21, R2)
+
+/// A Sequence's shape, ready to be instantiated more than once.
+///
+/// IDENTITY IS NOT CARRIED. The stored `sequence` keeps whatever ids it was
+/// saved with, and `PresetInstantiation` mints fresh ones on the way in —
+/// applying a template twice must produce two Sequences, not one Sequence
+/// and a collision.
+public struct SequenceTemplatePayload: Codable, Sendable, Equatable {
+    /// The whole authored Sequence, in the format's own type. Deliberately
+    /// not a parallel "template shape": a second description of a Sequence
+    /// is a second thing to keep in step with the first.
+    public var sequence: SequenceDefinitionDTO
+    /// Per-track editor layout the template also restores (heights, colors,
+    /// lock/mute), keyed by track-surface id as `EditorMetadata` keys it.
+    public var trackProperties: [String: TrackProperties]?
+
+    public init(sequence: SequenceDefinitionDTO,
+                trackProperties: [String: TrackProperties]? = nil) {
+        self.sequence = sequence
+        self.trackProperties = trackProperties
+    }
+}
+
+/// A Chapter's starting shape: its Sequences and the Objects they name.
+public struct ChapterTemplatePayload: Codable, Sendable, Equatable {
+    public var sequences: [SequenceDefinitionDTO]
+    /// Objects the Sequences reference. Absent means the template is pure
+    /// structure and instantiates against whatever the Chapter already has.
+    public var entities: [EntityDefinition]?
+    /// A one-line description shown on the starter card.
+    public var summary: String?
+
+    public init(sequences: [SequenceDefinitionDTO],
+                entities: [EntityDefinition]? = nil,
+                summary: String? = nil) {
+        self.sequences = sequences
+        self.entities = entities
+        self.summary = summary
     }
 }
 

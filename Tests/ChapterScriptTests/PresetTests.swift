@@ -61,6 +61,77 @@ final class PresetTests: XCTestCase {
         XCTAssertEqual(back.presets, [entry])
     }
 
+    // MARK: FL-21 — the four payloads that were reserved kinds with no shape
+
+    func testTransformPresetRoundTrips() throws {
+        let pose = TransformData(position: Vec3(1, 2, 3),
+                                 rotation: Quat(x: 0, y: 0, z: 0, w: 1),
+                                 scale: Vec3(2, 2, 2))
+        let entry = PresetEntry(id: "p3", kind: .transform, name: "Hero Pose",
+                                payload: .transform(pose))
+        let back = try roundTrip(doc(presets: [entry]))
+        XCTAssertEqual(back.presets, [entry])
+        guard case .transform(let read)? = back.presets?.first?.payload else {
+            return XCTFail("payload lost its type")
+        }
+        XCTAssertEqual(read.scale, Vec3(2, 2, 2))
+    }
+
+    func testPanelStylePresetRoundTrips() throws {
+        var style = PanelStyleOverride()
+        style.cornerRadius = 0.04
+        let entry = PresetEntry(id: "p4", kind: .panelStyle, name: "Soft Corners",
+                                payload: .panelStyle(style))
+        let back = try roundTrip(doc(presets: [entry]))
+        XCTAssertEqual(back.presets, [entry])
+        guard case .panelStyle(let read)? = back.presets?.first?.payload else {
+            return XCTFail("payload lost its type")
+        }
+        XCTAssertEqual(read.cornerRadius, 0.04)
+    }
+
+    func testSequenceTemplatePresetRoundTrips() throws {
+        let sequence = SequenceDefinitionDTO(
+            id: "seq_t", name: "Interview", phase: "immersive",
+            steps: [StepDefinitionDTO(id: "s1", name: "One", duration: 12, actions: [])],
+            visibility: VisibilityStateDTO(), onComplete: .holdOnLastStep)
+        let entry = PresetEntry(id: "p5", kind: .sequenceTemplate, name: "Interview",
+                                payload: .sequenceTemplate(
+                                    SequenceTemplatePayload(sequence: sequence)))
+        let back = try roundTrip(doc(presets: [entry]))
+        XCTAssertEqual(back.presets, [entry])
+        guard case .sequenceTemplate(let read)? = back.presets?.first?.payload else {
+            return XCTFail("payload lost its type")
+        }
+        XCTAssertEqual(read.sequence.steps.first?.duration, 12)
+    }
+
+    func testChapterTemplatePresetRoundTrips() throws {
+        let sequence = SequenceDefinitionDTO(
+            id: "seq_a", name: "Open", phase: "immersive",
+            steps: [], visibility: VisibilityStateDTO(), onComplete: .holdOnLastStep)
+        let entry = PresetEntry(
+            id: "p6", kind: .chapterTemplate, name: "Two Screens",
+            payload: .chapterTemplate(ChapterTemplatePayload(
+                sequences: [sequence], summary: "A two-screen opening.")))
+        let back = try roundTrip(doc(presets: [entry]))
+        XCTAssertEqual(back.presets, [entry])
+        guard case .chapterTemplate(let read)? = back.presets?.first?.payload else {
+            return XCTFail("payload lost its type")
+        }
+        XCTAssertEqual(read.sequences.count, 1)
+        XCTAssertEqual(read.summary, "A two-screen opening.")
+    }
+
+    /// The four new kinds were already `known` before they had a shape —
+    /// what changed is that they now decode to a TYPE rather than to `.raw`.
+    /// An older document holding one of them keeps working either way.
+    func testTheFourKindsAreKnownAndTyped() {
+        for kind in [PresetKind.transform, .panelStyle, .sequenceTemplate, .chapterTemplate] {
+            XCTAssertTrue(kind.isKnown, "\(kind.rawValue) is applicable in this build")
+        }
+    }
+
     // MARK: Tolerance (G7 one level up)
 
     func testUnknownKindIsKeptAndNotKnown() throws {
