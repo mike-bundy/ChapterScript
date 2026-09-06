@@ -33,8 +33,16 @@ final class AudioGainCompositionTests: XCTestCase {
     /// what a fade-in means — the explicit `from` is what says so.
     func testFadeInRampsFromSilence() {
         let fade = AudioFade(startTime: 0, duration: 2, to: 1.0, from: 0)
-        XCTAssertEqual(AudioGainComposition.level(base: 1.0, fades: [fade], at: 0), 1.0,
-                       "at the very start the fade has not begun")
+        // CORRECTED 2026-09-05 (FL-18 N12). This used to assert 1.0 here,
+        // with the reason "at the very start the fade has not begun" — which
+        // contradicted the sentence directly above it and meant a clip whose
+        // sound fades up from silence read FULL LEVEL for its first instant
+        // and dropped on the next sample. That is a click, and it is exactly
+        // the instant a scrub parks on. A fade that fixes its own starting
+        // level begins AT that level; one that does not still begins from
+        // whatever was in force, unchanged.
+        XCTAssertEqual(AudioGainComposition.level(base: 1.0, fades: [fade], at: 0), 0.0,
+                       "a fade-in from silence begins at silence")
         XCTAssertEqual(AudioGainComposition.level(base: 1.0, fades: [fade], at: 1), 0.5, accuracy: 0.001)
         XCTAssertEqual(AudioGainComposition.level(base: 1.0, fades: [fade], at: 2), 1.0, accuracy: 0.001)
         XCTAssertEqual(AudioGainComposition.level(base: 1.0, fades: [fade], at: 9), 1.0, accuracy: 0.001)

@@ -137,6 +137,11 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     public var volume: Float
     public var loop: Bool
     public var fadeIn: Double?
+    /// THE CROSS-MEDIA FADE (FL-18 N12), sound half: seconds of ramp down
+    /// to silence ending at the occurrence's end. The mirror of `fadeIn`,
+    /// same units, same clock. Absent means none, which is what every
+    /// document written before this field means.
+    public var fadeOut: Double?
     public var spatial: SpatialAudioConfigDTO?
     public var category: String?
     public var crossfade: Double?
@@ -197,6 +202,7 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         volume: Float = 1.0,
         loop: Bool = false,
         fadeIn: Double? = nil,
+        fadeOut: Double? = nil,
         spatial: SpatialAudioConfigDTO? = nil,
         category: String? = nil,
         crossfade: Double? = nil,
@@ -215,6 +221,7 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
         self.volume = volume
         self.loop = loop
         self.fadeIn = fadeIn
+        self.fadeOut = fadeOut
         self.spatial = spatial
         self.category = category
         self.crossfade = crossfade
@@ -453,6 +460,16 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
     /// thing of its own beside the Chapter's authored caption Tracks.
     /// Absent means off — exactly the previous behavior.
     public var embeddedSubtitles: Bool?
+    /// THE CROSS-MEDIA FADE (FL-18 N12), picture half: seconds of ramp
+    /// from transparent at the occurrence's start. Absent means none.
+    ///
+    /// The SAME field name and units as the audio half, because one corner
+    /// drag on a clip that carries both writes one authored intent - see
+    /// `MediaFadeCurve`, which is where the shape lives so the Viewer, the
+    /// offline renderer and the runtime cannot each grow their own.
+    public var fadeIn: Double?
+    /// Seconds of ramp to transparent ending at the occurrence's end.
+    public var fadeOut: Double?
 
     public init(
         file: String,
@@ -472,7 +489,9 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         retime: RetimeCurve? = nil,
         pitch: PitchHandling? = nil,
         virtualCamera: VirtualCameraSpec? = nil,
-        embeddedSubtitles: Bool? = nil
+        embeddedSubtitles: Bool? = nil,
+        fadeIn: Double? = nil,
+        fadeOut: Double? = nil
     ) {
         self.file = file
         self.channel = channel
@@ -492,12 +511,14 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.pitch = pitch
         self.virtualCamera = virtualCamera
         self.embeddedSubtitles = embeddedSubtitles
+        self.fadeIn = fadeIn
+        self.fadeOut = fadeOut
     }
 
     private enum CodingKeys: String, CodingKey {
         case file, channel, volume, loop, presentation, layout, sourceIn, sourceOut, crop
         case convergence, markers, effects, blendMode, videoTransition, retime, pitch
-        case virtualCamera, embeddedSubtitles
+        case virtualCamera, embeddedSubtitles, fadeIn, fadeOut
     }
 
     public init(from decoder: Decoder) throws {
@@ -523,6 +544,8 @@ public struct VideoActionDTO: Codable, Sendable, Equatable {
         self.retime = try c.decodeIfPresent(RetimeCurve.self, forKey: .retime)
         self.pitch = try c.decodeIfPresent(PitchHandling.self, forKey: .pitch)
         self.embeddedSubtitles = try c.decodeIfPresent(Bool.self, forKey: .embeddedSubtitles)
+        self.fadeIn = try c.decodeIfPresent(Double.self, forKey: .fadeIn)
+        self.fadeOut = try c.decodeIfPresent(Double.self, forKey: .fadeOut)
     }
 
     /// Duration of the trimmed source window when both endpoints are known.

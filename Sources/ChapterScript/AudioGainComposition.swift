@@ -113,10 +113,16 @@ public enum AudioGainComposition {
         var level = base
         for fade in fades.sorted(by: { $0.startTime < $1.startTime }) {
             let start = fade.from ?? level
-            if time <= fade.startTime {
+            if time < fade.startTime {
                 // This fade has not begun; nothing after it has either.
                 return level
             }
+            // AT the start instant the fade's own beginning level applies.
+            // For a fade with no explicit `from` that IS the running level,
+            // so this is the same answer it always gave. For one that fixes
+            // its start - a fade-in from silence - it is the difference
+            // between silence and a click: the clip's first instant used to
+            // read at full level and drop on the next sample.
             if time >= fade.startTime + fade.duration || fade.duration <= 0 {
                 level = fade.to
                 continue
@@ -133,13 +139,81 @@ public enum AudioGainComposition {
     /// `fadeIn` seconds, beginning when the clip starts. Expressed as a fade
     /// with an explicit `from: 0` so it cannot be confused with a `fadeAudio`
     /// that happens to start at the same instant.
-    public static func fadeIn(for action: AudioActionDTO, clipStart: Double) -> AudioFade? {
-        guard let fadeIn = action.fadeIn, fadeIn > 0 else { return nil }
-        return AudioFade(startTime: clipStart, duration: fadeIn, to: action.volume, from: 0)
+    /// `clipEnd` is what lets the two ramps be FITTED together
+    /// (`MediaFadeCurve.fitted`), so an author who drags both handles past
+    /// the middle gets two ramps meeting rather than a result that depends
+    /// on which handle moved last. Pass `nil` when the end is genuinely
+    /// unknown and the fade-in stands on its own.
+    public static func fadeIn(
+        for action: AudioActionDTO,
+        clipStart: Double,
+        clipEnd: Double? = nil
+    ) -> AudioFade? {
+        guard let authored = action.fadeIn, authored > 0 else { return nil }
+        let ramp: Double
+        if let clipEnd {
+            ramp = MediaFadeCurve.fitted(fadeIn: authored, fadeOut: action.fadeOut,
+                                         span: clipEnd - clipStart).in
+        } else {
+            ramp = authored
+        }
+        guard ramp > 0 else { return nil }
+        return AudioFade(startTime: clipStart, duration: ramp, to: action.volume, from: 0)
+    }
+
+    /// The fade a clip's own `fadeOut` implies (FL-18 N12).
+    ///
+    /// A ramp to SILENCE ending exactly at the clip's end, so the sound is
+    /// gone at the same instant the picture is. Expressed through the same
+    /// `AudioFade` every other fade uses — an absolute level ramp — rather
+    /// than a second, multiplicative kind of fade, because the runtime and
+    /// the editor both already agree on what one of these means.
+    ///
+    /// The two ramps are FITTED to the clip before either is used, so a
+    /// fade-in and a fade-out longer than the clip meet in the middle
+    /// instead of one silently overwriting the other. That is
+    /// `MediaFadeCurve.fitted`, shared with the picture half.
+    public static func fadeOut(
+        for action: AudioActionDTO,
+        clipStart: Double,
+        clipEnd: Double
+    ) -> AudioFade? {
+        let span = clipEnd - clipStart
+        let ramps = MediaFadeCurve.fitted(fadeIn: action.fadeIn,
+                                          fadeOut: action.fadeOut, span: span)
+        guard ramps.out > 0 else { return nil }
+        return AudioFade(startTime: clipEnd - ramps.out, duration: ramps.out,
+                         to: 0, from: action.volume)
+    }
+
+    /// THE OCCURRENCE SPAN RULE, for the one question this file has to ask
+    /// about time: where does a clip end?
+    ///
+    /// A play runs until the same channel's next stop or play LATER in the
+    /// Step — a same-instant action precedes it by authored order, so it
+    /// does not end it — else until the Step's end. The identical rule the
+    /// runtime's `SequenceEngine.occurrenceSpan` and the Kit's Timeline
+    /// projection apply; stated here rather than approximated, because a
+    /// fade-out that ends at the wrong instant is audible.
+    public static func occurrenceEnd(
+        ofChannel channel: String,
+        firedAt offset: Double,
+        in step: StepDefinitionDTO
+    ) -> Double {
+        var end = step.duration
+        for authored in step.authoredActions where authored.at > offset + 1e-6 && authored.at < end {
+            switch authored.action {
+            case .stopAudio(let target) where target == channel: end = authored.at
+            case .playAudio(let audio) where audio.channel == channel: end = authored.at
+            default: break
+            }
+        }
+        return max(offset, end)
     }
 
     /// Every fade affecting `channel`, gathered from a sequence in authored
-    /// order — the clip's own `fadeIn` plus each `fadeAudio` targeting it.
+    /// order — the clip's own `fadeIn` and `fadeOut` plus each `fadeAudio`
+    /// targeting it.
     ///
     /// Walks the sequence once. Callers cache this per playback pass rather
     /// than calling it per frame; it is a document walk, and `PERFORMANCE.md`
@@ -155,7 +229,14 @@ public enum AudioGainComposition {
                 let time = stepStart + authored.at
                 switch authored.action {
                 case .playAudio(let audio) where audio.channel == channel:
-                    if let fade = fadeIn(for: audio, clipStart: time) { result.append(fade) }
+                    let end = stepStart + occurrenceEnd(ofChannel: channel,
+                                                        firedAt: authored.at, in: step)
+                    if let fade = fadeIn(for: audio, clipStart: time, clipEnd: end) {
+                        result.append(fade)
+                    }
+                    if let fade = fadeOut(for: audio, clipStart: time, clipEnd: end) {
+                        result.append(fade)
+                    }
                 case .fadeAudio(let target, let to, let duration) where target == channel:
                     result.append(AudioFade(startTime: time, duration: duration, to: to))
                 default:
