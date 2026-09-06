@@ -583,6 +583,15 @@ public struct VirtualCameraSpec: Codable, Sendable, Equatable {
     public var roll: Float
     public var fovDegrees: Float
     public var sampling: ProjectionSampling?
+    /// KEYED AIM (FL-23). Absent — and it is absent in every document
+    /// written before this field — means the four scalars above are the
+    /// aim for the whole occurrence, which is exactly what they were.
+    ///
+    /// A keyed channel REPLACES its scalar for the frames the curve
+    /// covers; an unkeyed one keeps it. The scalars are therefore never
+    /// dead: they are the rest value the graph editor shows and what a
+    /// channel falls back to when its keys are removed.
+    public var keys: VirtualCameraKeys?
 
     /// The sane FOV window: outside it the values are clamped and
     /// REPORTED at the authoring boundary, never silently rewritten in
@@ -590,16 +599,18 @@ public struct VirtualCameraSpec: Codable, Sendable, Equatable {
     public static let fovRange: ClosedRange<Float> = 20...120
 
     public init(yaw: Float = 0, pitch: Float = 0, roll: Float = 0,
-                fovDegrees: Float = 65, sampling: ProjectionSampling? = nil) {
+                fovDegrees: Float = 65, sampling: ProjectionSampling? = nil,
+                keys: VirtualCameraKeys? = nil) {
         self.yaw = yaw
         self.pitch = pitch
         self.roll = roll
         self.fovDegrees = fovDegrees
         self.sampling = sampling
+        self.keys = keys
     }
 
     private enum CodingKeys: String, CodingKey {
-        case yaw, pitch, roll, fovDegrees, sampling
+        case yaw, pitch, roll, fovDegrees, sampling, keys
     }
 
     public init(from decoder: Decoder) throws {
@@ -609,6 +620,36 @@ public struct VirtualCameraSpec: Codable, Sendable, Equatable {
         self.roll = try c.decodeIfPresent(Float.self, forKey: .roll) ?? 0
         self.fovDegrees = try c.decodeIfPresent(Float.self, forKey: .fovDegrees) ?? 65
         self.sampling = try c.decodeIfPresent(ProjectionSampling.self, forKey: .sampling)
+        self.keys = try c.decodeIfPresent(VirtualCameraKeys.self, forKey: .keys)
+    }
+}
+
+/// The four aim channels, keyed (FL-23).
+///
+/// KEY TIMES ARE FRACTIONS OF THE OCCURRENCE'S SPAN, 0…1 — the same
+/// convention `RetimeCurve` uses and for the same reason: a clip that is
+/// moved, trimmed or retimed keeps its move, because the aim was authored
+/// against the SHOT rather than against the Sequence clock. Absolute
+/// seconds would make every trim silently re-aim the camera.
+public struct VirtualCameraKeys: Codable, Sendable, Equatable {
+    public var yaw: AnimationCurve?
+    public var pitch: AnimationCurve?
+    public var roll: AnimationCurve?
+    public var fov: AnimationCurve?
+
+    public init(yaw: AnimationCurve? = nil, pitch: AnimationCurve? = nil,
+                roll: AnimationCurve? = nil, fov: AnimationCurve? = nil) {
+        self.yaw = yaw
+        self.pitch = pitch
+        self.roll = roll
+        self.fov = fov
+    }
+
+    /// True when nothing is actually keyed. The caller stores the ABSENCE
+    /// rather than an empty box — the rule the format already follows for
+    /// a retime that came back to identity.
+    public var isEmpty: Bool {
+        [yaw, pitch, roll, fov].allSatisfy { ($0?.keys.count ?? 0) < 1 }
     }
 }
 
