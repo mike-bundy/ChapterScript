@@ -122,6 +122,21 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// Effect Keys and re-saves byte-identically.
     public var effectKeyTracks: [EffectKeyTrack]?
 
+    /// KEYED MATERIAL PROPERTIES (FL-14): the same sibling-container rule
+    /// one topic across, addressed by (entityId, slot) — the identity the
+    /// override itself uses. Sampling produces an ordinary
+    /// `MaterialOverrideSpec`, so the resolver, every host adapter, the
+    /// exporter and ChapterPlayer are unchanged. Additive and tolerant;
+    /// absent means no keyed materials and re-saves byte-identically.
+    public var materialKeyTracks: [MaterialKeyTrack]?
+
+    /// KEYED PART OFFSETS (FL-16): the same sibling-container rule again,
+    /// addressed by (entityId, primPath) — a prim path is identity and an
+    /// entity name is never used as one. The channels are the EXISTING ten.
+    /// Additive and tolerant; absent means no keyed parts and re-saves
+    /// byte-identically.
+    public var subElementKeyTracks: [SubElementKeyTrack]?
+
     /// MUTED DESTINATIONS (FL-17): a DOCUMENT fact - muting changes what
     /// the audience hears, unlike solo, which appears in no document type.
     /// Keyed by destination/track-surface id. A muted destination that no
@@ -159,6 +174,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         markers: [Marker]? = nil,
         captionTracks: [CaptionTrack]? = nil,
         effectKeyTracks: [EffectKeyTrack]? = nil,
+        materialKeyTracks: [MaterialKeyTrack]? = nil,
+        subElementKeyTracks: [SubElementKeyTrack]? = nil,
         mutedDestinations: [String]? = nil,
         trackGains: [String: Float]? = nil,
         duckers: [DuckerSpec]? = nil
@@ -167,6 +184,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.markers = markers
         self.captionTracks = captionTracks
         self.effectKeyTracks = effectKeyTracks
+        self.materialKeyTracks = materialKeyTracks
+        self.subElementKeyTracks = subElementKeyTracks
         self.mutedDestinations = mutedDestinations
         self.trackGains = trackGains
         self.duckers = duckers
@@ -228,6 +247,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case markers
         case captionTracks
         case effectKeyTracks
+        case materialKeyTracks
+        case subElementKeyTracks
         case mutedDestinations
         case trackGains, duckers
     }
@@ -277,6 +298,8 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         // Absent in every document written before Captions existed (FL-08).
         self.captionTracks = try c.decodeIfPresent([CaptionTrack].self, forKey: .captionTracks)
         self.effectKeyTracks = try c.decodeIfPresent([EffectKeyTrack].self, forKey: .effectKeyTracks)
+        self.materialKeyTracks = try c.decodeIfPresent([MaterialKeyTrack].self, forKey: .materialKeyTracks)
+        self.subElementKeyTracks = try c.decodeIfPresent([SubElementKeyTrack].self, forKey: .subElementKeyTracks)
         self.mutedDestinations = try c.decodeIfPresent([String].self,
                                                         forKey: .mutedDestinations)
         self.trackGains = try c.decodeIfPresent([String: Float].self, forKey: .trackGains)
