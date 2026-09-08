@@ -137,6 +137,14 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// byte-identically.
     public var subElementKeyTracks: [SubElementKeyTrack]?
 
+    /// LOGICAL TIMELINE TRACKS (FL-17). These lanes organize occurrences but
+    /// are not playback destinations. Actions retain the real Object id and
+    /// optionally name one of these through `AuthoredAction.logicalTrackId`.
+    /// Empty/absent means legacy per-Object rows.
+    public var logicalTracks: [LogicalTimelineTrack]? {
+        didSet { if logicalTracks?.isEmpty == true { logicalTracks = nil } }
+    }
+
     /// MUTED DESTINATIONS (FL-17): a DOCUMENT fact - muting changes what
     /// the audience hears, unlike solo, which appears in no document type.
     /// Keyed by destination/track-surface id. A muted destination that no
@@ -176,6 +184,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         effectKeyTracks: [EffectKeyTrack]? = nil,
         materialKeyTracks: [MaterialKeyTrack]? = nil,
         subElementKeyTracks: [SubElementKeyTrack]? = nil,
+        logicalTracks: [LogicalTimelineTrack]? = nil,
         mutedDestinations: [String]? = nil,
         trackGains: [String: Float]? = nil,
         duckers: [DuckerSpec]? = nil
@@ -186,6 +195,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.effectKeyTracks = effectKeyTracks
         self.materialKeyTracks = materialKeyTracks
         self.subElementKeyTracks = subElementKeyTracks
+        self.logicalTracks = (logicalTracks?.isEmpty == true) ? nil : logicalTracks
         self.mutedDestinations = mutedDestinations
         self.trackGains = trackGains
         self.duckers = duckers
@@ -249,6 +259,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         case effectKeyTracks
         case materialKeyTracks
         case subElementKeyTracks
+        case logicalTracks
         case mutedDestinations
         case trackGains, duckers
     }
@@ -300,6 +311,9 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.effectKeyTracks = try c.decodeIfPresent([EffectKeyTrack].self, forKey: .effectKeyTracks)
         self.materialKeyTracks = try c.decodeIfPresent([MaterialKeyTrack].self, forKey: .materialKeyTracks)
         self.subElementKeyTracks = try c.decodeIfPresent([SubElementKeyTrack].self, forKey: .subElementKeyTracks)
+        let decodedLogicalTracks = try c.decodeIfPresent(
+            [LogicalTimelineTrack].self, forKey: .logicalTracks)
+        self.logicalTracks = (decodedLogicalTracks?.isEmpty == true) ? nil : decodedLogicalTracks
         self.mutedDestinations = try c.decodeIfPresent([String].self,
                                                         forKey: .mutedDestinations)
         self.trackGains = try c.decodeIfPresent([String: Float].self, forKey: .trackGains)
@@ -551,7 +565,8 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
             let rest = authoredActions.filter { $0.at > 0 }
             authoredActions = newValue.enumerated().map { index, action in
                 index < existing.count
-                    ? AuthoredAction(id: existing[index].id, at: 0, action: action)
+                    ? AuthoredAction(id: existing[index].id, at: 0, action: action,
+                                     logicalTrackId: existing[index].logicalTrackId)
                     : AuthoredAction(at: 0, action: action)
             } + rest
         }
@@ -570,7 +585,8 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
             let existing = authoredActions.filter { $0.at > 0 }
             authoredActions = head + newValue.enumerated().map { index, entry in
                 index < existing.count
-                    ? AuthoredAction(id: existing[index].id, at: entry.at, action: entry.action)
+                    ? AuthoredAction(id: existing[index].id, at: entry.at, action: entry.action,
+                                     logicalTrackId: existing[index].logicalTrackId)
                     : AuthoredAction(at: entry.at, action: entry.action)
             }
         }

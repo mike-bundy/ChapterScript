@@ -38,11 +38,17 @@ public struct AuthoredAction: Codable, Sendable, Equatable, Identifiable {
     /// timing loop exits while it is still pending.
     public var at: Double
     public var action: StepActionDTO
+    /// Optional membership in a stored logical Timeline lane. This is
+    /// editorial identity only: `action` still names the real playback Object.
+    /// Opening and closing actions of one occurrence carry the same value.
+    public var logicalTrackId: String?
 
-    public init(id: String = AuthoredAction.newID(), at: Double = 0, action: StepActionDTO) {
+    public init(id: String = AuthoredAction.newID(), at: Double = 0,
+                action: StepActionDTO, logicalTrackId: String? = nil) {
         self.id = id
         self.at = at
         self.action = action
+        self.logicalTrackId = logicalTrackId
     }
 
     /// A fresh identity for a newly authored action.
