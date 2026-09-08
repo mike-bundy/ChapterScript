@@ -63,4 +63,44 @@ final class SubElementFormatTests: XCTestCase {
         XCTAssertTrue(SubElementOverride(primPath: "/X").isEmpty)
         XCTAssertFalse(SubElementOverride(primPath: "/X", isVisible: true).isEmpty)
     }
+
+    func testActionTargetRoundTripsAsObjectAndPrimPath() throws {
+        let target = SubElementTarget(objectId: "car1", primPath: "/Car/Door_Left")
+        let action = StepActionDTO.setSubElement(SubElementActionDTO(
+            target: target,
+            isVisible: false,
+            transformOffset: TransformData(
+                position: Vec3(0, 0.2, 0),
+                rotation: Quat(x: 0, y: 0, z: 0, w: 1),
+                scale: Vec3(1, 1, 1)),
+            materialOverrides: [MaterialOverrideSpec(slot: 1, metallic: 1)]))
+        XCTAssertEqual(try JSONDecoder().decode(StepActionDTO.self, from: encode(action)), action)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: encode(action)) as? [String: Any])
+        let subElement = try XCTUnwrap(json["subElement"] as? [String: Any])
+        let encodedTarget = try XCTUnwrap(subElement["target"] as? [String: Any])
+        XCTAssertEqual(encodedTarget["objectId"] as? String, "car1")
+        XCTAssertEqual(encodedTarget["primPath"] as? String, "/Car/Door_Left")
+    }
+
+    func testInteractionTargetIsAdditiveAndTolerant() throws {
+        let legacy = try JSONDecoder().decode(
+            InteractionSpec.self,
+            from: Data(#"{"id":"ix","trigger":{"kind":"tap"},"actions":[]}"#.utf8))
+        XCTAssertNil(legacy.target)
+
+        let target = SubElementTarget(objectId: "car2", primPath: "/Car/Door_Left")
+        let interaction = InteractionSpec(id: "ix", target: target,
+                                          actions: [.setSubElement(.init(
+                                            target: target, isVisible: true))])
+        XCTAssertEqual(
+            try JSONDecoder().decode(InteractionSpec.self, from: encode(interaction)),
+            interaction)
+    }
+
+    func testTwoObjectsUsingTheSamePathRemainDistinctTypedTargets() {
+        let a = SubElementTarget(objectId: "car1", primPath: "/Car/Door_Left")
+        let b = SubElementTarget(objectId: "car2", primPath: "/Car/Door_Left")
+        XCTAssertNotEqual(a, b)
+        XCTAssertEqual(Set([a, b]).count, 2)
+    }
 }

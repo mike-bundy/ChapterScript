@@ -201,6 +201,10 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
     /// document — and `enableInteraction` at runtime must never write back
     /// here. The runtime's changing answer lives in `InteractionRuntime`.
     public var initiallyEnabled: Bool
+    /// Optional typed part target. `nil` means the owning Object, preserving
+    /// every document written before FL-16. When present, both halves are
+    /// identity: the owning Object id and the complete USD prim path.
+    public var target: SubElementTarget?
     /// The response, in the ONE action vocabulary. Ordered: they run in
     /// sequence, exactly as a step's actions do.
     public var actions: [StepActionDTO]
@@ -218,6 +222,7 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
         trigger: InteractionTrigger = .tap,
         lifetime: InteractionLifetime = .everyTime,
         initiallyEnabled: Bool = true,
+        target: SubElementTarget? = nil,
         actions: [StepActionDTO] = [],
         accessibilityLabel: String? = nil,
         accessibilityHint: String? = nil
@@ -227,6 +232,7 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
         self.trigger = trigger
         self.lifetime = lifetime
         self.initiallyEnabled = initiallyEnabled
+        self.target = target
         self.actions = actions
         self.accessibilityLabel = accessibilityLabel
         self.accessibilityHint = accessibilityHint
@@ -237,7 +243,7 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
     public static func newID() -> String { "ix_" + UUID().uuidString.prefix(12).lowercased() }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, trigger, lifetime, initiallyEnabled, actions
+        case id, name, trigger, lifetime, initiallyEnabled, target, actions
         case accessibilityLabel, accessibilityHint
         /// LEGACY-INTERACTION-VOCAB: the first Phase 6 build's spelling.
         /// Decoded, never written.
@@ -256,6 +262,7 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
         self.initiallyEnabled = try c.decodeIfPresent(Bool.self, forKey: .initiallyEnabled)
             ?? c.decodeIfPresent(Bool.self, forKey: .isEnabled)
             ?? true
+        self.target = try c.decodeIfPresent(SubElementTarget.self, forKey: .target)
         self.actions = try c.decodeIfPresent([StepActionDTO].self, forKey: .actions) ?? []
         self.accessibilityLabel = try c.decodeIfPresent(String.self, forKey: .accessibilityLabel)
         self.accessibilityHint = try c.decodeIfPresent(String.self, forKey: .accessibilityHint)
@@ -268,6 +275,7 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
         try c.encode(trigger, forKey: .trigger)
         try c.encode(lifetime, forKey: .lifetime)
         try c.encode(initiallyEnabled, forKey: .initiallyEnabled)
+        try c.encodeIfPresent(target, forKey: .target)
         try c.encode(actions, forKey: .actions)
         try c.encodeIfPresent(accessibilityLabel, forKey: .accessibilityLabel)
         try c.encodeIfPresent(accessibilityHint, forKey: .accessibilityHint)
@@ -382,6 +390,13 @@ public enum InteractionSemantics {
         case .moveEntity(let m):     return "Move \(m.entity)"
         case .scaleEntity(let n, _, _, _): return "Scale \(n)"
         case .animateMotion(let m):  return "Animate \(m.entity)"
+        case .setSubElement(let command):
+            let verb: String
+            if let visible = command.isVisible { verb = visible ? "Show" : "Hide" }
+            else if command.transformOffset != nil { verb = "Move" }
+            else if !(command.materialOverrides?.isEmpty ?? true) { verb = "Style" }
+            else { verb = "Update" }
+            return "\(verb) \(command.target.primPath)"
         case .playAudio(let a):      return "Play \(a.file)"
         case .stopAudio:             return "Stop audio"
         case .fadeAudio:             return "Fade audio"

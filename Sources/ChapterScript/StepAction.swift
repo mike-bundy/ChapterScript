@@ -22,6 +22,10 @@ public indirect enum StepActionDTO: Sendable, Equatable {
     /// procedural path: see `MotionBehavior.swift` for why an entrance cannot
     /// be expressed as absolute curves without baking the rest pose.
     case motionBehavior(MotionBehaviorDTO)
+    /// Apply supported authored facts to one stored USD part. The target is
+    /// exactly `(objectId, primPath)`; neither a leaf nor an entity name is a
+    /// valid substitute.
+    case setSubElement(SubElementActionDTO)
 
     // Attachments
     case showAttachment(id: String)
@@ -120,7 +124,7 @@ extension StepActionDTO: Codable {
         case name, id, channel, busId, category, viewId
         case multiplier, opacity, duration, timing, volume, to
         case headRelativePosition, headYOnly
-        case action, audio, video, fade, reveal, move, motion, behavior
+        case action, audio, video, fade, reveal, move, motion, behavior, subElement
         case config, zone, effect, then
         case visibility, enabled, on
         case parameters
@@ -130,6 +134,7 @@ extension StepActionDTO: Codable {
     private enum Kind: String, Codable {
         case showEntity, hideEntity, moveEntity, scaleEntity, fadeEntity
         case persistEntity, unpersistEntity, revealEntity, animateMotion, motionBehavior
+        case setSubElement
         case showAttachment, hideAttachment, fadeAttachment, setAttachmentView, positionAttachment
         case playAudio, stopAudio, fadeAudio, onAudioComplete
         case playVideo, prepareVideo, stopVideo
@@ -181,6 +186,9 @@ extension StepActionDTO: Codable {
         case .motionBehavior(let b):
             try c.encode(Kind.motionBehavior, forKey: .kind)
             try c.encode(b, forKey: .behavior)
+        case .setSubElement(let command):
+            try c.encode(Kind.setSubElement, forKey: .kind)
+            try c.encode(command, forKey: .subElement)
         case .showAttachment(let id):
             try c.encode(Kind.showAttachment, forKey: .kind)
             try c.encode(id, forKey: .id)
@@ -339,6 +347,8 @@ extension StepActionDTO: Codable {
             self = .animateMotion(try c.decode(AnimateMotionActionDTO.self, forKey: .motion))
         case .motionBehavior:
             self = .motionBehavior(try c.decode(MotionBehaviorDTO.self, forKey: .behavior))
+        case .setSubElement:
+            self = .setSubElement(try c.decode(SubElementActionDTO.self, forKey: .subElement))
         case .showAttachment:
             self = .showAttachment(id: try c.decode(String.self, forKey: .id))
         case .hideAttachment:
