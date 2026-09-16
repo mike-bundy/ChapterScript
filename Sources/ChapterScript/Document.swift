@@ -545,11 +545,13 @@ public struct ClipEditGroup: Codable, Sendable, Equatable, Identifiable {
 /// One thing the Scene browser can hold, referenced the way the FORMAT
 /// references it.
 ///
-/// Entities are named, not id'd, everywhere else in ChapterScript (actions,
-/// `EntityAnimationTrack.entity`, `StepGateDTO.targetEntity`,
-/// `VideoPresentation.entity`), so folder membership uses the name too — one
-/// reference scheme, one thing to keep correct on rename. `EntityRenaming` is
-/// the single substitution point and updates this along with the rest.
+/// An entity membership entry carries the entity's STABLE id
+/// (`EntityDefinition.id`) — CD-22 retired the legacy filename key, which was
+/// a label mirror that broke on rename. Legacy documents still hold filename
+/// keys here; the editor's open-time migration rewrites each one to the
+/// stable id where it resolves uniquely, and keeps it verbatim where it does
+/// not. The wire shape is unchanged either way — the two spellings are
+/// indistinguishable structurally, which is what makes the migration safe.
 public struct SceneItemRef: Codable, Sendable, Equatable, Hashable {
     public enum Kind: String, Codable, Sendable {
         case sequence
