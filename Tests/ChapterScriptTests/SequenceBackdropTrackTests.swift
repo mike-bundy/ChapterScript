@@ -158,6 +158,54 @@ final class SequenceBackdropTrackTests: XCTestCase {
         XCTAssertNil(decoded.spec)
     }
 
+    // MARK: - Placement
+
+    func testCueWithoutTransformDecodesToIdentity() throws {
+        let json = #"{"id":"a","startTime":0}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(BackdropCue.self, from: json)
+        XCTAssertNil(decoded.transform, "an untouched world writes no key")
+        XCTAssertEqual(decoded.resolvedTransform, .identity)
+        XCTAssertTrue(decoded.resolvedTransform.isIdentity)
+    }
+
+    func testTransformRoundTrips() throws {
+        var original = BackdropCue(id: "x", startTime: 1, spec: set)
+        original.transform = BackdropTransform(
+            position: Vec3(1, 2, 3), rotationDegrees: Vec3(10, 30, -5), scale: Vec3(2, 2, 2))
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(BackdropCue.self, from: data)
+        XCTAssertEqual(decoded, original)
+        XCTAssertEqual(decoded.transform?.rotationDegrees, Vec3(10, 30, -5))
+    }
+
+    /// A cue with no transform must not grow a key on re-save — older
+    /// players read the file byte-for-byte as before.
+    func testUntouchedCueWritesNoTransformKey() throws {
+        let data = try JSONEncoder().encode(BackdropCue(id: "x", startTime: 0, spec: still))
+        let text = String(decoding: data, as: UTF8.self)
+        XCTAssertFalse(text.contains("transform"))
+    }
+
+    /// A placement written with only a rotation reads the rest as defaults.
+    func testPartialTransformDecodesTolerantly() throws {
+        let json = #"{"id":"a","startTime":0,"transform":{"rotationDegrees":{"x":0,"y":90,"z":0}}}"#
+            .data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(BackdropCue.self, from: json)
+        XCTAssertEqual(decoded.transform?.rotationDegrees, Vec3(0, 90, 0))
+        XCTAssertEqual(decoded.transform?.position, .zero)
+        XCTAssertEqual(decoded.transform?.scale, Vec3(1, 1, 1))
+    }
+
+    /// The orientation composes in the editor's object order (Z, X, Y): a
+    /// pure +90° yaw about Y turns forward (0, 0, -1) to (-1, 0, 0).
+    func testOrientationYawTurnsForwardAboutY() {
+        let t = BackdropTransform(rotationDegrees: Vec3(0, 90, 0))
+        let turned = t.orientation.act(SIMD3<Float>(0, 0, -1))
+        XCTAssertEqual(turned.x, -1, accuracy: 1e-5)
+        XCTAssertEqual(turned.y, 0, accuracy: 1e-5)
+        XCTAssertEqual(turned.z, 0, accuracy: 1e-5)
+    }
+
     /// Hand-authored JSON without an id must still be addressable.
     func testCueWithoutIdGetsOne() throws {
         let json = #"{"startTime":2}"#.data(using: .utf8)!

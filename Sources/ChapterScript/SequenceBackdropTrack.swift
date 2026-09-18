@@ -29,6 +29,7 @@
 //
 
 import Foundation
+import simd
 
 /// One backdrop change at a point in sequence time.
 public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
@@ -84,6 +85,19 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
     /// as `VideoActionDTO.effects`.
     public var effects: [EffectInstance]?
 
+    /// WHERE THE ENVIRONMENT SITS, and how it is turned.
+    ///
+    /// An environment used to be the one thing in a Chapter an author could
+    /// not move: a 360° plate always opened on the file's own forward, a
+    /// USDZ world always sat at the origin. `nil` is identity — the world
+    /// exactly as before this field existed — so every cue written by an
+    /// earlier build keeps its exact placement, and the key is absent unless
+    /// an author has moved the world.
+    ///
+    /// On the CUE, not the spec, like the source window: the same plate can
+    /// open one Sequence facing east and the next facing north.
+    public var transform: BackdropTransform?
+
     public init(
         id: String = UUID().uuidString,
         startTime: Double,
@@ -101,7 +115,7 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, startTime, spec, sourceIn, sourceOut, fadeIn, effects
+        case id, startTime, spec, sourceIn, sourceOut, fadeIn, effects, transform
     }
 
     public init(from decoder: Decoder) throws {
@@ -115,6 +129,10 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
         self.sourceOut = try c.decodeIfPresent(Double.self, forKey: .sourceOut)
         self.fadeIn = try c.decodeIfPresent(Double.self, forKey: .fadeIn).map { max(0, $0) }
         self.effects = try c.decodeIfPresent([EffectInstance].self, forKey: .effects)
+        // Absent = identity. A transform that fails to decode is dropped
+        // rather than failing the document: a misplaced world is recoverable,
+        // a Chapter that will not open is not.
+        self.transform = try? c.decodeIfPresent(BackdropTransform.self, forKey: .transform)
     }
 
     /// Whether this cue actually fades rather than cutting. The one place that
@@ -135,9 +153,78 @@ public struct BackdropCue: Codable, Sendable, Equatable, Identifiable {
     /// Whether marking In/Out on this cue means anything. Only video backdrops
     /// run on a clock; an editor asks this instead of pattern-matching the
     /// spec in every view that draws a trim control.
+    /// The cue's placement with `nil` read as identity — the one place a
+    /// player or a preview asks, so neither can invent its own default.
+    public var resolvedTransform: BackdropTransform { transform ?? .identity }
+
     public var supportsSourceRange: Bool {
         if case .video = spec { return true }
         return false
+    }
+}
+
+
+// MARK: - Placement
+
+/// A rigid placement for an environment: position in meters, rotation as
+/// Euler DEGREES, scale as a factor.
+///
+/// DEGREES, NOT A QUATERNION, on purpose. This is an authored value the
+/// Inspector shows in three fields the author types into. A quaternion here
+/// would force every editor to round-trip through an extraction that is not
+/// lossless at the poles, so a value typed as 90° could read back as 89.99°
+/// on the next open. The animation tracks store their rotation channels the
+/// same way, for the same reason.
+///
+/// The angles compose in the editor's own object order (`.zxy`: Z, then X,
+/// then Y — see `orientation`), so an environment turned 30° about Y in the
+/// Inspector turns exactly as an object would.
+public struct BackdropTransform: Codable, Sendable, Equatable {
+    public var position: Vec3
+    /// Euler degrees, applied Z → X → Y.
+    public var rotationDegrees: Vec3
+    public var scale: Vec3
+
+    public init(
+        position: Vec3 = .zero,
+        rotationDegrees: Vec3 = .zero,
+        scale: Vec3 = Vec3(1, 1, 1)
+    ) {
+        self.position = position
+        self.rotationDegrees = rotationDegrees
+        self.scale = scale
+    }
+
+    public static let identity = BackdropTransform()
+
+    /// True when this placement changes nothing — the value the editor
+    /// collapses back to `nil` so an untouched world writes no key.
+    public var isIdentity: Bool { self == .identity }
+
+    /// The rotation as RealityKit wants it. ONE composition, shared by the
+    /// Mac preview and the visionOS player, so the two cannot turn the world
+    /// different ways from the same three numbers.
+    public var orientation: simd_quatf {
+        AnimationEulerMath.eulerToQuat(
+            SIMD3<Float>(rotationDegrees.x, rotationDegrees.y, rotationDegrees.z),
+            order: .zxy
+        )
+    }
+
+    public var positionVector: SIMD3<Float> { SIMD3(position.x, position.y, position.z) }
+    public var scaleVector: SIMD3<Float> { SIMD3(scale.x, scale.y, scale.z) }
+
+    private enum CodingKeys: String, CodingKey {
+        case position, rotationDegrees, scale
+    }
+
+    /// TOLERANT DECODE, like `TransformData`: a placement written with only a
+    /// rotation reads the other two as their defaults rather than failing.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.position = try c.decodeIfPresent(Vec3.self, forKey: .position) ?? .zero
+        self.rotationDegrees = try c.decodeIfPresent(Vec3.self, forKey: .rotationDegrees) ?? .zero
+        self.scale = try c.decodeIfPresent(Vec3.self, forKey: .scale) ?? Vec3(1, 1, 1)
     }
 }
 
