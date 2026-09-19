@@ -87,6 +87,20 @@ public enum MotionAmbientStyle: String, Codable, Sendable, Equatable, CaseIterab
     case orbit
 }
 
+/// Which edge of its Clip a Motion block is pinned to.
+///
+/// A behavior's placement is still its authored `at`; the anchor is the
+/// AUTHORING fact that says which edge that time is measured from, so an
+/// editor can keep an Exit ending at the Clip's out point when the Clip's
+/// length changes. The runtime never reads it.
+public enum MotionTimeAnchor: String, Codable, Sendable, Equatable, CaseIterable {
+    /// Pinned to the Clip's in point. Every behavior authored before this
+    /// field existed, and what an absent value means.
+    case clipStart
+    /// Pinned to the Clip's out point: the block ENDS where the Clip ends.
+    case clipEnd
+}
+
 /// Where an entrance comes FROM, or an exit goes TO.
 public enum MotionStartPlace: String, Codable, Sendable, Equatable, CaseIterable {
     /// An offset along `direction` by `distance`. Every behavior authored
@@ -312,6 +326,12 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
     /// dressed as a rule.
     public var startPlace: MotionStartPlace?
 
+    /// Which edge of the Clip this block is pinned to. Absent reads as
+    /// `.clipStart`: every existing document keeps the placement it has, and
+    /// re-saves byte-identically. A value this build does not know also reads
+    /// absent, which leaves the block where it is drawn rather than moving it.
+    public var timeAnchor: MotionTimeAnchor?
+
     /// Turn the other way. A separate flag rather than a negative period,
     /// because a negative duration is not a thing and every consumer would
     /// have to remember to take its absolute value.
@@ -342,6 +362,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
         ambientStyle: MotionAmbientStyle? = nil,
         span: Double? = nil,
         startPlace: MotionStartPlace? = nil,
+        timeAnchor: MotionTimeAnchor? = nil,
         ambientAxis: MotionAmbientAxis? = nil,
         ambientReversed: Bool? = nil,
         orbitRadius: Float? = nil,
@@ -362,6 +383,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
         self.ambientStyle = ambientStyle
         self.span = span
         self.startPlace = startPlace
+        self.timeAnchor = timeAnchor
         self.ambientAxis = ambientAxis
         self.ambientReversed = ambientReversed
         self.orbitRadius = orbitRadius
@@ -373,7 +395,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case entity, kind, direction, space, distance, duration, easing, fade, awayScale
         case ambientStyle, span
-        case startPlace
+        case startPlace, timeAnchor
         case ambientAxis, ambientReversed, orbitRadius, orbitFacesCentre
     }
 
@@ -397,6 +419,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
         ambientStyle = try? c.decodeIfPresent(MotionAmbientStyle.self, forKey: .ambientStyle)
         span = try? c.decodeIfPresent(Double.self, forKey: .span)
         startPlace = try? c.decodeIfPresent(MotionStartPlace.self, forKey: .startPlace)
+        timeAnchor = try? c.decodeIfPresent(MotionTimeAnchor.self, forKey: .timeAnchor)
         ambientAxis = try? c.decodeIfPresent(MotionAmbientAxis.self, forKey: .ambientAxis)
         ambientReversed = try? c.decodeIfPresent(Bool.self, forKey: .ambientReversed)
         orbitRadius = try? c.decodeIfPresent(Float.self, forKey: .orbitRadius)
