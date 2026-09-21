@@ -252,3 +252,21 @@ public enum PlaceholderOrigin: String, Codable, Sendable, Equatable {
     /// track was created. Timeline-only; never listed as a project asset.
     case trackSurface
 }
+
+// MARK: - A Screen that has no footage yet
+
+public extension EntityDefinition {
+    /// True when `playVideo` may name this entity as its destination.
+    ///
+    /// A Screen (`.videoPanel`), or a placeholder standing in for one. Add
+    /// Video Track makes the second kind: the track's surface exists before
+    /// any footage does, and every Clip later placed on that track plays on
+    /// it by id. A consumer that recognized only `.videoPanel` built nothing
+    /// for it, so a Chapter whose Screens were all made that way played every
+    /// video to nowhere on the headset while the Mac Viewer showed them.
+    ///
+    /// One question, asked the same way by the runtime and both editors.
+    var isVideoDestination: Bool {
+        kind == .videoPanel || (kind == .placeholder && placeholder?.role == .videoPanel)
+    }
+}
