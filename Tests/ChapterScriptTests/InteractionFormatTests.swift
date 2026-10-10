@@ -149,7 +149,7 @@ final class InteractionFormatTests: XCTestCase {
     // MARK: - The enable/disable actions
 
     func testInteractionToggleActionsRoundTrip() throws {
-        for action in [StepActionDTO.enableInteraction(entity: "Door", interactionId: "ix_1"),
+        for action in [SegmentActionDTO.enableInteraction(entity: "Door", interactionId: "ix_1"),
                        .disableInteraction(entity: "Door", interactionId: "ix_1")] {
             XCTAssertEqual(try roundTrip(action), action)
         }

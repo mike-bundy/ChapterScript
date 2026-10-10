@@ -3,12 +3,12 @@ import simd
 
 // MARK: - Sequence-level animation tracks (v0.7.0)
 //
-// Keyframe animation lives on the SEQUENCE, not inside steps. Each entity a
+// Keyframe animation lives on the SEQUENCE, not inside segments. Each entity a
 // sequence animates gets one `EntityAnimationTrack`: up to ten scalar curves
 // (translate/rotate/scale per axis, plus opacity) whose keys sit at ABSOLUTE
-// seconds from sequence start. Steps remain the event system (reveal, video,
+// seconds from sequence start. Segments remain the event system (reveal, video,
 // audio, gates); animation is a continuous layer sampled on the sequence
-// clock, so it survives step retimes, crosses step boundaries, and scrubs
+// clock, so it survives segment retimes, crosses segment boundaries, and scrubs
 // identically in every editor and player.
 //
 // Rotation channels are Euler DEGREES with an explicit rotate order,
@@ -86,7 +86,7 @@ public struct AnimationTangent: Codable, Sendable, Equatable, Hashable {
 public enum AnimationInterpolation: String, Codable, Sendable, Equatable {
     case bezier     // default — smooth spline shaped by tangent handles
     case linear
-    case stepped    // hold until the next key
+    case held = "stepped"  // hold until the next key. WIRE-FORMAT: saved raw value
     // NAMED EASING (FL-19): five, and the list does not grow by
     // accretion — a curve not in it is authored with tangents. Evaluated
     // as DEFINED SHAPES, never as synthesized tangents, so two hosts
@@ -327,7 +327,7 @@ public struct EntityAnimationTrack: Codable, Sendable, Equatable {
 
 /// The result of sampling an entity's track at a sequence time. Unkeyed
 /// channels carry the rest value; `opacity` is nil when the opacity channel
-/// has no keys (the step/action system owns visibility then).
+/// has no keys (the segment/action system owns visibility then).
 public struct AnimationSampledPose: Sendable, Equatable {
     public var position: Vec3
     public var rotation: Quat
@@ -367,7 +367,7 @@ public enum SequenceAnimationEvaluator {
         let k1 = keys[hi]
 
         switch k0.interpolation {
-        case .stepped:
+        case .held:
             return k0.value
         case .linear:
             let t = Float((time - k0.time) / max(k1.time - k0.time, 1e-6))
@@ -403,7 +403,7 @@ public enum SequenceAnimationEvaluator {
             return t < 0.5
                 ? -(pow(2, 20 * t - 10) * sin((20 * t - 11.125) * c5)) / 2
                 : (pow(2, -20 * t + 10) * sin((20 * t - 11.125) * c5)) / 2 + 1
-        case .bezier, .linear, .stepped:
+        case .bezier, .linear, .held:
             return t
         }
     }
@@ -516,10 +516,10 @@ public enum SequenceAnimationEvaluator {
         let k1 = keys[hi]
 
         switch k0.interpolation {
-        case .stepped:
-            // A step holds k0's value across the whole span; a key at that
-            // value, also stepped, is the same function.
-            curve.setKey(AnimationKey(time: time, value: k0.value, interpolation: .stepped))
+        case .held:
+            // A held key keeps k0's value across the whole span; a key at that
+            // value, also held, is the same function.
+            curve.setKey(AnimationKey(time: time, value: k0.value, interpolation: .held))
             return curve.indexOfKey(near: time)
 
         case .linear:

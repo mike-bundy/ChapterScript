@@ -25,7 +25,7 @@ final class SequenceMigrationTests: XCTestCase {
     /// damage: absolute-time animation keys with tangents, a gate with a spatial
     /// target, scheduled actions at non-zero offsets, media source ranges on video
     /// AND audio, a backdrop cue with its own range, audio automation, and an
-    /// `autoAdvance` chain (whose payload key is one of the four the step renames).
+    /// `autoAdvance` chain (whose payload key is one of the four the migration renames).
     private func makeRichDocument() -> ChapterDocument {
         let curve = AnimationCurve(keys: [
             AnimationKey(time: 0.0,  value: 0),
@@ -61,16 +61,16 @@ final class SequenceMigrationTests: XCTestCase {
             sourceOut: 30.0
         )
 
-        let stepOne = StepDefinitionDTO(
+        let segmentOne = SegmentDefinitionDTO(
             id: "step_a",
             name: "Open",
             duration: 8.0,
             actions: [.playVideo(video)],
             scheduledActions: [ScheduledActionDTO(at: 2.25, action: .playAudio(audio))],
-            gate: StepGateDTO(type: .proximity, timeout: 12, prompt: "Step closer", targetEntity: "hero", radius: 1.5)
+            gate: SegmentGateDTO(type: .proximity, timeout: 12, prompt: "Move closer", targetEntity: "hero", radius: 1.5)
         )
 
-        let stepTwo = StepDefinitionDTO(
+        let segmentTwo = SegmentDefinitionDTO(
             id: "step_b",
             name: "Hold",
             duration: 5.5,
@@ -83,7 +83,7 @@ final class SequenceMigrationTests: XCTestCase {
             name: "Opening",
             phase: "immersive",
             presentation: .immersive,
-            steps: [stepOne, stepTwo],
+            segments: [segmentOne, segmentTwo],
             animationTracks: [track],
             audioTracks: [AudioAutomationTrack(channel: "music", curves: [.volume: curve])],
             backdropTrack: [BackdropCue(id: "cue_1", startTime: 4.0, spec: nil, sourceIn: 2.0, sourceOut: 22.0)],
@@ -96,8 +96,8 @@ final class SequenceMigrationTests: XCTestCase {
             name: "Closing",
             phase: "mixed",
             presentation: .mixed,
-            steps: [stepTwo],
-            onComplete: .holdOnLastStep
+            segments: [segmentTwo],
+            onComplete: .holdOnLastSegment
         )
 
         return ChapterDocument(
@@ -111,7 +111,7 @@ final class SequenceMigrationTests: XCTestCase {
     // MARK: - The inverse transform
 
     /// Rewrite a v3 document's JSON back into v2 vocabulary. This is the exact
-    /// inverse of `Migrator`'s v2 → v3 step, written independently so the two are
+    /// inverse of `Migrator`'s v2 → v3 migration, written independently so the two are
     /// not the same code checking itself.
     private func downgradeToV2(_ node: Any) -> Any {
         let renames = [
@@ -158,7 +158,7 @@ final class SequenceMigrationTests: XCTestCase {
         XCTAssertFalse(v2Text.contains("\"sequences\""))
 
         // The chain runs v2 → v3 → v4; assert the destination rather than a
-        // hard-coded 3, so adding a step does not silently stop testing the end
+        // hard-coded 3, so adding a migration does not silently stop testing the end
         // of the chain.
         let migrated = try Migrator.migrate(asV2)
         XCTAssertEqual(try Migrator.readFormatVersion(from: migrated),
@@ -212,18 +212,18 @@ final class SequenceMigrationTests: XCTestCase {
     func testSourceRangesSurviveOnEveryCarrier() throws {
         let migrated = try Migrator.migrate(try v2Data(from: makeRichDocument()))
         let doc = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: migrated)
-        let step = try XCTUnwrap(doc.sequences.first?.steps.first)
+        let segment = try XCTUnwrap(doc.sequences.first?.segments.first)
 
-        guard case .playVideo(let video) = step.actions.first else { return XCTFail("expected playVideo") }
+        guard case .playVideo(let video) = segment.actions.first else { return XCTFail("expected playVideo") }
         XCTAssertEqual(video.sourceIn, 3.5)
         XCTAssertEqual(video.sourceOut, 19.25)
 
-        guard case .playAudio(let audio) = step.scheduledActions.first?.action else {
+        guard case .playAudio(let audio) = segment.scheduledActions.first?.action else {
             return XCTFail("expected scheduled playAudio")
         }
         XCTAssertEqual(audio.sourceIn, 1.5)
         XCTAssertEqual(audio.sourceOut, 30.0)
-        XCTAssertEqual(step.scheduledActions.first?.at, 2.25, "scheduled offset must not move")
+        XCTAssertEqual(segment.scheduledActions.first?.at, 2.25, "scheduled offset must not move")
 
         let cue = try XCTUnwrap(doc.sequences.first?.backdropTrack.first)
         XCTAssertEqual(cue.id, "cue_1")
@@ -233,17 +233,17 @@ final class SequenceMigrationTests: XCTestCase {
     }
 
     /// Gates carry a spatial target and radius. A gate whose `targetEntity` got lost
-    /// can never be satisfied — the step would hang until its timeout.
+    /// can never be satisfied — the segment would hang until its timeout.
     func testGatesSurviveIntact() throws {
         let migrated = try Migrator.migrate(try v2Data(from: makeRichDocument()))
         let doc = try ChapterScriptFormat.makeDecoder().decode(ChapterDocument.self, from: migrated)
 
-        let gate = try XCTUnwrap(doc.sequences.first?.steps.first?.gate)
+        let gate = try XCTUnwrap(doc.sequences.first?.segments.first?.gate)
         XCTAssertEqual(gate.type, .proximity)
         XCTAssertEqual(gate.targetEntity, "hero")
         XCTAssertEqual(gate.radius, 1.5)
         XCTAssertEqual(gate.timeout, 12)
-        XCTAssertEqual(gate.prompt, "Step closer")
+        XCTAssertEqual(gate.prompt, "Move closer")
     }
 
     // MARK: - Raw v2 data, not synthesised
@@ -254,7 +254,7 @@ final class SequenceMigrationTests: XCTestCase {
     func testAudioScopeSegmentRawValue() throws {
         let v2Action = #"{"kind":"playAudio","audio":{"file":"a.wav","channel":"music","scope":"segment","volume":1,"loop":false}}"#
             .data(using: .utf8)!
-        let action = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: v2Action)
+        let action = try ChapterScriptFormat.makeDecoder().decode(SegmentActionDTO.self, from: v2Action)
         guard case .playAudio(let audio) = action else { return XCTFail("expected playAudio") }
         XCTAssertEqual(audio.scope, .sequence, "v2 \"segment\" scope must decode as .sequence")
 
@@ -270,7 +270,7 @@ final class SequenceMigrationTests: XCTestCase {
     func testUnknownAudioScopeDegradesRatherThanThrowing() throws {
         let future = #"{"kind":"playAudio","audio":{"file":"a.wav","channel":"m","scope":"holodeck","volume":1,"loop":false}}"#
             .data(using: .utf8)!
-        let action = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: future)
+        let action = try ChapterScriptFormat.makeDecoder().decode(SegmentActionDTO.self, from: future)
         guard case .playAudio(let audio) = action else { return XCTFail("expected playAudio") }
         XCTAssertEqual(audio.scope, .sequence)
     }

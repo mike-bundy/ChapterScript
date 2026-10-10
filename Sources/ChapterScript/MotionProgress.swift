@@ -7,17 +7,17 @@ import Foundation
 ///
 ///   * `ScrubCompositor` (editor, Mac and Vision) measured progress from the
 ///     ACTION's own absolute start:  `(time - t0) / duration`.
-///   * `EntityActionExecutor` (runtime) measured it from the STEP's start:
-///     `stepElapsed / duration`.
+///   * `EntityActionExecutor` (runtime) measured it from the SEGMENT's start:
+///     `segmentElapsed / duration`.
 ///
-/// Those agree only for an action that fires exactly at a step boundary. For
-/// anything scheduled mid-step the runtime started the motion ALREADY PARTWAY
-/// THROUGH — a motion scheduled 5s into a 10s step began life at 50%, while the
+/// Those agree only for an action that fires exactly at a segment boundary. For
+/// anything scheduled mid-segment the runtime started the motion ALREADY PARTWAY
+/// THROUGH — a motion scheduled 5s into a 10s segment began life at 50%, while the
 /// editor drew it from the beginning. The author saw one thing and the headset
 /// did another.
 ///
 /// Measuring from the action's own start is also what makes a motion immune to
-/// step structure, which Timeline 3.0 requires: Steps are a runtime concern and
+/// segment structure, which Timeline 3.0 requires: Segments are a runtime concern and
 /// merging two of them must not change what an animation looks like.
 ///
 /// Kept in ChapterScript rather than in either consumer precisely so neither

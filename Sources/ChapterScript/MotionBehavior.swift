@@ -35,7 +35,7 @@
 //  too — that is what drift is. Anything else would make a completed motion
 //  teleport its object.
 //
-//  THIS TYPE OWNS NO INTERPOLATION. Easing is `StepTimingFunction`, the same
+//  THIS TYPE OWNS NO INTERPOLATION. Easing is `SegmentTimingFunction`, the same
 //  curve the rest of the format uses, and progress is `MotionProgress` — the
 //  one authored-clock formula. There is no second easing table here.
 //
@@ -120,7 +120,7 @@ public enum MotionStartPlace: String, Codable, Sendable, Equatable, CaseIterable
 
 /// Which axis an ambient behavior turns about — a SPIN turns about it in
 /// place, an ORBIT draws its circle in the plane perpendicular to it. One
-/// field, because it is one idea: two would have to be kept in step by hand,
+/// field, because it is one idea: two would have to be kept in segment by hand,
 /// and the picker an author sees is the same picker either way.
 public enum MotionAmbientAxis: String, Codable, Sendable, Equatable, CaseIterable {
     case x, y, z
@@ -283,7 +283,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
     /// Meters. Ignored when `direction` is nil.
     public var distance: Float
     public var duration: Double
-    public var easing: StepTimingFunction
+    public var easing: SegmentTimingFunction
     /// Fade with the motion: an `enter` fades up, an `exit` fades down.
     public var fade: Bool
     /// The scale the object holds at its AWAY end, as a multiplier of its
@@ -356,7 +356,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
         space: MotionSpace = .viewer,
         distance: Float = MotionBehaviorLimits.defaultDistance,
         duration: Double = MotionBehaviorLimits.defaultDuration,
-        easing: StepTimingFunction? = nil,
+        easing: SegmentTimingFunction? = nil,
         fade: Bool = true,
         awayScale: Float? = nil,
         ambientStyle: MotionAmbientStyle? = nil,
@@ -409,7 +409,7 @@ public struct MotionBehaviorDTO: Codable, Sendable, Equatable {
             ?? MotionBehaviorLimits.defaultDistance
         duration = try c.decodeIfPresent(Double.self, forKey: .duration)
             ?? MotionBehaviorLimits.defaultDuration
-        easing = (try? c.decode(StepTimingFunction.self, forKey: .easing))
+        easing = (try? c.decode(SegmentTimingFunction.self, forKey: .easing))
             ?? MotionBehaviorLimits.defaultEasing(for: kind)
         fade = try c.decodeIfPresent(Bool.self, forKey: .fade) ?? true
         awayScale = try c.decodeIfPresent(Float.self, forKey: .awayScale)
@@ -445,7 +445,7 @@ public enum MotionBehaviorLimits {
     /// Below this a motion is a pop rather than a move.
     public static let comfortableMinimumDuration: Double = 0.3
 
-    public static func defaultEasing(for kind: MotionBehaviorKind) -> StepTimingFunction {
+    public static func defaultEasing(for kind: MotionBehaviorKind) -> SegmentTimingFunction {
         switch kind {
         case .enter: return .easeOut
         case .exit:  return .easeIn
@@ -712,7 +712,7 @@ public enum MotionBehaviorResolver {
     }
 
     /// The format's own timing functions — NOT a second easing table.
-    static func ease(_ t: Float, _ function: StepTimingFunction) -> Float {
+    static func ease(_ t: Float, _ function: SegmentTimingFunction) -> Float {
         switch function {
         case .linear:    return t
         case .easeIn:    return t * t

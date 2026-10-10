@@ -1,11 +1,11 @@
 import Foundation
 
 /// Declarative description of a named entity that the player should construct
-/// when an experience loads. Entities are referenced by `id` from `StepActionDTO` cases.
+/// when an experience loads. Entities are referenced by `id` from `SegmentActionDTO` cases.
 public struct EntityDefinition: Codable, Sendable, Equatable {
     /// STABLE, OPAQUE IDENTITY. The string every reference in the format uses —
-    /// `StepActionDTO` entity names, `EntityAnimationTrack.entity`,
-    /// `StepGateDTO.targetEntity`, `VideoPresentation.entity`.
+    /// `SegmentActionDTO` entity names, `EntityAnimationTrack.entity`,
+    /// `SegmentGateDTO.targetEntity`, `VideoPresentation.entity`.
     ///
     /// It is NOT a label and must never be treated as one. Historically the
     /// editors minted it from a filename (`"IMG_0071.MOV"`), which is why

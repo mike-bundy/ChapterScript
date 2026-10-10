@@ -203,7 +203,7 @@ public enum PresetPayload: Codable, Sendable, Equatable {
 public struct SequenceTemplatePayload: Codable, Sendable, Equatable {
     /// The whole authored Sequence, in the format's own type. Deliberately
     /// not a parallel "template shape": a second description of a Sequence
-    /// is a second thing to keep in step with the first.
+    /// is a second thing to keep in segment with the first.
     public var sequence: SequenceDefinitionDTO
     /// Per-track editor layout the template also restores (heights, colors,
     /// lock/mute), keyed by track-surface id as `EditorMetadata` keys it.

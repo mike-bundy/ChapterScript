@@ -36,7 +36,7 @@ final class TrackModelFormatTests: XCTestCase {
     func testMutedDestinationsAreADocumentFact() throws {
         var sequence = SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
         sequence.mutedDestinations = ["narration"]
         let back = try JSONDecoder().decode(SequenceDefinitionDTO.self,
                                             from: encode(sequence))
@@ -46,7 +46,7 @@ final class TrackModelFormatTests: XCTestCase {
     func testAbsentMuteWritesNothingAndSoloHasNoWireShape() throws {
         let sequence = SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
         let json = String(data: try encode(sequence), encoding: .utf8)!
         XCTAssertFalse(json.contains("mutedDestinations"))
         XCTAssertFalse(json.contains("solo"),
@@ -59,7 +59,7 @@ extension TrackModelFormatTests {
     func testTrackGainsAndDuckersRoundTrip() throws {
         var sequence = SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
         sequence.trackGains = ["music": -6]
         sequence.duckers = [DuckerSpec(id: "duck_1",
                                        targetDestinationId: "music",

@@ -23,7 +23,7 @@ final class ChapterTimebaseTests: XCTestCase {
             id: "chapter_tb", displayName: "Timebase",
             sequences: [SequenceDefinitionDTO(
                 id: "seq", name: "S", phase: "immersive",
-                steps: [StepDefinitionDTO(
+                segments: [SegmentDefinitionDTO(
                     id: "s1", name: "A", duration: 5, actions: [])])],
             timebase: timebase)
     }
@@ -62,7 +62,7 @@ final class ChapterTimebaseTests: XCTestCase {
         let bytes = try encode(document)
         let reopened = try JSONDecoder().decode(ChapterDocument.self, from: bytes)
         XCTAssertEqual(reopened.sequences.count, 1)
-        XCTAssertEqual(reopened.sequences[0].steps[0].duration, 5)
+        XCTAssertEqual(reopened.sequences[0].segments[0].duration, 5)
     }
 
     // MARK: - Tolerance vs validation

@@ -48,12 +48,12 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(doc.id, "voyage-prologue")
         XCTAssertGreaterThanOrEqual(doc.sequences.count, 2)
 
-        // Sanity: every step action should round-trip.
+        // Sanity: every segment action should round-trip.
         for sequence in doc.sequences {
-            for step in sequence.steps {
-                for action in step.actions {
+            for segment in sequence.segments {
+                for action in segment.actions {
                     let data = try ChapterScriptFormat.makeEncoder().encode(action)
-                    let back = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: data)
+                    let back = try ChapterScriptFormat.makeDecoder().decode(SegmentActionDTO.self, from: data)
                     XCTAssertEqual(action, back, "action diverged: \(action)")
                 }
             }
@@ -90,18 +90,18 @@ final class FixtureTests: XCTestCase {
         ]
         XCTAssertEqual(doc.sequences.map(\.id), expectedIds)
 
-        // Round-trip every action across every step in every sequence.
+        // Round-trip every action across every segment in every sequence.
         for sequence in doc.sequences {
-            for step in sequence.steps {
-                for action in step.actions {
+            for segment in sequence.segments {
+                for action in segment.actions {
                     let data = try ChapterScriptFormat.makeEncoder().encode(action)
-                    let back = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: data)
-                    XCTAssertEqual(action, back, "action diverged in \(sequence.id)/\(step.id): \(action)")
+                    let back = try ChapterScriptFormat.makeDecoder().decode(SegmentActionDTO.self, from: data)
+                    XCTAssertEqual(action, back, "action diverged in \(sequence.id)/\(segment.id): \(action)")
                 }
-                for scheduled in step.scheduledActions {
+                for scheduled in segment.scheduledActions {
                     let data = try ChapterScriptFormat.makeEncoder().encode(scheduled)
                     let back = try ChapterScriptFormat.makeDecoder().decode(ScheduledActionDTO.self, from: data)
-                    XCTAssertEqual(scheduled, back, "scheduled action diverged in \(sequence.id)/\(step.id)")
+                    XCTAssertEqual(scheduled, back, "scheduled action diverged in \(sequence.id)/\(segment.id)")
                 }
             }
         }
@@ -113,10 +113,10 @@ final class FixtureTests: XCTestCase {
             }
             XCTAssertEqual(nextId, expectedIds[i + 1], "\(sequence.id) auto-advance points at wrong target")
         }
-        if case .holdOnLastStep = doc.sequences.last?.onComplete {
+        if case .holdOnLastSegment = doc.sequences.last?.onComplete {
             // expected
         } else {
-            XCTFail("finale should holdOnLastStep")
+            XCTFail("finale should hold on its last segment")
         }
     }
 }

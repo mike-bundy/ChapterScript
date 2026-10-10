@@ -184,16 +184,16 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
 
     /// HOW THE STORY IS ALLOWED TO LEAVE.
     ///
-    /// A `StepGateDTO` on purpose, not a new condition type: "narrative
+    /// A `SegmentGateDTO` on purpose, not a new condition type: "narrative
     /// progression may continue" is exactly what a gate already means, and the
     /// runtime already has one detector for tap / viewer-facing / approach /
-    /// grab. Two representations would be two things to keep in step and two
+    /// grab. Two representations would be two things to keep in segment and two
     /// device-QA surfaces.
     ///
     /// The region OWNS this, and the compiler is the only writer of the gate on
-    /// the boundary step — so there is one editable truth, not an authored pair
+    /// the boundary segment — so there is one editable truth, not an authored pair
     /// that can drift.
-    public var exit: StepGateDTO
+    public var exit: SegmentGateDTO
 
     /// Optional fallback, in seconds, measured from REGION ENTRY — not from the
     /// moment the authored clock starts holding.
@@ -215,7 +215,7 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
         name: String? = nil,
         startTime: Double,
         previewDuration: Double,
-        exit: StepGateDTO = StepGateDTO(type: .tap),
+        exit: SegmentGateDTO = SegmentGateDTO(type: .tap),
         fallbackTimeout: Double? = nil,
         continuations: [StoryContinuation] = []
     ) {
@@ -262,7 +262,7 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
 
     /// True when `time` falls inside the authored span. HALF-OPEN: the end
     /// belongs to what comes next, which is the same rule `SequenceTime` uses
-    /// for step boundaries and is what stops a boundary action firing twice.
+    /// for segment boundaries and is what stops a boundary action firing twice.
     public func contains(_ time: Double) -> Bool {
         time >= startTime && time < endTime
     }
@@ -281,7 +281,7 @@ public struct StoryRegion: Codable, Sendable, Equatable, Identifiable {
         self.startTime = max(0, try c.decodeIfPresent(Double.self, forKey: .startTime) ?? 0)
         self.previewDuration = max(StoryRegion.minimumDuration,
                                    try c.decodeIfPresent(Double.self, forKey: .previewDuration) ?? 1)
-        self.exit = try c.decodeIfPresent(StepGateDTO.self, forKey: .exit) ?? StepGateDTO(type: .tap)
+        self.exit = try c.decodeIfPresent(SegmentGateDTO.self, forKey: .exit) ?? SegmentGateDTO(type: .tap)
         self.fallbackTimeout = try c.decodeIfPresent(Double.self, forKey: .fallbackTimeout)
         self.continuations = try c.decodeIfPresent([StoryContinuation].self,
                                                    forKey: .continuations) ?? []
@@ -352,11 +352,11 @@ public enum StoryRegionTimeline {
     }
 
     /// Every boundary an Explore region contributes — where the story may
-    /// stall, and therefore where a Step must end.
+    /// stall, and therefore where a Segment must end.
     ///
-    /// ONLY THE END. `docs/TIMELINE_3_0.md` D2 is explicit that a step boundary
+    /// ONLY THE END. `docs/TIMELINE_3_0.md` D2 is explicit that a segment boundary
     /// is "a place the story can stall", and a region's END is exactly that:
-    /// its exit gate lives on the step that finishes there. Its START is not a
+    /// its exit gate lives on the segment that finishes there. Its START is not a
     /// stall point — the first pass must play straight through it — so putting
     /// a boundary there would either need a gate (which would stall the story
     /// on ENTRY, the one thing Explore must never do) or invent a gateless

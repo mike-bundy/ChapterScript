@@ -176,7 +176,7 @@ final class InteractionLedgerTests: XCTestCase {
         let (outcome, actions) = ledger.firing("a")
         XCTAssertEqual(outcome, .fire)
         XCTAssertEqual(actions.count, 2)
-        // The response vocabulary IS the step vocabulary — no interaction-only
+        // The response vocabulary IS the segment vocabulary — no interaction-only
         // action set, and nothing here rewrites what an action means.
         XCTAssertEqual(actions[0], .showEntity(name: "Label"))
     }

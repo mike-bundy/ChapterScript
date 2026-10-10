@@ -85,7 +85,7 @@ final class InteractionClosureTests: XCTestCase {
         // A gate type an older build does not recognize decodes as `.tap`,
         // which would silently turn a facing gate into a tap gate on somebody's
         // device. So the WIRE stays as it was and only the Swift name changed.
-        let gate = StepGateDTO(type: .viewerFacing, targetEntity: "Radio")
+        let gate = SegmentGateDTO(type: .viewerFacing, targetEntity: "Radio")
         XCTAssertTrue(try json(gate).contains("\"gaze\""),   // LEGACY-INTERACTION-VOCAB: the assertion IS the rule
                       "Compatibility vocabulary on the wire, accurate vocabulary everywhere a human reads it.")
 

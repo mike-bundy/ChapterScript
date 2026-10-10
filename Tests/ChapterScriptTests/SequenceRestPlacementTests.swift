@@ -22,7 +22,7 @@ final class SequenceRestPlacementTests: XCTestCase {
             id: "seq_1",
             name: "One",
             phase: "immersive",
-            steps: [StepDefinitionDTO(id: "step_1", name: "Step 1", duration: 10,
+            segments: [SegmentDefinitionDTO(id: "step_1", name: "Segment 1", duration: 10,
                                       authoredActions: [], gate: nil)],
             restPlacements: placements
         )

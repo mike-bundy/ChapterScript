@@ -66,7 +66,7 @@ final class SubElementFormatTests: XCTestCase {
 
     func testActionTargetRoundTripsAsObjectAndPrimPath() throws {
         let target = SubElementTarget(objectId: "car1", primPath: "/Car/Door_Left")
-        let action = StepActionDTO.setSubElement(SubElementActionDTO(
+        let action = SegmentActionDTO.setSubElement(SubElementActionDTO(
             target: target,
             isVisible: false,
             transformOffset: TransformData(
@@ -74,7 +74,7 @@ final class SubElementFormatTests: XCTestCase {
                 rotation: Quat(x: 0, y: 0, z: 0, w: 1),
                 scale: Vec3(1, 1, 1)),
             materialOverrides: [MaterialOverrideSpec(slot: 1, metallic: 1)]))
-        XCTAssertEqual(try JSONDecoder().decode(StepActionDTO.self, from: encode(action)), action)
+        XCTAssertEqual(try JSONDecoder().decode(SegmentActionDTO.self, from: encode(action)), action)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: encode(action)) as? [String: Any])
         let subElement = try XCTUnwrap(json["subElement"] as? [String: Any])
         let encodedTarget = try XCTUnwrap(subElement["target"] as? [String: Any])

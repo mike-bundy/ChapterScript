@@ -10,9 +10,9 @@ final class SavePathCheckTests: XCTestCase {
         var doc = ChapterDocument(id: "c", displayName: "Chapter")
         doc.sequences = [SequenceDefinitionDTO(
             id: "s", name: "Intro", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "step_1", name: "Step 1", duration: 5,
+            segments: [SegmentDefinitionDTO(id: "step_1", name: "Segment 1", duration: 5,
                                       actions: [], scheduledActions: [], gate: nil)],
-            visibility: VisibilityStateDTO(), onComplete: .holdOnLastStep
+            visibility: VisibilityStateDTO(), onComplete: .holdOnLastSegment
         )]
         var meta = EditorMetadata()
         meta.bins = [MediaBin(name: "Immersive", assets: ["a.mov"])]

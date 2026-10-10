@@ -223,7 +223,7 @@ final class SequenceBackdropTrackTests: XCTestCase {
     }
 
     func testSequenceBackdropTrackRoundTrips() throws {
-        var sequence = SequenceDefinitionDTO(id: "s1", name: "S1", phase: "immersive", steps: [])
+        var sequence = SequenceDefinitionDTO(id: "s1", name: "S1", phase: "immersive", segments: [])
         sequence.backdropTrack = [cue("a", 0, sky360), cue("b", 5, set), cue("c", 9, nil)]
         let data = try JSONEncoder().encode(sequence)
         let decoded = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: data)

@@ -7,7 +7,7 @@ import Foundation
 ///
 /// Interpolation semantics (Maya-style, keyed on the SEQUENCE's left
 /// keyframe):
-///   .step      hold the left value until the next key
+///   .hold         hold the left value until the next key
 ///   .linear    straight lerp
 ///   .easeIn/.easeOut/.easeInOut   classic quadratic eases on the lerp
 ///   .bezier    cubic Hermite. Tangent slopes come from the left key's
@@ -37,7 +37,7 @@ public enum KeyframeSampling {
         let local = (t - k0.time) / span
 
         switch k0.interpolation {
-        case .step:
+        case .hold:
             return k0.value
         case .linear:
             return mix(k0.value, k1.value, local)

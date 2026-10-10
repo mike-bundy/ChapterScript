@@ -18,7 +18,7 @@ final class PanelStyleTests: XCTestCase {
     private func makeSequence(styles: [String: PanelStyleOverride]? = nil) -> SequenceDefinitionDTO {
         SequenceDefinitionDTO(
             id: "seq", name: "Seq", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "s1", name: "Step 1", duration: 10,
+            segments: [SegmentDefinitionDTO(id: "s1", name: "Segment 1", duration: 10,
                                       authoredActions: [], gate: nil)],
             panelStyles: styles)
     }

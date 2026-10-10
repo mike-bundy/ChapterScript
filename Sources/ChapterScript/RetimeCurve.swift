@@ -190,7 +190,7 @@ public struct RetimeCurve: Codable, Sendable, Equatable, Hashable {
     ///
     /// Piecewise over the sorted keys; before the first key it holds the
     /// first source position, past the last it holds the last — the curve's
-    /// statement simply extends. `stepped` holds the left key; `linear` and
+    /// statement simply extends. `held` holds the left key; `linear` and
     /// `bezier` interpolate (bezier through shaped tangents when present,
     /// smooth-through-linear otherwise: a position curve's auto tangents are
     /// the linear ones, so an unshaped bezier equals linear rather than
@@ -210,7 +210,7 @@ public struct RetimeCurve: Codable, Sendable, Equatable, Hashable {
             guard span > 1e-12 else { return b.sourcePosition }
             let t = (fraction - a.timelinePosition) / span
             switch a.interpolation {
-            case .stepped:
+            case .held:
                 return a.sourcePosition
             case .linear:
                 return a.sourcePosition + (b.sourcePosition - a.sourcePosition) * t

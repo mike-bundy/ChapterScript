@@ -5,7 +5,7 @@ import XCTest
 /// compatibility guarantees.
 ///
 /// Before this, volume was a single static float on `playAudio` plus linear
-/// `fadeAudio` ramps authored as discrete step actions — no curve, nothing to
+/// `fadeAudio` ramps authored as discrete segment actions — no curve, nothing to
 /// edit, and nothing on the timeline to see.
 final class SequenceAudioAutomationTests: XCTestCase {
 
@@ -108,7 +108,7 @@ final class SequenceAudioAutomationTests: XCTestCase {
     // MARK: - Curve behavior
 
     /// The duck: full, down under the VO, back up. Sampling between keys
-    /// interpolates rather than stepping.
+    /// interpolates rather than jumping.
     func testDuckRidesBetweenKeys() {
         let tracks = [track("audio-music", [(0, 1.0), (4, 0.25), (9, 1.0)])]
         func at(_ t: Double) -> Float {
@@ -216,7 +216,7 @@ final class SequenceAudioAutomationTests: XCTestCase {
     }
 
     func testSequenceAudioTracksRoundTrip() throws {
-        var sequence = SequenceDefinitionDTO(id: "s1", name: "S1", phase: "immersive", steps: [])
+        var sequence = SequenceDefinitionDTO(id: "s1", name: "S1", phase: "immersive", segments: [])
         sequence.audioTracks = [
             track("audio-music", [(0, 1.0), (4, 0.25)]),
             track(AudioAutomationTrack.masterChannel, [(0, 1.0), (12, 0)])

@@ -149,7 +149,7 @@ final class StoryConditionTests: XCTestCase {
 
     /// A gate carrying no conditions behaves exactly as it always has.
     func testAGateWithNoConditionsIsUnchanged() {
-        let gate = StepGateDTO(type: .tap, targetEntity: "Radio")
+        let gate = SegmentGateDTO(type: .tap, targetEntity: "Radio")
         XCTAssertTrue(GateActivation.satisfies(
             gate: gate,
             activation: .init(entityName: "Radio", trigger: .tap),
@@ -159,7 +159,7 @@ final class StoryConditionTests: XCTestCase {
     /// A story-condition gate is continued by what the Chapter remembers, and by
     /// NO act. A stray tap must not release it.
     func testAStoryConditionGateIsSatisfiedByStateAndNeverByAnAct() {
-        let gate = StepGateDTO(type: .storyCondition, storyConditions: .init(conditions: [
+        let gate = SegmentGateDTO(type: .storyCondition, storyConditions: .init(conditions: [
             StoryCondition(stateId: radioHeard, comparison: .yesNo(true))
         ]))
         XCTAssertFalse(GateActivation.satisfiedByStory(
@@ -182,7 +182,7 @@ final class StoryConditionTests: XCTestCase {
     /// MIXED, and it falls out of one field: tap the door, once you have the
     /// key. The tap alone is not enough.
     func testAConditionOnATapGateIsAnAdditionalRequirement() {
-        let gate = StepGateDTO(type: .tap, targetEntity: "Door",
+        let gate = SegmentGateDTO(type: .tap, targetEntity: "Door",
                                storyConditions: .init(conditions: [
                                    StoryCondition(stateId: radioHeard, comparison: .yesNo(true))
                                ]))
@@ -197,19 +197,19 @@ final class StoryConditionTests: XCTestCase {
     }
 
     func testAGateCarriesItsConditionsThroughARoundTrip() throws {
-        let gate = StepGateDTO(type: .storyCondition, prompt: "Find the objects",
+        let gate = SegmentGateDTO(type: .storyCondition, prompt: "Find the objects",
                                storyConditions: .init(match: .any, conditions: [
                                    StoryCondition(stateId: objectsFound,
                                                   comparison: .number(.atLeast, 2))
                                ]))
         let data = try JSONEncoder().encode(gate)
-        XCTAssertEqual(try JSONDecoder().decode(StepGateDTO.self, from: data), gate)
+        XCTAssertEqual(try JSONDecoder().decode(SegmentGateDTO.self, from: data), gate)
     }
 
     /// An EMPTY group is not written: a key that imposes nothing is a key a
     /// future reader has to make a decision about.
     func testAnEmptyConditionGroupIsNotWritten() throws {
-        let gate = StepGateDTO(type: .tap, storyConditions: StoryConditionGroup())
+        let gate = SegmentGateDTO(type: .tap, storyConditions: StoryConditionGroup())
         let data = try JSONEncoder().encode(gate)
         let object = try XCTUnwrap(try JSONSerialization.jsonObject(with: data)
                                    as? [String: Any])

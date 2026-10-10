@@ -2,9 +2,9 @@ import Foundation
 
 /// ONE AUTHORED THING THAT HAPPENS, WITH A STABLE IDENTITY.
 ///
-/// Before format v4 a step held two arrays — `actions` (fire at the step's
+/// Before format v4 a segment held two arrays — `actions` (fire at the segment's
 /// start) and `scheduledActions` (`{at, action}`) — and an action was addressed
-/// by `(stepId, index, isScheduled)`. Position was identity, which meant:
+/// by `(segmentId, index, isScheduled)`. Position was identity, which meant:
 ///
 ///   * inserting an action invalidated every later address, including ones in
 ///     flight over the live-sync wire;
@@ -24,27 +24,27 @@ import Foundation
 /// `(at, index)` explicitly. `SequenceTime.executionOrder(of:)` is the one
 /// implementation; do not hand-roll another.
 ///
-/// A step-start action is simply `at == 0`. There is no second bucket, and no
+/// A segment-start action is simply `at == 0`. There is no second bucket, and no
 /// `isScheduled` flag, because the distinction never meant anything to an
 /// author and cost a great deal in code.
 public struct AuthoredAction: Codable, Sendable, Equatable, Identifiable {
     /// Stable, opaque, minted once and then never changed by any edit that is
     /// not explicitly a duplication. Storage position is NOT identity: sorting,
-    /// rebucketing across steps, insertion, deletion and step normalization all
+    /// rebucketing across segments, insertion, deletion and segment normalization all
     /// leave this untouched.
     public var id: String
-    /// Seconds from the owning step's start. Must be within `0...step.duration`
-    /// — an action stored past its step's end never fires, because the runtime's
+    /// Seconds from the owning segment's start. Must be within `0...segment.duration`
+    /// — an action stored past its segment's end never fires, because the runtime's
     /// timing loop exits while it is still pending.
     public var at: Double
-    public var action: StepActionDTO
+    public var action: SegmentActionDTO
     /// Optional membership in a stored logical Timeline lane. This is
     /// editorial identity only: `action` still names the real playback Object.
     /// Opening and closing actions of one occurrence carry the same value.
     public var logicalTrackId: String?
 
     public init(id: String = AuthoredAction.newID(), at: Double = 0,
-                action: StepActionDTO, logicalTrackId: String? = nil) {
+                action: SegmentActionDTO, logicalTrackId: String? = nil) {
         self.id = id
         self.at = at
         self.action = action
@@ -71,7 +71,7 @@ public struct AuthoredAction: Codable, Sendable, Equatable, Identifiable {
     ///
     /// After migration this string is ordinary authored identity: it is
     /// persisted, and nothing re-derives it from position again.
-    public static func migratedID(stepId: String, isScheduled: Bool, index: Int) -> String {
-        "act_\(stepId)_\(isScheduled ? "s" : "i")\(index)"
+    public static func migratedID(segmentId: String, isScheduled: Bool, index: Int) -> String {
+        "act_\(segmentId)_\(isScheduled ? "s" : "i")\(index)"
     }
 }

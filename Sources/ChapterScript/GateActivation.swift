@@ -24,7 +24,7 @@
 //
 //  Phase 6 established that an accessible activation is another ROUTE to the
 //  same authored intent, not another behavior engine. Phase 7 then made a
-//  Story Region's exit a `StepGateDTO` — at which point a VoiceOver user could
+//  Story Region's exit a `SegmentGateDTO` — at which point a VoiceOver user could
 //  activate an object and have its Interaction respond while the story stayed
 //  locked, because nothing carried that activation to the gate. A gate BLOCKS
 //  progression, so that is not a missing nicety: it is a chapter that ends
@@ -108,7 +108,7 @@ public enum GateActivation {
     /// object's enablement would be exactly the conflation this file prevents.
     ///
     /// Takes the two fields it actually reads rather than a gate value, because
-    /// the authored `StepGateDTO` and `ChapterPlayer`'s runtime `StepGate` are
+    /// the authored `SegmentGateDTO` and `ChapterPlayer`'s runtime `SegmentGate` are
     /// different types and this rule must be the same one for both.
     public static func satisfies(gateType: GateType, gateTarget: String?,
                                  activation: SemanticActivation) -> Bool {
@@ -124,7 +124,7 @@ public enum GateActivation {
         return !activation.interactionRan
     }
 
-    public static func satisfies(gate: StepGateDTO, activation: SemanticActivation) -> Bool {
+    public static func satisfies(gate: SegmentGateDTO, activation: SemanticActivation) -> Bool {
         satisfies(gateType: gate.type, gateTarget: gate.targetEntity, activation: activation)
     }
 
@@ -133,7 +133,7 @@ public enum GateActivation {
     /// Do this gate's Story State conditions hold right now?
     ///
     /// A gate with no conditions imposes no story requirement, so this is true.
-    public static func storyConditionsHold(_ gate: StepGateDTO,
+    public static func storyConditionsHold(_ gate: SegmentGateDTO,
                                            in state: some StoryStateReading) -> Bool {
         guard let group = gate.storyConditions else { return true }
         return StoryConditionEvaluator.evaluate(group, in: state)
@@ -143,7 +143,7 @@ public enum GateActivation {
     ///
     /// True only for a `.storyCondition` gate whose conditions hold. Every other
     /// gate needs an act, and this must never release one.
-    public static func satisfiedByStory(_ gate: StepGateDTO,
+    public static func satisfiedByStory(_ gate: SegmentGateDTO,
                                         in state: some StoryStateReading) -> Bool {
         gate.type == .storyCondition && storyConditionsHold(gate, in: state)
     }
@@ -157,7 +157,7 @@ public enum GateActivation {
     /// Mixed ANY — "a tap OR the key" — is not expressible, and is documented as
     /// a later capability rather than faked. Composing it as OR here would make
     /// the same field mean two opposite things depending on the gate type.
-    public static func satisfies(gate: StepGateDTO,
+    public static func satisfies(gate: SegmentGateDTO,
                                  activation: SemanticActivation,
                                  state: some StoryStateReading) -> Bool {
         satisfies(gate: gate, activation: activation) && storyConditionsHold(gate, in: state)
@@ -178,7 +178,7 @@ public enum GateActivation {
         return "Continue"
     }
 
-    public static func accessibleLabel(for gate: StepGateDTO) -> String {
+    public static func accessibleLabel(for gate: SegmentGateDTO) -> String {
         accessibleLabel(prompt: gate.prompt)
     }
 }

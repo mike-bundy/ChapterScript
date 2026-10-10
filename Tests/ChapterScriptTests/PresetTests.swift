@@ -93,8 +93,8 @@ final class PresetTests: XCTestCase {
     func testSequenceTemplatePresetRoundTrips() throws {
         let sequence = SequenceDefinitionDTO(
             id: "seq_t", name: "Interview", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "s1", name: "One", duration: 12, actions: [])],
-            visibility: VisibilityStateDTO(), onComplete: .holdOnLastStep)
+            segments: [SegmentDefinitionDTO(id: "s1", name: "One", duration: 12, actions: [])],
+            visibility: VisibilityStateDTO(), onComplete: .holdOnLastSegment)
         let entry = PresetEntry(id: "p5", kind: .sequenceTemplate, name: "Interview",
                                 payload: .sequenceTemplate(
                                     SequenceTemplatePayload(sequence: sequence)))
@@ -103,13 +103,13 @@ final class PresetTests: XCTestCase {
         guard case .sequenceTemplate(let read)? = back.presets?.first?.payload else {
             return XCTFail("payload lost its type")
         }
-        XCTAssertEqual(read.sequence.steps.first?.duration, 12)
+        XCTAssertEqual(read.sequence.segments.first?.duration, 12)
     }
 
     func testChapterTemplatePresetRoundTrips() throws {
         let sequence = SequenceDefinitionDTO(
             id: "seq_a", name: "Open", phase: "immersive",
-            steps: [], visibility: VisibilityStateDTO(), onComplete: .holdOnLastStep)
+            segments: [], visibility: VisibilityStateDTO(), onComplete: .holdOnLastSegment)
         let entry = PresetEntry(
             id: "p6", kind: .chapterTemplate, name: "Two Screens",
             payload: .chapterTemplate(ChapterTemplatePayload(

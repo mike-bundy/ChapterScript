@@ -7,7 +7,7 @@
 //  A GATE AND AN INTERACTION ARE NOT THE SAME IDEA.
 //
 //      Gate         a place authored progression can stall. The story does not
-//                   continue until the condition is met. It lives on a STEP.
+//                   continue until the condition is met. It lives on a SEGMENT.
 //      Interaction  the viewer does something to an OBJECT and the object
 //                   responds. The story carries on exactly where it was.
 //
@@ -20,7 +20,7 @@
 //
 //  ONE RESPONSE VOCABULARY, NOT TWO.
 //
-//  `actions` is `[StepActionDTO]` — the same list a step fires. There is no
+//  `actions` is `[SegmentActionDTO]` — the same list a segment fires. There is no
 //  second engine, no interaction-only action set, and no `playAudioOnTap`.
 //  The interaction decides WHEN an existing behavior runs; it never redefines
 //  what that behavior means. Editors curate which of those cases they OFFER
@@ -29,7 +29,7 @@
 //
 //  LIFETIME IS PART OF THE MODEL, NOT AN AFTERTHOUGHT.
 //
-//  A step action is a one-shot event at a fixed second, so nothing in the
+//  A segment action is a one-shot event at a fixed second, so nothing in the
 //  format has ever had to answer "and if they do it again?". An object the
 //  viewer can tap five times must answer it, and must answer it the same way in
 //  both editors and on device — so `lifetime` ships with the first interaction
@@ -206,8 +206,8 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
     /// identity: the owning Object id and the complete USD prim path.
     public var target: SubElementTarget?
     /// The response, in the ONE action vocabulary. Ordered: they run in
-    /// sequence, exactly as a step's actions do.
-    public var actions: [StepActionDTO]
+    /// sequence, exactly as a segment's actions do.
+    public var actions: [SegmentActionDTO]
     /// Spoken label override for assistive technology. `nil` = derived from the
     /// object's `displayName`, which is a far better default than an entity id
     /// (see `InteractionSemantics`).
@@ -223,7 +223,7 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
         lifetime: InteractionLifetime = .everyTime,
         initiallyEnabled: Bool = true,
         target: SubElementTarget? = nil,
-        actions: [StepActionDTO] = [],
+        actions: [SegmentActionDTO] = [],
         accessibilityLabel: String? = nil,
         accessibilityHint: String? = nil
     ) {
@@ -263,7 +263,7 @@ public struct InteractionSpec: Codable, Sendable, Equatable, Identifiable {
             ?? c.decodeIfPresent(Bool.self, forKey: .isEnabled)
             ?? true
         self.target = try c.decodeIfPresent(SubElementTarget.self, forKey: .target)
-        self.actions = try c.decodeIfPresent([StepActionDTO].self, forKey: .actions) ?? []
+        self.actions = try c.decodeIfPresent([SegmentActionDTO].self, forKey: .actions) ?? []
         self.accessibilityLabel = try c.decodeIfPresent(String.self, forKey: .accessibilityLabel)
         self.accessibilityHint = try c.decodeIfPresent(String.self, forKey: .accessibilityHint)
     }
@@ -381,7 +381,7 @@ public enum InteractionSemantics {
 
     /// Plain-language name of ONE response. Deliberately short — it is a row
     /// label and a spoken hint, not documentation.
-    public static func responsePhrase(_ action: StepActionDTO) -> String {
+    public static func responsePhrase(_ action: SegmentActionDTO) -> String {
         switch action {
         case .showEntity(let n):     return "Show \(n)"
         case .hideEntity(let n):     return "Hide \(n)"

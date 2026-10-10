@@ -405,7 +405,7 @@ public struct AudioInterpretation: Codable, Sendable, Equatable {
 /// This enum is what the Inspector, the Viewer and the runtime all branch on,
 /// and the reason the third architectural rule holds: the controls an audio
 /// clip offers are a function of its MODEL, and the models a clip may choose
-/// are a function of its FORM. Neither step ever consults a filename.
+/// are a function of its FORM. Neither segment ever consults a filename.
 /// HOW AN ENCODED SPATIAL MASTER IS PRESENTED TO THE LISTENER.
 ///
 /// A LISTENING FRAME, NOT A LOCATION. This is the distinction the whole

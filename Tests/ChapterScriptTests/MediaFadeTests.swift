@@ -110,23 +110,23 @@ final class MediaFadeTests: XCTestCase {
         if let stop {
             actions.append(ScheduledActionDTO(at: stop, action: .stopAudio(channel: "music")))
         }
-        let step = StepDefinitionDTO(id: "s1", name: "One", duration: 10,
+        let segment = SegmentDefinitionDTO(id: "s1", name: "One", duration: 10,
                                      actions: [], scheduledActions: actions)
         return SequenceDefinitionDTO(id: "seq", name: "Seq", phase: "immersive",
-                                     steps: [step], onComplete: .holdOnLastStep)
+                                     segments: [segment], onComplete: .holdOnLastSegment)
     }
 
     func testAnAudioFadeOutReachesSilenceAtTheClipEnd() {
         let fades = AudioGainComposition.fades(forChannel: "music",
                                                in: sequence(fadeIn: nil, fadeOut: 2, stop: nil))
         XCTAssertEqual(fades.count, 1)
-        XCTAssertEqual(fades[0].startTime, 8, accuracy: 1e-9, "the step's own end is the clip's end")
+        XCTAssertEqual(fades[0].startTime, 8, accuracy: 1e-9, "the segment's own end is the clip's end")
         XCTAssertEqual(fades[0].to, 0)
         XCTAssertEqual(AudioGainComposition.level(base: 1, fades: fades, at: 10), 0, accuracy: 1e-6)
         XCTAssertEqual(AudioGainComposition.level(base: 1, fades: fades, at: 9), 0.5, accuracy: 1e-6)
     }
 
-    /// The clip's end is the channel's NEXT STOP, not the step's end —
+    /// The clip's end is the channel's NEXT STOP, not the segment's end —
     /// the same span rule the runtime and the Timeline projection apply.
     func testTheFadeOutFollowsTheStopThatEndsTheClip() {
         let fades = AudioGainComposition.fades(forChannel: "music",

@@ -343,14 +343,14 @@ public struct StoryStateDefinition: Codable, Sendable, Equatable, Identifiable {
 ///
 /// Deliberately a small closed vocabulary and NOT arithmetic. There is no
 /// expression, no formula and no reference to another state's value: `Objects
-/// Found` can be set or stepped, and that is the whole of it. An author writing
+/// Found` can be set or changed, and that is the whole of it. An author writing
 /// `x = x * 3 + 2` is an author who has been handed a programming language.
 public enum StoryStateOperation: Sendable, Equatable, Hashable {
     /// Yes/No — remember that something is now true, or that it is not.
     case setYesNo(Bool)
     /// Number — set the counter to an exact value.
     case setNumber(Int)
-    /// Number — step the counter. Negative steps are how Decrease is written;
+    /// Number — change the counter by an amount. Negative amounts are how Decrease is written;
     /// one case rather than two keeps “by how much” in one place.
     case changeNumber(by: Int)
     /// Choice — record which option the story is now on.
@@ -504,7 +504,7 @@ public enum StoryStateArithmetic {
                 return .failure(.kindMismatch(stateId: definition.id, expected: definition.kind))
             }
             // Saturating rather than trapping. A counter is a narrative device;
-            // an hour-long chapter that somehow steps one four billion times
+            // an hour-long chapter that somehow segments one four billion times
             // should hold at the top, not crash the experience.
             let current = value.numberValue ?? 0
             return .success(.number(current.addingReportingOverflow(by).overflow

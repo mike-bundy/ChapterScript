@@ -42,7 +42,7 @@ final class GateActivationTests: XCTestCase {
     // MARK: - Phase 6's rule, preserved
 
     func testAnUntargetedGateIsSatisfiedByAPlainTap() {
-        let gate = StepGateDTO(type: .tap)
+        let gate = SegmentGateDTO(type: .tap)
         XCTAssertTrue(GateActivation.satisfies(
             gate: gate, activation: .init(entityName: "Floor", trigger: .tap)))
     }
@@ -50,7 +50,7 @@ final class GateActivationTests: XCTestCase {
     func testAnUntargetedGateIsNotSatisfiedByTouchingAProp() {
         // THE PHASE 6 RULE. The radio has its own behavior; making it crackle
         // is not permission for the film to continue.
-        let gate = StepGateDTO(type: .tap)
+        let gate = SegmentGateDTO(type: .tap)
         XCTAssertFalse(GateActivation.satisfies(
             gate: gate,
             activation: .init(entityName: "Radio", trigger: .tap, interactionRan: true)))
@@ -59,14 +59,14 @@ final class GateActivationTests: XCTestCase {
     func testATargetedGateIsSatisfiedEvenWhenAnInteractionAlsoRan() {
         // "Continue when Tap Radio" means tapping the Radio continues — the
         // author named it, so both things happening is what they asked for.
-        let gate = StepGateDTO(type: .tap, targetEntity: "Radio")
+        let gate = SegmentGateDTO(type: .tap, targetEntity: "Radio")
         XCTAssertTrue(GateActivation.satisfies(
             gate: gate,
             activation: .init(entityName: "Radio", trigger: .tap, interactionRan: true)))
     }
 
     func testATargetedGateIgnoresActivationOnAnotherObject() {
-        let gate = StepGateDTO(type: .tap, targetEntity: "Radio")
+        let gate = SegmentGateDTO(type: .tap, targetEntity: "Radio")
         XCTAssertFalse(GateActivation.satisfies(
             gate: gate, activation: .init(entityName: "Lamp", trigger: .tap)))
         XCTAssertFalse(GateActivation.satisfies(
@@ -74,7 +74,7 @@ final class GateActivationTests: XCTestCase {
     }
 
     func testAGateIgnoresADifferentKindOfActivation() {
-        let gate = StepGateDTO(type: .grab, targetEntity: "Handle")
+        let gate = SegmentGateDTO(type: .grab, targetEntity: "Handle")
         XCTAssertFalse(GateActivation.satisfies(
             gate: gate, activation: .init(entityName: "Handle", trigger: .tap)))
         XCTAssertTrue(GateActivation.satisfies(
@@ -82,7 +82,7 @@ final class GateActivationTests: XCTestCase {
     }
 
     func testAnAnyGateAcceptsEitherRoute() {
-        let gate = StepGateDTO(type: .any, targetEntity: "Door")
+        let gate = SegmentGateDTO(type: .any, targetEntity: "Door")
         for trigger: InteractionTrigger in [.tap, .grab, .viewerFacing(dwell: 1), .approach(radius: 1)] {
             XCTAssertTrue(GateActivation.satisfies(
                 gate: gate, activation: .init(entityName: "Door", trigger: trigger)),
@@ -104,7 +104,7 @@ final class GateActivationTests: XCTestCase {
         for (type, trigger) in cases {
             for target in [nil, "Radio"] as [String?] {
                 for interactionRan in [true, false] {
-                    let gate = StepGateDTO(type: type, targetEntity: target)
+                    let gate = SegmentGateDTO(type: type, targetEntity: target)
                     let physical = SemanticActivation(
                         entityName: "Radio", trigger: trigger,
                         interactionRan: interactionRan, isAccessible: false)
@@ -124,7 +124,7 @@ final class GateActivationTests: XCTestCase {
     /// to satisfy — the whole reason the accessible equivalent exists.
     func testTheThreeSpatialGatesAreReachableWithoutMoving() {
         for type: GateType in [.viewerFacing, .proximity, .grab] {
-            let gate = StepGateDTO(type: type, targetEntity: "Plinth")
+            let gate = SegmentGateDTO(type: type, targetEntity: "Plinth")
             guard let trigger = GateActivation.trigger(for: type) else {
                 return XCTFail("\(type) must name the act that satisfies it.")
             }
@@ -140,7 +140,7 @@ final class GateActivationTests: XCTestCase {
     /// The two are separate consumers; conflating them would make progression
     /// depend on an unrelated object's enablement.
     func testAGateDoesNotConsultInteractionState() {
-        let gate = StepGateDTO(type: .tap, targetEntity: "Radio")
+        let gate = SegmentGateDTO(type: .tap, targetEntity: "Radio")
         XCTAssertTrue(GateActivation.satisfies(
             gate: gate,
             activation: .init(entityName: "Radio", trigger: .tap, interactionRan: false)))
@@ -150,17 +150,17 @@ final class GateActivationTests: XCTestCase {
 
     func testTheAccessibleLabelPrefersTheAuthorsPrompt() {
         XCTAssertEqual(
-            GateActivation.accessibleLabel(for: StepGateDTO(type: .proximity, prompt: "Step up to the plinth")),
-            "Step up to the plinth")
+            GateActivation.accessibleLabel(for: SegmentGateDTO(type: .proximity, prompt: "Walk up to the plinth")),
+            "Walk up to the plinth")
     }
 
     func testTheAccessibleLabelNeverNamesTheTrigger() {
         // "Approach" is useless to somebody who cannot approach. The fallback
         // names the OUTCOME.
         for type: GateType in [.tap, .viewerFacing, .proximity, .grab] {
-            XCTAssertEqual(GateActivation.accessibleLabel(for: StepGateDTO(type: type)), "Continue")
+            XCTAssertEqual(GateActivation.accessibleLabel(for: SegmentGateDTO(type: type)), "Continue")
         }
-        XCTAssertEqual(GateActivation.accessibleLabel(for: StepGateDTO(type: .grab, prompt: "")), "Continue")
+        XCTAssertEqual(GateActivation.accessibleLabel(for: SegmentGateDTO(type: .grab, prompt: "")), "Continue")
     }
 
     // MARK: - Runtime state stays out of the format

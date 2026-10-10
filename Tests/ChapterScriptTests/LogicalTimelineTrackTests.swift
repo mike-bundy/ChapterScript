@@ -4,7 +4,7 @@ import XCTest
 final class LogicalTimelineTrackTests: XCTestCase {
     func testTitleTrackAndOccurrenceMembershipRoundTrip() throws {
         let track = LogicalTimelineTrack(id: "track_titles", kind: .title, name: "Titles")
-        let step = StepDefinitionDTO(
+        let segment = SegmentDefinitionDTO(
             id: "step", name: "One", duration: 10,
             authoredActions: [
                 AuthoredAction(id: "open", at: 1,
@@ -15,15 +15,15 @@ final class LogicalTimelineTrackTests: XCTestCase {
                                logicalTrackId: track.id),
             ])
         let sequence = SequenceDefinitionDTO(
-            id: "seq", name: "S", phase: "immersive", steps: [step],
+            id: "seq", name: "S", phase: "immersive", segments: [segment],
             logicalTracks: [track])
         let data = try JSONEncoder().encode(sequence)
         let reopened = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: data)
 
         XCTAssertEqual(reopened.logicalTracks, [track])
-        XCTAssertEqual(reopened.steps[0].authoredActions.map(\.logicalTrackId),
+        XCTAssertEqual(reopened.segments[0].authoredActions.map(\.logicalTrackId),
                        [track.id, track.id])
-        XCTAssertEqual(reopened.steps[0].authoredActions.map(\.action),
+        XCTAssertEqual(reopened.segments[0].authoredActions.map(\.action),
                        [.showEntity(name: "title_a"), .hideEntity(name: "title_a")])
     }
 
@@ -31,7 +31,7 @@ final class LogicalTimelineTrackTests: XCTestCase {
         let json = #"{"id":"seq","name":"S","phase":"immersive","steps":[{"id":"step","name":"One","duration":5,"authoredActions":[{"id":"open","at":0,"action":{"kind":"showEntity","name":"title_a"}}]}],"animationTracks":[],"audioTracks":[],"stereoTracks":[],"backdropTrack":[],"storyRegions":[],"visibility":{},"onComplete":{"kind":"holdOnLastStep"}}"#.data(using: .utf8)!
         let sequence = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json)
         XCTAssertNil(sequence.logicalTracks)
-        XCTAssertNil(sequence.steps[0].authoredActions[0].logicalTrackId)
+        XCTAssertNil(sequence.segments[0].authoredActions[0].logicalTrackId)
     }
 
     func testUnknownLogicalTrackKindSurvivesRoundTrip() throws {
@@ -42,13 +42,13 @@ final class LogicalTimelineTrackTests: XCTestCase {
     }
 
     func testCompatibilityViewRewritePreservesMembership() {
-        var step = StepDefinitionDTO(
+        var segment = SegmentDefinitionDTO(
             id: "step", name: "One", duration: 5,
             authoredActions: [AuthoredAction(
                 id: "open", at: 0, action: .showEntity(name: "old"),
                 logicalTrackId: "track_titles")])
-        step.actions = [.showEntity(name: "new")]
-        XCTAssertEqual(step.authoredActions[0].id, "open")
-        XCTAssertEqual(step.authoredActions[0].logicalTrackId, "track_titles")
+        segment.actions = [.showEntity(name: "new")]
+        XCTAssertEqual(segment.authoredActions[0].id, "open")
+        XCTAssertEqual(segment.authoredActions[0].logicalTrackId, "track_titles")
     }
 }

@@ -17,7 +17,7 @@
 //      Story Regions   when authored time may DWELL inside a Sequence
 //      Flow            where execution goes BETWEEN Sequences
 //
-//  This is the third. It names no step, no action and no time.
+//  This is the third. It names no segment, no action and no time.
 //
 //  NOT PERSISTED. An intent is a runtime event. The authored facts it is
 //  derived FROM — `CompletionActionDTO`, an Interaction response — are what
@@ -46,7 +46,7 @@ public indirect enum NavigationIntent: Codable, Sendable, Equatable, Hashable {
     case back(policy: ReturnPolicy)
     /// Discard the current visit and enter the same Sequence afresh.
     case restart
-    /// Finish. Not a Sequence, and not the same as holding on the last step.
+    /// Finish. Not a Sequence, and not the same as holding on the last segment.
     case end
     /// A navigation this build does not understand, kept verbatim.
     ///
@@ -62,7 +62,7 @@ public indirect enum NavigationIntent: Codable, Sendable, Equatable, Hashable {
     /// nothing, and fails INERTLY at runtime while the validator reports it.
     /// `raw` is retained so an editor can re-emit the document unchanged rather
     /// than quietly downgrading somebody's chapter — the same rule
-    /// `StepActionDTO.unknown` already follows.
+    /// `SegmentActionDTO.unknown` already follows.
     case unsupported(kind: String, raw: AnyCodableValue?)
 
     /// **Go wherever the story's memory says.**
@@ -81,7 +81,7 @@ public indirect enum NavigationIntent: Codable, Sendable, Equatable, Hashable {
     /// There is at most one, it carries no condition, and it is always last.
     ///
     /// NO MATCH AND NO OTHERWISE = NO NAVIGATION, which is Hold — exactly what
-    /// `forCompletion` already returns for `.holdOnLastStep`. Nothing invents a
+    /// `forCompletion` already returns for `.holdOnLastSegment`. Nothing invents a
     /// destination.
     case branch(cases: [StoryBranchCase], otherwise: NavigationIntent?)
 
@@ -325,7 +325,7 @@ extension NavigationIntent {
         switch completion {
         case .autoAdvance(let next):
             return .goTo(sequenceId: next)
-        case .holdOnLastStep:
+        case .holdOnLastSegment:
             // HOLD IS NOT END. The experience stays alive on its final frame;
             // nothing navigates. Keeping these distinct is why `end` exists as
             // its own case rather than as "hold with no next".

@@ -190,18 +190,18 @@ public enum AudioGainComposition {
     /// about time: where does a clip end?
     ///
     /// A play runs until the same channel's next stop or play LATER in the
-    /// Step — a same-instant action precedes it by authored order, so it
-    /// does not end it — else until the Step's end. The identical rule the
+    /// Segment — a same-instant action precedes it by authored order, so it
+    /// does not end it — else until the Segment's end. The identical rule the
     /// runtime's `SequenceEngine.occurrenceSpan` and the Kit's Timeline
     /// projection apply; stated here rather than approximated, because a
     /// fade-out that ends at the wrong instant is audible.
     public static func occurrenceEnd(
         ofChannel channel: String,
         firedAt offset: Double,
-        in step: StepDefinitionDTO
+        in segment: SegmentDefinitionDTO
     ) -> Double {
-        var end = step.duration
-        for authored in step.authoredActions where authored.at > offset + 1e-6 && authored.at < end {
+        var end = segment.duration
+        for authored in segment.authoredActions where authored.at > offset + 1e-6 && authored.at < end {
             switch authored.action {
             case .stopAudio(let target) where target == channel: end = authored.at
             case .playAudio(let audio) where audio.channel == channel: end = authored.at
@@ -223,14 +223,14 @@ public enum AudioGainComposition {
         in sequence: SequenceDefinitionDTO
     ) -> [AudioFade] {
         var result: [AudioFade] = []
-        var stepStart = 0.0
-        for step in sequence.steps {
-            for authored in step.authoredActions {
-                let time = stepStart + authored.at
+        var segmentStart = 0.0
+        for segment in sequence.segments {
+            for authored in segment.authoredActions {
+                let time = segmentStart + authored.at
                 switch authored.action {
                 case .playAudio(let audio) where audio.channel == channel:
-                    let end = stepStart + occurrenceEnd(ofChannel: channel,
-                                                        firedAt: authored.at, in: step)
+                    let end = segmentStart + occurrenceEnd(ofChannel: channel,
+                                                        firedAt: authored.at, in: segment)
                     if let fade = fadeIn(for: audio, clipStart: time, clipEnd: end) {
                         result.append(fade)
                     }
@@ -243,7 +243,7 @@ public enum AudioGainComposition {
                     break
                 }
             }
-            stepStart += step.duration
+            segmentStart += segment.duration
         }
         return result.sorted { $0.startTime < $1.startTime }
     }

@@ -20,7 +20,7 @@ final class CaptionFormatTests: XCTestCase {
     private func makeSequence() -> SequenceDefinitionDTO {
         SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
     }
 
     func testAbsentCaptionsEncodeToNothing() throws {

@@ -165,7 +165,7 @@ public struct InteractionLedger: Sendable, Equatable {
 
     /// The actions an activation should run — empty when it was refused, so a
     /// caller cannot accidentally dispatch a response for a refused trigger.
-    public mutating func firing(_ id: String) -> (outcome: Outcome, actions: [StepActionDTO]) {
+    public mutating func firing(_ id: String) -> (outcome: Outcome, actions: [SegmentActionDTO]) {
         let outcome = fire(id)
         guard outcome.didFire, let entry = entries[id] else { return (outcome, []) }
         return (outcome, entry.spec.actions)

@@ -21,7 +21,7 @@
 //
 //  IDENTITY IS WHAT MAKES REPLACEMENT CHEAP.
 //
-//  Every reference to a scene object in this format is BY NAME: step actions
+//  Every reference to a scene object in this format is BY NAME: segment actions
 //  target `EntityDefinition.id`, animation tracks key on the same string, gates
 //  name a `targetEntity`. So swapping a placeholder for real media is a change
 //  to ONE definition's kind and specs — the id stays, and therefore timing,
@@ -79,7 +79,7 @@ public struct PlaceholderSpec: Codable, Sendable, Equatable {
     /// Intended runtime length in seconds, for roles that run on a clock.
     ///
     /// This is a PLANNING figure, not the authored duration: the clip's actual
-    /// extent on the timeline is its step/scheduled placement, exactly like
+    /// extent on the timeline is its segment/scheduled placement, exactly like
     /// real media. It exists so an editor can size a freshly dropped
     /// placeholder sensibly and so a replacement can be flagged when the real
     /// file turns out to be a different length. `nil` for `.entity3D`.

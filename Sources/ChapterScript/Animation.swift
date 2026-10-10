@@ -1,6 +1,6 @@
 import Foundation
 
-public enum StepTimingFunction: String, Codable, Sendable, Equatable {
+public enum SegmentTimingFunction: String, Codable, Sendable, Equatable {
     case linear
     case easeIn
     case easeOut
@@ -8,7 +8,7 @@ public enum StepTimingFunction: String, Codable, Sendable, Equatable {
 }
 
 public enum InterpolationMode: String, Codable, Sendable, Equatable {
-    case step
+    case hold = "step"  // WIRE-FORMAT: the saved raw value predates the name
     case linear
     case easeIn
     case easeOut
@@ -47,7 +47,7 @@ public enum Waveform: String, Codable, Sendable, Equatable {
     case square
 }
 
-/// Parametric motion description that an evaluator can sample over a step's progress in [0, 1].
+/// Parametric motion description that an evaluator can sample over a segment's progress in [0, 1].
 /// Covers the periodic + path motions present in SharedVisions's per-frame code (orbit, spiral,
 /// oscillate, rotate, linear) plus a `keyframes` escape hatch for arbitrary author-defined splines.
 public indirect enum MotionCurve: Codable, Sendable, Equatable {

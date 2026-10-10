@@ -132,9 +132,9 @@ final class RetimeFormatTests: XCTestCase {
         XCTAssertEqual(atEnd, 8, accuracy: 1e-9)
     }
 
-    func testSteppedHoldsTheLeftKey() {
+    func testHeldHoldsTheLeftKey() {
         let curve = RetimeCurve(keys: [
-            RetimeKey(timelinePosition: 0, sourcePosition: 1, interpolation: .stepped),
+            RetimeKey(timelinePosition: 0, sourcePosition: 1, interpolation: .held),
             RetimeKey(timelinePosition: 1, sourcePosition: 9),
         ])
         XCTAssertEqual(curve.sourcePosition(atFraction: 0.99)!, 1, accuracy: 1e-9)

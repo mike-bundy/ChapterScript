@@ -25,7 +25,7 @@ final class StoryRegionRuntimeTests: XCTestCase {
     private func radioRoom(fallback: Double? = nil) -> StoryRegion {
         StoryRegion(id: "sr_radio", name: "Radio Room",
                     startTime: 10, previewDuration: 10,
-                    exit: StepGateDTO(type: .tap), fallbackTimeout: fallback)
+                    exit: SegmentGateDTO(type: .tap), fallbackTimeout: fallback)
     }
 
     // MARK: - The first pass always plays
@@ -209,7 +209,7 @@ final class StoryRegionModelTests: XCTestCase {
     }
 
     func testASequenceWithNoRegionsIsEntirelyDirected() {
-        let sequence = SequenceDefinitionDTO(id: "s", name: "S", phase: "immersive", steps: [])
+        let sequence = SequenceDefinitionDTO(id: "s", name: "S", phase: "immersive", segments: [])
         XCTAssertTrue(sequence.storyRegions.isEmpty,
                       "Directed is the ABSENCE of a region. Nothing is drawn to get ordinary playback.")
         XCTAssertNil(StoryRegionTimeline.region(at: 5, in: sequence.storyRegions))
@@ -272,7 +272,7 @@ final class StoryRegionModelTests: XCTestCase {
         var r = region("sr_1", 10, 5)
         r.name = "Radio Room"
         r.fallbackTimeout = 30
-        r.exit = StepGateDTO(type: .viewerFacing, targetEntity: "Radio")
+        r.exit = SegmentGateDTO(type: .viewerFacing, targetEntity: "Radio")
         r.continuations = [
             .init(target: .occurrence(actionId: "act_9"), behavior: .loop),
             .init(target: .backdropCue(id: "cue_2"), behavior: .stop)

@@ -19,7 +19,7 @@ public struct MoveActionDTO: Codable, Sendable, Equatable {
     /// with `absoluteRotation`; if both are set, absolute wins.
     public var rotationOffset: Vec3?
     public var duration: Double
-    public var timing: StepTimingFunction
+    public var timing: SegmentTimingFunction
 
     public init(
         entity: String,
@@ -32,7 +32,7 @@ public struct MoveActionDTO: Codable, Sendable, Equatable {
         absoluteRotation: Vec3? = nil,
         rotationOffset: Vec3? = nil,
         duration: Double = 1.0,
-        timing: StepTimingFunction = .easeInOut
+        timing: SegmentTimingFunction = .easeInOut
     ) {
         self.entity = entity
         self.positionOffset = positionOffset
@@ -54,9 +54,9 @@ public struct FadeActionDTO: Codable, Sendable, Equatable {
     public var entity: String
     public var opacity: Float
     public var duration: Double
-    public var timing: StepTimingFunction
+    public var timing: SegmentTimingFunction
 
-    public init(entity: String, opacity: Float, duration: Double = 1.0, timing: StepTimingFunction = .easeInOut) {
+    public init(entity: String, opacity: Float, duration: Double = 1.0, timing: SegmentTimingFunction = .easeInOut) {
         self.entity = entity
         self.opacity = opacity
         self.duration = duration

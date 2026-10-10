@@ -20,11 +20,11 @@ final class KeyframeSamplingTests: XCTestCase {
         XCTAssertEqual(KeyframeSampling.sample(pts, at: 1).x, 5)
     }
 
-    func testLinearAndStep() {
+    func testLinearAndHold() {
         let linear = [key(0, 0), key(1, 10)]
         XCTAssertEqual(KeyframeSampling.sample(linear, at: 0.25).x, 2.5, accuracy: 0.001)
-        let stepped = [key(0, 0, .step), key(1, 10)]
-        XCTAssertEqual(KeyframeSampling.sample(stepped, at: 0.99).x, 0)
+        let held = [key(0, 0, .hold), key(1, 10)]
+        XCTAssertEqual(KeyframeSampling.sample(held, at: 0.99).x, 0)
     }
 
     func testEaseInOutHitsMidpoint() {

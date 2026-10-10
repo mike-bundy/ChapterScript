@@ -56,51 +56,51 @@ final class RoundTripTests: XCTestCase {
         try roundTrip(cube)
     }
 
-    // MARK: - StepAction
+    // MARK: - SegmentAction
 
-    func testStepActionEntityCases() throws {
-        try roundTrip(StepActionDTO.showEntity(name: "orb"))
-        try roundTrip(StepActionDTO.hideEntity(name: "cube"))
-        try roundTrip(StepActionDTO.persistEntity(name: "cone"))
-        try roundTrip(StepActionDTO.unpersistEntity(name: "cone"))
-        try roundTrip(StepActionDTO.scaleEntity(name: "orb", multiplier: 2.0, duration: 1.0, timing: .easeInOut))
+    func testSegmentActionEntityCases() throws {
+        try roundTrip(SegmentActionDTO.showEntity(name: "orb"))
+        try roundTrip(SegmentActionDTO.hideEntity(name: "cube"))
+        try roundTrip(SegmentActionDTO.persistEntity(name: "cone"))
+        try roundTrip(SegmentActionDTO.unpersistEntity(name: "cone"))
+        try roundTrip(SegmentActionDTO.scaleEntity(name: "orb", multiplier: 2.0, duration: 1.0, timing: .easeInOut))
     }
 
-    func testStepActionRichCases() throws {
-        try roundTrip(StepActionDTO.moveEntity(MoveActionDTO(
+    func testSegmentActionRichCases() throws {
+        try roundTrip(SegmentActionDTO.moveEntity(MoveActionDTO(
             entity: "orb",
             absolutePosition: Vec3(0, 1.5, -2),
             duration: 2.0
         )))
-        try roundTrip(StepActionDTO.fadeEntity(FadeActionDTO(entity: "orb", opacity: 0.5)))
-        try roundTrip(StepActionDTO.revealEntity(RevealActionDTO(
+        try roundTrip(SegmentActionDTO.fadeEntity(FadeActionDTO(entity: "orb", opacity: 0.5)))
+        try roundTrip(SegmentActionDTO.revealEntity(RevealActionDTO(
             entity: "cube",
             headRelativePosition: Vec3(0, 1.6, -1.5),
             headYOnly: true,
             scale: Vec3(0.3, 0.3, 0.3),
             fadeIn: 0.4
         )))
-        try roundTrip(StepActionDTO.animateMotion(AnimateMotionActionDTO(
+        try roundTrip(SegmentActionDTO.animateMotion(AnimateMotionActionDTO(
             entity: "cube",
             position: .orbit(center: Vec3(0, 1.5, -2), radius: 0.6, axis: Vec3(0, 1, 0), revolutions: 1, phase: 0),
             duration: 4.0
         )))
     }
 
-    func testStepActionAudioVideo() throws {
-        try roundTrip(StepActionDTO.playAudio(AudioActionDTO(
+    func testSegmentActionAudioVideo() throws {
+        try roundTrip(SegmentActionDTO.playAudio(AudioActionDTO(
             file: "narration/intro",
             channel: "narration",
             scope: .ambient,
             volume: 0.8
         )))
-        try roundTrip(StepActionDTO.fadeAudio(channel: "ambient", to: 0.0, duration: 2.0))
-        try roundTrip(StepActionDTO.playVideo(VideoActionDTO(
+        try roundTrip(SegmentActionDTO.fadeAudio(channel: "ambient", to: 0.0, duration: 2.0))
+        try roundTrip(SegmentActionDTO.playVideo(VideoActionDTO(
             file: "skybox/main",
             channel: "skybox",
             presentation: .entity(name: "skybox", width: 12, height: 6)
         )))
-        try roundTrip(StepActionDTO.onAudioComplete(channel: "narration", then: [
+        try roundTrip(SegmentActionDTO.onAudioComplete(channel: "narration", then: [
             .stopAudio(channel: "narration"),
             .showEntity(name: "cone")
         ]))
@@ -119,13 +119,13 @@ final class RoundTripTests: XCTestCase {
     }
 
     func testImmersiveVideoPresentation() throws {
-        try roundTrip(StepActionDTO.playVideo(VideoActionDTO(
+        try roundTrip(SegmentActionDTO.playVideo(VideoActionDTO(
             file: "test",
             channel: "skybox",
             presentation: .immersive(radius: 1000, field: .equirect360),
             layout: .mono
         )))
-        try roundTrip(StepActionDTO.playVideo(VideoActionDTO(
+        try roundTrip(SegmentActionDTO.playVideo(VideoActionDTO(
             file: "spatial-180",
             channel: "skybox",
             presentation: .immersive(radius: 50, field: .equirect180),
@@ -149,7 +149,7 @@ final class RoundTripTests: XCTestCase {
     }
 
     func testVideoActionSourceTrimRoundTrip() throws {
-        try roundTrip(StepActionDTO.playVideo(VideoActionDTO(
+        try roundTrip(SegmentActionDTO.playVideo(VideoActionDTO(
             file: "master.mov",
             channel: "video-master",
             volume: 0.8,
@@ -174,27 +174,27 @@ final class RoundTripTests: XCTestCase {
         XCTAssertNil(VideoActionDTO(file: "m.mov", channel: "c").sourceWindowDuration)
     }
 
-    func testStepActionMixCases() throws {
-        try roundTrip(StepActionDTO.setBusVolume(busId: "narration", volume: 0.6))
-        try roundTrip(StepActionDTO.setBusEffect(busId: "narration", effect: .reverb(wetDryMix: 0.3)))
-        try roundTrip(StepActionDTO.setBusEffect(busId: "fx", effect: .compressor(threshold: -12, ratio: 4)))
+    func testSegmentActionMixCases() throws {
+        try roundTrip(SegmentActionDTO.setBusVolume(busId: "narration", volume: 0.6))
+        try roundTrip(SegmentActionDTO.setBusEffect(busId: "narration", effect: .reverb(wetDryMix: 0.3)))
+        try roundTrip(SegmentActionDTO.setBusEffect(busId: "fx", effect: .compressor(threshold: -12, ratio: 4)))
     }
 
-    func testStepActionVisibilityAndCustom() throws {
-        try roundTrip(StepActionDTO.setUpperLimbVisibility(.hidden))
-        try roundTrip(StepActionDTO.setKeyboardPassthrough(true))
-        try roundTrip(StepActionDTO.custom(id: "vfx.shockwave", parameters: [
+    func testSegmentActionVisibilityAndCustom() throws {
+        try roundTrip(SegmentActionDTO.setUpperLimbVisibility(.hidden))
+        try roundTrip(SegmentActionDTO.setKeyboardPassthrough(true))
+        try roundTrip(SegmentActionDTO.custom(id: "vfx.shockwave", parameters: [
             "intensity": .double(0.8),
             "color": .string("#ff0033")
         ]))
     }
 
-    func testStepActionUnknownForwardCompat() throws {
+    func testSegmentActionUnknownForwardCompat() throws {
         // Hand-craft a JSON object with a kind not in the current enum.
         let json = """
         { "kind": "futureFeatureXYZ", "magic": 42, "label": "tomorrow" }
         """.data(using: .utf8)!
-        let decoded = try ChapterScriptFormat.makeDecoder().decode(StepActionDTO.self, from: json)
+        let decoded = try ChapterScriptFormat.makeDecoder().decode(SegmentActionDTO.self, from: json)
         if case .unknown(let name, let raw) = decoded {
             XCTAssertEqual(name, "futureFeatureXYZ")
             if case .object(let dict) = raw {
@@ -208,15 +208,15 @@ final class RoundTripTests: XCTestCase {
         }
     }
 
-    // MARK: - Sequence / Step
+    // MARK: - Sequence / Segment
 
     func testSequenceRoundTrip() throws {
         let sequence = SequenceDefinitionDTO(
             id: "voyage-prologue.intro",
             name: "Intro",
             phase: "immersive",
-            steps: [
-                StepDefinitionDTO(
+            segments: [
+                SegmentDefinitionDTO(
                     id: "orb-reveal",
                     name: "Orb reveal",
                     duration: 4.0,
@@ -233,7 +233,7 @@ final class RoundTripTests: XCTestCase {
                     scheduledActions: [
                         ScheduledActionDTO(at: 2.0, action: .showPulseRing(PulseRingConfigDTO()))
                     ],
-                    gate: StepGateDTO(type: .tap, timeout: 30, prompt: "Tap to begin")
+                    gate: SegmentGateDTO(type: .tap, timeout: 30, prompt: "Tap to begin")
                 )
             ],
             visibility: VisibilityStateDTO(["orb": true]),
@@ -262,9 +262,9 @@ final class RoundTripTests: XCTestCase {
                     id: "only",
                     name: "Only Sequence",
                     phase: "immersive",
-                    steps: [StepDefinitionDTO(
-                        id: "step1",
-                        name: "Step 1",
+                    segments: [SegmentDefinitionDTO(
+                        id: "seg1",
+                        name: "Segment 1",
                         duration: 2.0,
                         actions: [.showEntity(name: "orb")]
                     )]

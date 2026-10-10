@@ -165,7 +165,7 @@ final class AudioGainCompositionTests: XCTestCase {
     // MARK: - Gathering from a document
 
     func testFadesAreGatheredFromTheSequenceInAbsoluteTime() {
-        var first = StepDefinitionDTO(id: "s1", name: "S1", duration: 10,
+        var first = SegmentDefinitionDTO(id: "s1", name: "S1", duration: 10,
                                       actions: [], scheduledActions: [], gate: nil)
         first.authoredActions = [
             AuthoredAction(id: "a1", at: 0, action: .playAudio(
@@ -173,15 +173,15 @@ final class AudioGainCompositionTests: XCTestCase {
                                fadeIn: 2)
             ))
         ]
-        var second = StepDefinitionDTO(id: "s2", name: "S2", duration: 10,
+        var second = SegmentDefinitionDTO(id: "s2", name: "S2", duration: 10,
                                        actions: [], scheduledActions: [], gate: nil)
         second.authoredActions = [
             AuthoredAction(id: "a2", at: 3,
                            action: .fadeAudio(channel: "audio-m", to: 0, duration: 4))
         ]
         let sequence = SequenceDefinitionDTO(
-            id: "seq", name: "S", phase: "immersive", steps: [first, second],
-            visibility: VisibilityStateDTO(), onComplete: .holdOnLastStep
+            id: "seq", name: "S", phase: "immersive", segments: [first, second],
+            visibility: VisibilityStateDTO(), onComplete: .holdOnLastSegment
         )
 
         let fades = AudioGainComposition.fades(forChannel: "audio-m", in: sequence)
@@ -189,21 +189,21 @@ final class AudioGainCompositionTests: XCTestCase {
         // The fade-in is at the clip's start…
         XCTAssertEqual(fades[0].startTime, 0)
         XCTAssertEqual(fades[0].from, 0, "a fade-in starts from silence")
-        // …and the fadeAudio is at step-2-start (10) + its offset (3) = 13.
+        // …and the fadeAudio is at segment-2-start (10) + its offset (3) = 13.
         XCTAssertEqual(fades[1].startTime, 13, accuracy: 0.001)
         XCTAssertEqual(fades[1].to, 0)
     }
 
     func testFadesForAnotherChannelAreNotGathered() {
-        var step = StepDefinitionDTO(id: "s1", name: "S1", duration: 10,
+        var segment = SegmentDefinitionDTO(id: "s1", name: "S1", duration: 10,
                                      actions: [], scheduledActions: [], gate: nil)
-        step.authoredActions = [
+        segment.authoredActions = [
             AuthoredAction(id: "a1", at: 0,
                            action: .fadeAudio(channel: "audio-other", to: 0, duration: 1))
         ]
         let sequence = SequenceDefinitionDTO(
-            id: "seq", name: "S", phase: "immersive", steps: [step],
-            visibility: VisibilityStateDTO(), onComplete: .holdOnLastStep
+            id: "seq", name: "S", phase: "immersive", segments: [segment],
+            visibility: VisibilityStateDTO(), onComplete: .holdOnLastSegment
         )
         XCTAssertTrue(AudioGainComposition.fades(forChannel: "audio-m", in: sequence).isEmpty)
     }

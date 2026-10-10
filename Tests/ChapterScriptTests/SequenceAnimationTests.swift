@@ -33,12 +33,12 @@ final class SequenceAnimationTests: XCTestCase {
         XCTAssertEqual(SequenceAnimationEvaluator.evaluate(curve, at: 10, rest: 0), 8)
     }
 
-    func testLinearAndStepped() {
+    func testLinearAndHeld() {
         let linear = AnimationCurve(keys: [key(0, 0, .linear), key(2, 10)])
         XCTAssertEqual(SequenceAnimationEvaluator.evaluate(linear, at: 0.5, rest: 0), 2.5, accuracy: 0.001)
-        let stepped = AnimationCurve(keys: [key(0, 0, .stepped), key(2, 10)])
-        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(stepped, at: 1.99, rest: 0), 0)
-        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(stepped, at: 2, rest: 0), 10)
+        let held = AnimationCurve(keys: [key(0, 0, .held), key(2, 10)])
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(held, at: 1.99, rest: 0), 0)
+        XCTAssertEqual(SequenceAnimationEvaluator.evaluate(held, at: 2, rest: 0), 10)
     }
 
     func testBezierWithFlatAutoTangentsPassesThroughKeysMonotonically() {
@@ -126,11 +126,11 @@ final class SequenceAnimationTests: XCTestCase {
     }
 
     func testContinuousEulerAccumulatesPast360() {
-        // Walk ry through 3 full turns in 10° steps; the unwrapped channel
+        // Walk ry through 3 full turns in 10° segments; the unwrapped channel
         // must end near 1080, never snapping back to 0.
         var reference = SIMD3<Float>(0, 0, 0)
-        for step in 1...108 {
-            let target = Float(step) * 10
+        for segment in 1...108 {
+            let target = Float(segment) * 10
             let q = AnimationEulerMath.eulerToQuat(SIMD3(0, target, 0), order: .xyz)
             reference = AnimationEulerMath.continuousEuler(q, order: .xyz, reference: reference)
         }
@@ -152,7 +152,7 @@ final class SequenceAnimationTests: XCTestCase {
 
         let sequence = SequenceDefinitionDTO(
             id: "c1", name: "One", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "s1", name: "Step", duration: 5, actions: [])],
+            segments: [SegmentDefinitionDTO(id: "s1", name: "Segment", duration: 5, actions: [])],
             animationTracks: [track]
         )
         let data = try JSONEncoder().encode(sequence)

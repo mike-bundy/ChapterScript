@@ -102,21 +102,21 @@ final class StoryStateTests: XCTestCase {
         XCTAssertEqual(try result.get(), .yesNo(true))
     }
 
-    func testNumberIsSetAndStepped() {
+    func testNumberIsSetAndNudged() {
         let state = StoryStateDefinition(name: "Objects Found", kind: .number)
         XCTAssertEqual(try StoryStateArithmetic.apply(.setNumber(4), to: .number(0),
                                                       definition: state).get(), .number(4))
         XCTAssertEqual(try StoryStateArithmetic.apply(.changeNumber(by: 1), to: .number(1),
                                                       definition: state).get(), .number(2))
-        // Decrease is a negative step. One case, so “by how much” lives in one
+        // Decrease is a negative segment. One case, so “by how much” lives in one
         // place rather than in two mirror-image ones.
         XCTAssertEqual(try StoryStateArithmetic.apply(.changeNumber(by: -1), to: .number(2),
                                                       definition: state).get(), .number(1))
     }
 
-    /// A counter is a narrative device. Stepping it past the end of the number
+    /// A counter is a narrative device. Advancing it past the end of the number
     /// line holds rather than trapping and taking the experience with it.
-    func testSteppingANumberSaturatesRatherThanTrapping() {
+    func testNudgingANumberSaturatesRatherThanTrapping() {
         let state = StoryStateDefinition(name: "Attempts", kind: .number)
         XCTAssertEqual(try StoryStateArithmetic.apply(.changeNumber(by: 1), to: .number(Int.max),
                                                       definition: state).get(), .number(Int.max))
@@ -249,10 +249,10 @@ final class StoryStateTests: XCTestCase {
     // MARK: - The action
 
     func testTheMutationActionRoundTrips() throws {
-        let action = StepActionDTO.setStoryState(
+        let action = SegmentActionDTO.setStoryState(
             .init(stateId: "sst_radio", operation: .changeNumber(by: 1)))
         let data = try JSONEncoder().encode(action)
-        XCTAssertEqual(try JSONDecoder().decode(StepActionDTO.self, from: data), action)
+        XCTAssertEqual(try JSONDecoder().decode(SegmentActionDTO.self, from: data), action)
     }
 
     /// An Interaction row must never read “Run action” for something this

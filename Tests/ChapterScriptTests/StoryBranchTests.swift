@@ -68,7 +68,7 @@ final class StoryBranchTests: XCTestCase {
     }
 
     /// **NO MATCH AND NO OTHERWISE IS HOLD.** Nothing is invented, and this is
-    /// exactly what `forCompletion` already returns for `.holdOnLastStep`.
+    /// exactly what `forCompletion` already returns for `.holdOnLastSegment`.
     func testNoMatchAndNoOtherwiseIsHold() {
         let intent = NavigationIntent.branch(cases: [
             branchCase(.choice(matches: true, optionId: "opt_radio"), on: route, to: "Radio Story"),
@@ -181,9 +181,9 @@ final class StoryBranchTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(CompletionActionDTO.self, from: completionData),
                        completion)
 
-        let action = StepActionDTO.navigate(intent)
+        let action = SegmentActionDTO.navigate(intent)
         let actionData = try JSONEncoder().encode(action)
-        XCTAssertEqual(try JSONDecoder().decode(StepActionDTO.self, from: actionData), action)
+        XCTAssertEqual(try JSONDecoder().decode(SegmentActionDTO.self, from: actionData), action)
     }
 
     // MARK: - The navigator performs it

@@ -80,7 +80,7 @@ final class ExperienceNavigatorTests: XCTestCase {
     func testHoldIsNotNavigationAndIsNotEnd() {
         var n = nav()
         _ = n.handle(.init(intent: .start, source: .host), exists: exists, start: start)
-        let out = n.handleCompletion(.holdOnLastStep, from: "a", exists: exists, start: start)
+        let out = n.handleCompletion(.holdOnLastSegment, from: "a", exists: exists, start: start)
         XCTAssertEqual(out, .stay)
         XCTAssertEqual(n.current?.sequenceId, "a",
                        "Hold keeps the experience alive on its last frame. It is not End.")

@@ -6,7 +6,7 @@
 //
 //  Audio volume used to be two things, neither of them editable as a curve:
 //  a single static `volume` on `playAudio`, and `fadeAudio(channel:to:
-//  duration:)` — a linear ramp authored as a discrete step action. Ducking
+//  duration:)` — a linear ramp authored as a discrete segment action. Ducking
 //  music under a voice-over and bringing it back meant hand-placing two ramp
 //  actions with nothing to see on the timeline and nothing to drag.
 //

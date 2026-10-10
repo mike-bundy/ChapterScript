@@ -1,17 +1,17 @@
 import Foundation
 
-/// A single composable step action. Mirrors the runtime `StepAction` enum from the
+/// A single composable segment action. Mirrors the runtime `SegmentAction` enum from the
 /// player's SequenceEngine, but uses primitive value types (Vec3, ColorRGBA, VisibilityKind)
 /// so the format has no RealityKit / SwiftUI / AVFoundation dependencies.
 ///
 /// JSON wire format is externally tagged: `{"kind": "showEntity", ...}`.
 /// Unknown future cases parse into `.unknown(name:raw:)` rather than failing decode.
-public indirect enum StepActionDTO: Sendable, Equatable {
+public indirect enum SegmentActionDTO: Sendable, Equatable {
     // Entity
     case showEntity(name: String)
     case hideEntity(name: String)
     case moveEntity(MoveActionDTO)
-    case scaleEntity(name: String, multiplier: Float, duration: Double, timing: StepTimingFunction)
+    case scaleEntity(name: String, multiplier: Float, duration: Double, timing: SegmentTimingFunction)
     case fadeEntity(FadeActionDTO)
     case persistEntity(name: String)
     case unpersistEntity(name: String)
@@ -38,7 +38,7 @@ public indirect enum StepActionDTO: Sendable, Equatable {
     case playAudio(AudioActionDTO)
     case stopAudio(channel: String)
     case fadeAudio(channel: String, to: Float, duration: Double)
-    case onAudioComplete(channel: String, then: [StepActionDTO])
+    case onAudioComplete(channel: String, then: [SegmentActionDTO])
 
     // Video
     case playVideo(VideoActionDTO)
@@ -72,8 +72,8 @@ public indirect enum StepActionDTO: Sendable, Equatable {
     // Interactions (see Interaction.swift)
     /// Arm or disarm one authored `InteractionSpec` on an entity, by its stable
     /// id. This is how "tapping the switch makes the door tappable" is written
-    /// without a scripting layer — and it is deliberately an ordinary step
-    /// action, so a STEP can arm an interaction at a moment in the timeline
+    /// without a scripting layer — and it is deliberately an ordinary segment
+    /// action, so a SEGMENT can arm an interaction at a moment in the timeline
     /// exactly as another interaction can.
     case enableInteraction(entity: String, interactionId: String)
     case disableInteraction(entity: String, interactionId: String)
@@ -116,7 +116,7 @@ public indirect enum StepActionDTO: Sendable, Equatable {
 
 // MARK: - Codable
 
-extension StepActionDTO: Codable {
+extension SegmentActionDTO: Codable {
     private enum CodingKeys: String, CodingKey {
         case navigation
         case storyState
@@ -333,7 +333,7 @@ extension StepActionDTO: Codable {
                 name: try c.decode(String.self, forKey: .name),
                 multiplier: try c.decode(Float.self, forKey: .multiplier),
                 duration: try c.decode(Double.self, forKey: .duration),
-                timing: try c.decode(StepTimingFunction.self, forKey: .timing)
+                timing: try c.decode(SegmentTimingFunction.self, forKey: .timing)
             )
         case .fadeEntity:
             self = .fadeEntity(try c.decode(FadeActionDTO.self, forKey: .fade))
@@ -383,7 +383,7 @@ extension StepActionDTO: Codable {
         case .onAudioComplete:
             self = .onAudioComplete(
                 channel: try c.decode(String.self, forKey: .channel),
-                then: try c.decode([StepActionDTO].self, forKey: .then)
+                then: try c.decode([SegmentActionDTO].self, forKey: .then)
             )
         case .playVideo:
             self = .playVideo(try c.decode(VideoActionDTO.self, forKey: .video))

@@ -35,51 +35,51 @@ final class MotionProgressTests: XCTestCase {
 
     // MARK: - The parity bug this exists to close
 
-    /// A motion scheduled 5s into a 10s step, sampled 2s later.
+    /// A motion scheduled 5s into a 10s segment, sampled 2s later.
     ///
-    /// The runtime used to compute `stepElapsed / duration` = 7/10 = 0.7 — the
+    /// The runtime used to compute `segmentElapsed / duration` = 7/10 = 0.7 — the
     /// motion was 70% done two seconds after it started. The editor computed
     /// `(time - t0) / duration` = 2/10 = 0.2 and drew it correctly. Same
     /// document, two different pictures.
-    func testMotionScheduledMidStepStartsAtZeroNotPartway() {
-        let stepStart = 100.0
-        let motionStart = stepStart + 5
+    func testMotionScheduledMidSegmentStartsAtZeroNotPartway() {
+        let segmentStart = 100.0
+        let motionStart = segmentStart + 5
         let now = motionStart + 2
 
         XCTAssertEqual(MotionProgress.progress(startTime: motionStart, now: now, duration: 10),
                        0.2, accuracy: 1e-6)
 
         // What the runtime used to produce, for the record.
-        let legacyStepRelative = Float((now - stepStart) / 10)
-        XCTAssertEqual(legacyStepRelative, 0.7, accuracy: 1e-6)
-        XCTAssertNotEqual(legacyStepRelative,
+        let legacySegmentRelative = Float((now - segmentStart) / 10)
+        XCTAssertEqual(legacySegmentRelative, 0.7, accuracy: 1e-6)
+        XCTAssertNotEqual(legacySegmentRelative,
                           MotionProgress.progress(startTime: motionStart, now: now, duration: 10))
     }
 
-    /// A motion registered at a step's start is unaffected — which is why this
+    /// A motion registered at a segment's start is unaffected — which is why this
     /// change is invisible in every document that only ever did that.
-    func testMotionAtStepStartIsUnchangedByTheFix() {
-        let stepStart = 100.0
+    func testMotionAtSegmentStartIsUnchangedByTheFix() {
+        let segmentStart = 100.0
         for elapsed in stride(from: 0.0, through: 10.0, by: 0.5) {
-            let now = stepStart + elapsed
+            let now = segmentStart + elapsed
             XCTAssertEqual(
-                MotionProgress.progress(startTime: stepStart, now: now, duration: 10),
+                MotionProgress.progress(startTime: segmentStart, now: now, duration: 10),
                 Float(min(max(elapsed / 10, 0), 1)), accuracy: 1e-6)
         }
     }
 
-    /// Timeline 3.0 requires a motion to survive a Step boundary moving under
-    /// it: merging two Steps must not change what an animation looks like.
+    /// Timeline 3.0 requires a motion to survive a Segment boundary moving under
+    /// it: merging two Segments must not change what an animation looks like.
     /// Measuring from the motion's own start is what makes that true.
-    func testProgressIsIndependentOfWhereStepBoundariesFall() {
-        // Same motion, same authored times; only the step segmentation differs.  // LEGACY-VOCAB: 'segmentation' is ordinary English, not the retired unit
+    func testProgressIsIndependentOfWhereSegmentBoundariesFall() {
+        // Same motion, same authored times; only the segment segmentation differs.  // LEGACY-VOCAB: 'segmentation' is ordinary English, not the retired unit
         let motionStart = 30.0, duration = 8.0, sampleAt = 34.0
-        let asTwoSteps = MotionProgress.progress(startTime: motionStart, now: sampleAt,
+        let asTwoSegments = MotionProgress.progress(startTime: motionStart, now: sampleAt,
                                                  duration: duration)
-        let asOneStep = MotionProgress.progress(startTime: motionStart, now: sampleAt,
+        let asOneSegment = MotionProgress.progress(startTime: motionStart, now: sampleAt,
                                                 duration: duration)
-        XCTAssertEqual(asTwoSteps, asOneStep)
-        XCTAssertEqual(asTwoSteps, 0.5, accuracy: 1e-6)
+        XCTAssertEqual(asTwoSegments, asOneSegment)
+        XCTAssertEqual(asTwoSegments, 0.5, accuracy: 1e-6)
     }
 
     func testIsCompleteMatchesProgressReachingOne() {

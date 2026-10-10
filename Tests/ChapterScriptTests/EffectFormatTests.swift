@@ -127,7 +127,7 @@ final class EffectCarrierFormatTests: XCTestCase {
             .contains("effects"))
         let sequence = SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
         XCTAssertFalse(String(decoding: try encode(sequence), as: UTF8.self)
             .contains("effectKeyTracks"))
         let doc = ChapterDocument(id: "c", displayName: "C")
@@ -151,7 +151,7 @@ final class EffectCarrierFormatTests: XCTestCase {
         curve.setKey(AnimationKey(time: 3, value: 0.75))
         var sequence = SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
         sequence.effectKeyTracks = [EffectKeyTrack(instanceId: "fx1",
                                                    channels: ["amount": curve])]
         let back = try ChapterScriptFormat.makeDecoder()

@@ -18,7 +18,7 @@ final class MarkerFormatTests: XCTestCase {
     func testAbsentMarkersEncodeToNothing() throws {
         let sequence = SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
         XCTAssertFalse(String(decoding: try encode(sequence), as: UTF8.self)
             .contains("markers"))
 
@@ -53,7 +53,7 @@ final class MarkerFormatTests: XCTestCase {
 
         var sequence = SequenceDefinitionDTO(
             id: "s", name: "S", phase: "immersive",
-            steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
+            segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5, actions: [])])
         sequence.markers = [marker]
         let seqBack = try ChapterScriptFormat.makeDecoder()
             .decode(SequenceDefinitionDTO.self, from: encode(sequence))
@@ -86,7 +86,7 @@ final class MarkerFormatTests: XCTestCase {
             id: "c", displayName: "C",
             sequences: [SequenceDefinitionDTO(
                 id: "s", name: "S", phase: "immersive",
-                steps: [StepDefinitionDTO(id: "st", name: "St", duration: 5,
+                segments: [SegmentDefinitionDTO(id: "st", name: "St", duration: 5,
                                           actions: [])])])
         let first = try encode(doc)
         let back = try ChapterScriptFormat.makeDecoder()

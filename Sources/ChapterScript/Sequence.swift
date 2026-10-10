@@ -13,14 +13,14 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     /// this sequence plays. Only meaningful when `presentation == .immersive`;
     /// players may ignore for `.windowed` sequences.
     public var immersiveBackdrop: ImmersiveBackdropSpec?
-    public var steps: [StepDefinitionDTO]
+    public var segments: [SegmentDefinitionDTO]
     /// Sequence-level keyframe animation, one track per animated entity.
     /// Keys sit at absolute seconds from sequence start — independent of the
-    /// step grid, so retiming steps never bends an animation curve.
+    /// segment grid, so retiming segments never bends an animation curve.
     public var animationTracks: [EntityAnimationTrack]
     /// Sequence-level audio automation, one track per audio channel plus an
     /// optional `master` bus track. Keys sit at absolute seconds from sequence
-    /// start, exactly like `animationTracks` — so a volume ride survives step
+    /// start, exactly like `animationTracks` — so a volume ride survives segment
     /// retiming, and the same curve editor edits both.
     public var audioTracks: [AudioAutomationTrack]
 
@@ -168,7 +168,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         phase: String,
         presentation: SequencePresentation = .immersive,
         immersiveBackdrop: ImmersiveBackdropSpec? = nil,
-        steps: [StepDefinitionDTO],
+        segments: [SegmentDefinitionDTO],
         animationTracks: [EntityAnimationTrack] = [],
         audioTracks: [AudioAutomationTrack] = [],
         stereoTracks: [StereoAutomationTrack] = [],
@@ -177,7 +177,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         restPlacements: [String: TransformData]? = nil,
         panelStyles: [String: PanelStyleOverride]? = nil,
         visibility: VisibilityStateDTO = VisibilityStateDTO(),
-        onComplete: CompletionActionDTO = .holdOnLastStep,
+        onComplete: CompletionActionDTO = .holdOnLastSegment,
         editorColorIndex: Int? = nil,
         markers: [Marker]? = nil,
         captionTracks: [CaptionTrack]? = nil,
@@ -204,7 +204,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         self.phase = phase
         self.presentation = presentation
         self.immersiveBackdrop = immersiveBackdrop
-        self.steps = steps
+        self.segments = segments
         self.animationTracks = animationTracks
         self.audioTracks = audioTracks
         self.stereoTracks = stereoTracks
@@ -217,7 +217,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     }
 
     public var totalDuration: Double {
-        steps.reduce(0) { $0 + $1.duration }
+        segments.reduce(0) { $0 + $1.duration }
     }
 
     /// THE one resolution of an entity's rest pose in this Sequence:
@@ -249,7 +249,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     // doc explicitly used `phase == "windowed"`, fall back to that.
     private enum CodingKeys: String, CodingKey {
         case id, name, phase, presentation, immersiveBackdrop
-        case steps, animationTracks, audioTracks, stereoTracks, backdropTrack, visibility, onComplete
+        case segments = "steps", animationTracks, audioTracks, stereoTracks, backdropTrack, visibility, onComplete
         case storyRegions
         case restPlacements
         case panelStyles
@@ -276,7 +276,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
             self.presentation = phase == "windowed" ? .windowed : .immersive
         }
         self.immersiveBackdrop = try c.decodeIfPresent(ImmersiveBackdropSpec.self, forKey: .immersiveBackdrop)
-        self.steps = try c.decode([StepDefinitionDTO].self, forKey: .steps)
+        self.segments = try c.decode([SegmentDefinitionDTO].self, forKey: .segments)
         self.animationTracks = try c.decodeIfPresent([EntityAnimationTrack].self, forKey: .animationTracks) ?? []
         // Absent in every document written before audio automation existed —
         // an empty list means "no rides", which mixes to exactly the previous
@@ -300,7 +300,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
         let decodedStyles = try c.decodeIfPresent([String: PanelStyleOverride].self, forKey: .panelStyles)
         self.panelStyles = (decodedStyles?.isEmpty == true) ? nil : decodedStyles
         self.visibility = try c.decodeIfPresent(VisibilityStateDTO.self, forKey: .visibility) ?? VisibilityStateDTO()
-        self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastStep
+        self.onComplete = try c.decodeIfPresent(CompletionActionDTO.self, forKey: .onComplete) ?? .holdOnLastSegment
         // Tolerant, like every other additive field: documents written before
         // sequence colors existed simply have no color.
         self.editorColorIndex = try c.decodeIfPresent(Int.self, forKey: .editorColorIndex)
@@ -408,7 +408,7 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     /// USDZ scene loaded under the immersive scene root. The asset id
     /// must exist in the document's manifest. The player parents the
     /// loaded entity under the immersive root before the first sequence
-    /// step runs.
+    /// segment runs.
     case usdz(assetId: String)
     /// Blocking content: an immersive shot that has not been shot yet. Carries
     /// the projection and radius the finished plate will use, so the sequence
@@ -488,7 +488,7 @@ public enum ImmersiveBackdropSpec: Codable, Sendable, Equatable {
     }
 }
 
-public struct StepDefinitionDTO: Codable, Sendable, Equatable {
+public struct SegmentDefinitionDTO: Codable, Sendable, Equatable {
     public var id: String
     public var name: String
     public var duration: Double
@@ -501,14 +501,14 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
     /// been converted yet — they are never encoded, never decoded into, and
     /// carry no state of their own.
     public var authoredActions: [AuthoredAction]
-    public var gate: StepGateDTO?
+    public var gate: SegmentGateDTO?
 
     public init(
         id: String,
         name: String,
         duration: Double,
         authoredActions: [AuthoredAction],
-        gate: StepGateDTO? = nil
+        gate: SegmentGateDTO? = nil
     ) {
         self.id = id
         self.name = name
@@ -519,27 +519,27 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
 
     /// Legacy-shaped initializer, kept so the many existing construction sites
     /// (and every test fixture) keep compiling while they are converted.
-    /// Produces the same layout the v3 → v4 migration does: step-start actions
+    /// Produces the same layout the v3 → v4 migration does: segment-start actions
     /// first, in order, then the scheduled ones.
     public init(
         id: String,
         name: String,
         duration: Double,
-        actions: [StepActionDTO],
+        actions: [SegmentActionDTO],
         scheduledActions: [ScheduledActionDTO] = [],
-        gate: StepGateDTO? = nil
+        gate: SegmentGateDTO? = nil
     ) {
         self.id = id
         self.name = name
         self.duration = duration
         self.authoredActions =
             actions.enumerated().map {
-                AuthoredAction(id: AuthoredAction.migratedID(stepId: id, isScheduled: false,
+                AuthoredAction(id: AuthoredAction.migratedID(segmentId: id, isScheduled: false,
                                                              index: $0.offset),
                                at: 0, action: $0.element)
             }
             + scheduledActions.enumerated().map {
-                AuthoredAction(id: AuthoredAction.migratedID(stepId: id, isScheduled: true,
+                AuthoredAction(id: AuthoredAction.migratedID(segmentId: id, isScheduled: true,
                                                              index: $0.offset),
                                at: $0.element.at, action: $0.element.action)
             }
@@ -548,17 +548,17 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
 
     // MARK: - Compatibility views (NOT stored, NOT encoded)
 
-    /// Actions at the step's start. A computed VIEW over `authoredActions`.
+    /// Actions at the segment's start. A computed VIEW over `authoredActions`.
     ///
     /// **Assigning PRESERVES identity positionally.** The overwhelmingly common
     /// legacy pattern is a same-length rewrite —
-    /// `step.actions = step.actions.map { … }` — which is an EDIT of existing
+    /// `segment.actions = segment.actions.map { … }` — which is an EDIT of existing
     /// actions, not a replacement of them. Minting fresh ids there silently
     /// destroyed every action's identity in the sequence; renaming an entity
     /// did it to a whole document at once. So a rewrite reuses the ids of the
     /// entries it overwrites, and only genuinely new entries get new ones.
     @available(*, deprecated, message: "Use authoredActions — position is no longer identity")
-    public var actions: [StepActionDTO] {
+    public var actions: [SegmentActionDTO] {
         get { authoredActions.filter { $0.at <= 0 }.map(\.action) }
         set {
             let existing = authoredActions.filter { $0.at <= 0 }
@@ -572,7 +572,7 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
         }
     }
 
-    /// Actions after the step's start. A computed VIEW over `authoredActions`.
+    /// Actions after the segment's start. A computed VIEW over `authoredActions`.
     /// Assigning preserves identity positionally, for the same reason as above.
     @available(*, deprecated, message: "Use authoredActions — position is no longer identity")
     public var scheduledActions: [ScheduledActionDTO] {
@@ -612,26 +612,26 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
     /// Accepts BOTH shapes.
     ///
     /// The migrator handles documents, but documents are not the only way a
-    /// `StepDefinitionDTO` arrives: live-sync `EditOp` payloads are decoded
+    /// `SegmentDefinitionDTO` arrives: live-sync `EditOp` payloads are decoded
     /// directly and never see it. `AudioScope` already carries this exact
     /// lesson in its own decoder. A peer still running a v3 build would
-    /// otherwise send a step whose actions all silently vanish.
+    /// otherwise send a segment whose actions all silently vanish.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try c.decode(String.self, forKey: .id)
         self.name = try c.decode(String.self, forKey: .name)
         self.duration = try c.decode(Double.self, forKey: .duration)
-        self.gate = try c.decodeIfPresent(StepGateDTO.self, forKey: .gate)
+        self.gate = try c.decodeIfPresent(SegmentGateDTO.self, forKey: .gate)
 
         if let authored = try c.decodeIfPresent([AuthoredAction].self, forKey: .authoredActions) {
             self.authoredActions = authored
             return
         }
-        let legacyImmediate = try c.decodeIfPresent([StepActionDTO].self, forKey: .actions) ?? []
+        let legacyImmediate = try c.decodeIfPresent([SegmentActionDTO].self, forKey: .actions) ?? []
         let legacyScheduled = try c.decodeIfPresent([ScheduledActionDTO].self,
                                                     forKey: .scheduledActions) ?? []
-        self.authoredActions = StepDefinitionDTO.unify(
-            immediate: legacyImmediate, scheduled: legacyScheduled, stepId: self.id)
+        self.authoredActions = SegmentDefinitionDTO.unify(
+            immediate: legacyImmediate, scheduled: legacyScheduled, segmentId: self.id)
     }
 
     /// The v3 → v4 layout rule, in one place so the JSON migrator, the legacy
@@ -639,19 +639,19 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
     ///
     /// ORDER IS THE CONTRACT. At runtime v3 awaited every `actions` entry in
     /// array order BEFORE the timing loop began, and only then fired
-    /// `scheduledActions` whose `at` had elapsed — so at t = 0 the step-start
+    /// `scheduledActions` whose `at` had elapsed — so at t = 0 the segment-start
     /// actions ran first, in order, then the scheduled ones. Laying them out in
     /// that same order and sorting stably by `at` reproduces it exactly.
-    public static func unify(immediate: [StepActionDTO],
+    public static func unify(immediate: [SegmentActionDTO],
                              scheduled: [ScheduledActionDTO],
-                             stepId: String) -> [AuthoredAction] {
+                             segmentId: String) -> [AuthoredAction] {
         immediate.enumerated().map {
-            AuthoredAction(id: AuthoredAction.migratedID(stepId: stepId, isScheduled: false,
+            AuthoredAction(id: AuthoredAction.migratedID(segmentId: segmentId, isScheduled: false,
                                                          index: $0.offset),
                            at: 0, action: $0.element)
         }
         + scheduled.enumerated().map {
-            AuthoredAction(id: AuthoredAction.migratedID(stepId: stepId, isScheduled: true,
+            AuthoredAction(id: AuthoredAction.migratedID(segmentId: segmentId, isScheduled: true,
                                                          index: $0.offset),
                            at: $0.element.at, action: $0.element.action)
         }
@@ -659,17 +659,17 @@ public struct StepDefinitionDTO: Codable, Sendable, Equatable {
 }
 
 public struct ScheduledActionDTO: Codable, Sendable, Equatable {
-    /// Seconds after the step starts at which `action` fires. 0 = immediate.
+    /// Seconds after the segment starts at which `action` fires. 0 = immediate.
     public var at: Double
-    public var action: StepActionDTO
+    public var action: SegmentActionDTO
 
-    public init(at: Double, action: StepActionDTO) {
+    public init(at: Double, action: SegmentActionDTO) {
         self.at = at
         self.action = action
     }
 }
 
-public struct StepGateDTO: Codable, Sendable, Equatable {
+public struct SegmentGateDTO: Codable, Sendable, Equatable {
     public var type: GateType
     public var timeout: Double?
     public var prompt: String?
@@ -742,7 +742,7 @@ public struct StepGateDTO: Codable, Sendable, Equatable {
     }
 }
 
-/// How a waiting step's gate is satisfied. Advisory metadata for the
+/// How a waiting segment's gate is satisfied. Advisory metadata for the
 /// player (the engine itself is timeout-or-`satisfyGate()`): the type
 /// tells the consumer WHAT input to wire to `satisfyGate()`.
 public enum GateType: String, Codable, Sendable, Equatable {
@@ -772,7 +772,7 @@ public enum GateType: String, Codable, Sendable, Equatable {
     /// Pinch-grab `targetEntity`.
     case grab
     /// THE STORY'S OWN MEMORY IS THE CONDITION. No physical act continues this
-    /// boundary; it continues when `StepGateDTO.storyConditions` hold.
+    /// boundary; it continues when `SegmentGateDTO.storyConditions` hold.
     ///
     /// ── WHAT AN OLDER PLAYER DOES WITH THIS, STATED PLAINLY ─────────────────
     ///
@@ -805,7 +805,7 @@ public enum GateType: String, Codable, Sendable, Equatable {
 }
 
 public enum CompletionActionDTO: Codable, Sendable, Equatable {
-    case holdOnLastStep
+    case holdOnLastSegment
     case transitionTo(phase: String, visibility: VisibilityStateDTO)
     case autoAdvance(nextSequenceId: String)
     case dismissToHome
@@ -819,7 +819,7 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
     /// missing menu item.
     ///
     /// This carries a `NavigationIntent` verbatim, exactly as
-    /// `StepActionDTO.navigate` does for an Interaction, so a Sequence's ending
+    /// `SegmentActionDTO.navigate` does for an Interaction, so a Sequence's ending
     /// and an object's response speak one vocabulary and reach one navigator.
     ///
     /// Additive and tolerant. `autoAdvance` is NOT deprecated: it is what every
@@ -830,14 +830,14 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextSequenceId, navigation }
     private enum Kind: String, Codable {
-        case holdOnLastStep, transitionTo, autoAdvance, dismissToHome, navigate
+        case holdOnLastSegment = "holdOnLastStep", transitionTo, autoAdvance, dismissToHome, navigate
     }
 
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .holdOnLastStep:
-            try c.encode(Kind.holdOnLastStep, forKey: .kind)
+        case .holdOnLastSegment:
+            try c.encode(Kind.holdOnLastSegment, forKey: .kind)
         case .transitionTo(let phase, let visibility):
             try c.encode(Kind.transitionTo, forKey: .kind)
             try c.encode(phase, forKey: .phase)
@@ -856,8 +856,8 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         switch try c.decode(Kind.self, forKey: .kind) {
-        case .holdOnLastStep:
-            self = .holdOnLastStep
+        case .holdOnLastSegment:
+            self = .holdOnLastSegment
         case .transitionTo:
             self = .transitionTo(
                 phase: try c.decode(String.self, forKey: .phase),

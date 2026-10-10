@@ -1,10 +1,10 @@
 # ChapterScript
 
-> **An open data format for declarative immersive experiences — sequences of timed steps, each step a bag of actions (entity reveals, audio cues, video playback, motion curves, gates).**
+> **An open data format for declarative immersive experiences — sequences of timed segments, each segment a bag of actions (entity reveals, audio cues, video playback, motion curves, gates).**
 
 ChapterScript is a Swift package containing only `Codable` value types. It has zero dependencies on RealityKit, UIKit, AppKit, or AVFoundation. The package builds on macOS, iOS, visionOS, tvOS, watchOS, and Linux.
 
-**Vocabulary (format v3):** a *chapter* is the whole `.chapterscript` bundle — one `ChapterDocument`, saved as `chapter.json` beside its `assets/` folder. A chapter contains *sequences* (the timed units of steps, animation tracks, and backdrops); players run one sequence at a time and editors edit one chapter at a time.
+**Vocabulary (format v3):** a *chapter* is the whole `.chapterscript` bundle — one `ChapterDocument`, saved as `chapter.json` beside its `assets/` folder. A chapter contains *sequences* (the timed units of segments, animation tracks, and backdrops); players run one sequence at a time and editors edit one chapter at a time.
 
 The format is the public contract between authoring tools (**Maestro Studio**, the Mac app of the [Maestro](https://maestrostud.io) suite) and players (the open source [ChapterPlayer](https://github.com/mike-bundy/ChapterPlayer) visionOS runtime). Either side can be reimplemented — including in a different language — by following the JSON schema this package defines.
 
@@ -15,11 +15,11 @@ Website: [chapterscript.com](https://chapterscript.com)
 ## ✨ What's in here
 
 - **`ChapterDocument`** — the top-level container with `formatVersion`, `id`, `displayName`, `entities`, `sequences`, `particlePresets`, `manifest`, `defaultSequenceId`
-- **`SequenceDefinitionDTO`** — sequence id, name, ordered steps, on-complete action (`holdOnLastStep` / `autoAdvance` / `dismissToHome` / `transitionTo`), plus the v0.3.x additions:
+- **`SequenceDefinitionDTO`** — sequence id, name, ordered segments, on-complete action (`holdOnLastSegment` / `autoAdvance` / `dismissToHome` / `transitionTo`), plus the v0.3.x additions:
   - **`presentation: SequencePresentation`** — `.immersive` / `.mixed` / `.windowed`. Tells the player whether to open the full immersive space, the mixed-reality space (passthrough + 3D), or stay in the flat windowed scene. Unknown raw values fall back to `.immersive` so newer docs degrade safely on older players.
   - **`immersiveBackdrop: ImmersiveBackdropSpec?`** — optional ambient backdrop bound at sequence start. Either `.video(file, layout, field, radius, loop)` for a 360°/180° skybox or `.usdz(assetId)` for a USDZ scene parented under the immersive root.
-- **`StepDefinitionDTO`** — step id, name, duration, ordered actions, scheduled actions (time-offset within the step), optional `gate`
-- **`StepActionDTO`** — externally-tagged sum type covering ~30 action variants (entity reveal/move/fade/scale, attachments, audio play/stop/fade/zones/buses, video play/prepare/stop, effects, gestures, system flags, custom escape hatch)
+- **`SegmentDefinitionDTO`** — segment id, name, duration, ordered actions, scheduled actions (time-offset within the segment), optional `gate`
+- **`SegmentActionDTO`** — externally-tagged sum type covering ~30 action variants (entity reveal/move/fade/scale, attachments, audio play/stop/fade/zones/buses, video play/prepare/stop, effects, gestures, system flags, custom escape hatch)
 - **`VideoPresentation`** — `.attachment(id:)`, `.entity(name:, width:, height:)`, or `.immersive(radius:, field:)` for binding video onto a SwiftUI overlay, a scene panel, or a skybox sphere. Pairs with **`VideoLayout`** (`.mono`, `.sideBySide`, `.overUnder`, `.multiviewHEVC`) for stereo hints.
 - **`MotionCurve`** — composable parametric motion: `constant`, `linear`, `orbit`, `spiral`, `oscillate`, `rotate`, `keyframes`, `sum`, `scaled` (recursive)
 - **`EntityDefinition`** — declarative entity registry: primitive shapes, USDZ refs, text3D, lights, video panels, particle preset bindings, custom-factory escape hatch
@@ -27,7 +27,7 @@ Website: [chapterscript.com](https://chapterscript.com)
 - **`EntityAnimationTrack`** + **`SequenceAnimationEvaluator`** — sequence-level keyframe animation: ten scalar channels per entity (`tx…tz rx…rz sx…sz opacity`), keys at absolute sequence seconds with bezier `(dt, dv)` tangent handles, continuous-Euler rotations with explicit rotate order, and the one evaluation truth shared by players and editors (`AnimationEulerMath` covers all six orders)
 - **`KeyframePoint`** + **`InterpolationMode`** — primitives reused inside `MotionCurve.keyframes`
 - **`Migrator`** — JSON-to-JSON schema migrators that run before typed decoding so older documents stay loadable
-- **Forward-compat** — unknown future `StepAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip. Unknown `SequencePresentation` raw values fall back to `.immersive` for the same reason.
+- **Forward-compat** — unknown future `SegmentAction` cases parse into `.unknown(name:raw:)` rather than failing decode, so editors can preserve future fields and players can log + skip. Unknown `SequencePresentation` raw values fall back to `.immersive` for the same reason.
 
 ---
 
@@ -51,9 +51,9 @@ MyExperience.chapterscript/
 
 ## 🧪 Wire-format example
 
-A minimal one-sequence experience:
+A minimal one-sequence experience (`jsonc` only for the two marker comments; the file itself is plain JSON):
 
-```json
+```jsonc
 {
   "formatVersion": 3,
   "id": "minimal",
@@ -67,10 +67,10 @@ A minimal one-sequence experience:
       "name": "Only Sequence",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "holdOnLastStep" },
-      "steps": [
+      "onComplete": { "kind": "holdOnLastStep" },   // WIRE-FORMAT
+      "steps": [   // WIRE-FORMAT: the on-disk key for segments
         {
-          "id": "step1",
+          "id": "seg_1",
           "name": "Reveal orb",
           "duration": 2.0,
           "scheduledActions": [],
@@ -137,9 +137,9 @@ try data.write(to: url)
 ## 🔁 Forward + backward compat
 
 - **Unknown action variants** parse into `.unknown(name:raw:)`. Editors that don't recognize a future action kind can preserve and re-emit `raw` unchanged through round-trips. Players that don't understand it should log and skip.
-- **Schema versioning** uses a single integer `formatVersion`. Migrators (registered in `Migrator.steps`) run JSON→JSON before typed decode. Players can advertise a `[minSupported, maxSupported]` range; editors refuse to export to a player they know can't read the document.
+- **Schema versioning** uses a single integer `formatVersion`. Migrators (registered in `Migrator`'s migration table, keyed by source version) run JSON→JSON before typed decode. Players can advertise a `[minSupported, maxSupported]` range; editors refuse to export to a player they know can't read the document.
 <!-- LEGACY-VOCAB-BEGIN -->
-- **v2 → v3 (Segment → Sequence).** v3 renamed the inner timed unit from *segment* to *sequence*. The migration is a pure vocabulary rename and a **semantic identity**: `segments` → `sequences`, `defaultSegmentId` → `defaultSequenceId`, `nextSegmentId` → `nextSequenceId`, plus the `AudioScope` raw value `"segment"` → `"sequence"`. Nothing else is touched — ids, step durations, scheduled-action offsets, gates, absolute animation key times, backdrop cues and `sourceIn`/`sourceOut` all pass through byte for byte. **Authored ids are opaque and are never rewritten**, so a v2 document keeps its `segment_*` ids after migrating; anything referencing a sequence by id therefore still resolves. `AudioScope` additionally decodes `"segment"` tolerantly at all times, because `EditOp` payloads on the live-sync path are decoded directly and never see the migrator.
+- **v2 → v3 (Segment → Sequence).** v3 renamed the inner timed unit from *segment* to *sequence*. The migration is a pure vocabulary rename and a **semantic identity**: `segments` → `sequences`, `defaultSegmentId` → `defaultSequenceId`, `nextSegmentId` → `nextSequenceId`, plus the `AudioScope` raw value `"segment"` → `"sequence"`. Nothing else is touched — ids, durations, scheduled-action offsets, gates, absolute animation key times, backdrop cues and `sourceIn`/`sourceOut` all pass through byte for byte. **Authored ids are opaque and are never rewritten**, so a v2 document keeps its `segment_*` ids after migrating; anything referencing a sequence by id therefore still resolves. `AudioScope` additionally decodes `"segment"` tolerantly at all times, because `EditOp` payloads on the live-sync path are decoded directly and never see the migrator.
 <!-- LEGACY-VOCAB-END -->
 
 ---
@@ -148,7 +148,7 @@ try data.write(to: url)
 
 The format is intentionally finite for the cases it covers, with two escape hatches for the long tail:
 
-- **`StepActionDTO.custom(id:parameters:)`** — opaque actions identified by a custom id, with a free-form JSON parameter blob. Players register custom factories per id.
+- **`SegmentActionDTO.custom(id:parameters:)`** — opaque actions identified by a custom id, with a free-form JSON parameter blob. Players register custom factories per id.
 - **`EntityDefinition.kind: .custom`** with `customFactoryId` — opaque entities built by app-registered factories. Used by ChapterPlayer to ship hand-tuned procedural VFX (PulseRing, SparkBurst) that aren't yet declarative.
 
 ---
@@ -178,8 +178,8 @@ ChapterScript/
 │   ├── Animation.swift                        # KeyframePoint, InterpolationMode, MotionCurve, Waveform
 │   ├── Entity.swift                           # EntityDefinition, PrimitiveSpec, MaterialSpec, …
 │   ├── Actions.swift                          # MoveActionDTO, FadeActionDTO, AudioActionDTO, …
-│   ├── StepAction.swift                       # StepActionDTO + externally-tagged Codable
-│   ├── Sequence.swift                          # SequenceDefinitionDTO, StepDefinitionDTO, …
+│   ├── SegmentAction.swift                    # SegmentActionDTO + externally-tagged Codable
+│   ├── Sequence.swift                          # SequenceDefinitionDTO, SegmentDefinitionDTO, …
 │   ├── Document.swift                         # ChapterDocument, AssetManifest, ChapterScriptFormat
 │   └── Migrator.swift                         # JSON-to-JSON schema migrators
 └── Tests/ChapterScriptTests/

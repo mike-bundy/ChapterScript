@@ -15,7 +15,7 @@
 //
 //  Exactly one level. No nesting, no parentheses, no mixed AND/OR hierarchy, no
 //  arithmetic on the right-hand side, and no condition that compares one state
-//  to another. Every one of those is a small, reasonable-looking step, and the
+//  to another. Every one of those is a small, reasonable-looking segment, and the
 //  sum of them is a scripting language inside a film editor. An author writing
 //  a documentary should be able to read a whole condition group out loud.
 //
