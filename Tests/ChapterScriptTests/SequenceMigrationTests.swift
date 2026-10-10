@@ -62,7 +62,7 @@ final class SequenceMigrationTests: XCTestCase {
         )
 
         let segmentOne = SegmentDefinitionDTO(
-            id: "step_a",
+            id: "seg_a",
             name: "Open",
             duration: 8.0,
             actions: [.playVideo(video)],
@@ -71,7 +71,7 @@ final class SequenceMigrationTests: XCTestCase {
         )
 
         let segmentTwo = SegmentDefinitionDTO(
-            id: "step_b",
+            id: "seg_b",
             name: "Hold",
             duration: 5.5,
             actions: [],
@@ -114,7 +114,10 @@ final class SequenceMigrationTests: XCTestCase {
     /// inverse of `Migrator`'s v2 → v3 migration, written independently so the two are
     /// not the same code checking itself.
     private func downgradeToV2(_ node: Any) -> Any {
+        // Format 5 spells a Sequence's Segment list `segments`; v2 used that
+        // word for Sequences and the older key for Segments.
         let renames = [
+            "segments": LegacyFormat.segmentListKey,
             "sequences": "segments",
             "defaultSequenceId": "defaultSegmentId",
             "nextSequenceId": "nextSegmentId"
@@ -125,6 +128,11 @@ final class SequenceMigrationTests: XCTestCase {
                 let newKey = renames[key] ?? key
                 if key == "scope", let raw = value as? String, raw == "sequence" {
                     result[newKey] = "segment"
+                    continue
+                }
+                if key == "kind", let raw = value as? String,
+                   let old = LegacyFormat.completionKinds.first(where: { $0.value == raw })?.key {
+                    result[newKey] = old
                     continue
                 }
                 if key == "formatVersion" {
@@ -284,7 +292,10 @@ final class SequenceMigrationTests: XCTestCase {
         XCTAssertTrue(text.contains("\"sequences\""))
         XCTAssertTrue(text.contains("\"defaultSequenceId\""))
         XCTAssertTrue(text.contains("\"nextSequenceId\""))
-        XCTAssertFalse(text.contains("\"segments\""), "new saves must not emit v2 keys")
+        let tree = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertNil(tree["segments"], "new saves must not emit the v2 Sequence list")
+        let sequences = try XCTUnwrap(tree["sequences"] as? [[String: Any]])
+        XCTAssertTrue(sequences.allSatisfy { $0["segments"] != nil }, "format 5 names a Sequence's Segments `segments`")
         XCTAssertFalse(text.contains("\"defaultSegmentId\""))
         XCTAssertFalse(text.contains("\"nextSegmentId\""))
     }

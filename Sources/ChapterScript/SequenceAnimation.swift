@@ -86,7 +86,7 @@ public struct AnimationTangent: Codable, Sendable, Equatable, Hashable {
 public enum AnimationInterpolation: String, Codable, Sendable, Equatable {
     case bezier     // default — smooth spline shaped by tangent handles
     case linear
-    case held = "stepped"  // hold until the next key. WIRE-FORMAT: saved raw value
+    case held       // hold until the next key
     // NAMED EASING (FL-19): five, and the list does not grow by
     // accretion — a curve not in it is authored with tangents. Evaluated
     // as DEFINED SHAPES, never as synthesized tangents, so two hosts
@@ -99,7 +99,10 @@ public enum AnimationInterpolation: String, Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
-        self = AnimationInterpolation(rawValue: (try? c.decode(String.self)) ?? "bezier") ?? .bezier
+        // An older saved name still reads (`LegacyFormat`); only a truly
+        // unknown value falls back to the default curve.
+        let raw = LegacyFormat.currentInterpolation((try? c.decode(String.self)) ?? "bezier")
+        self = AnimationInterpolation(rawValue: raw) ?? .bezier
     }
 }
 
@@ -177,7 +180,7 @@ public struct AnimationKey: Codable, Sendable, Equatable, Hashable {
         self.time = try c.decode(Double.self, forKey: .time)
         self.value = try c.decode(Float.self, forKey: .value)
         if let raw = try c.decodeIfPresent(String.self, forKey: .interpolation) {
-            if let known = AnimationInterpolation(rawValue: raw) {
+            if let known = AnimationInterpolation(rawValue: LegacyFormat.currentInterpolation(raw)) {
                 self.interpolation = known
                 self.unknownInterpolation = nil
             } else {

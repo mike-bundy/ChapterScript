@@ -208,8 +208,8 @@ final class SequenceAudioAutomationTests: XCTestCase {
     /// A sequence written before this feature has no `audioTracks` key at all.
     func testSequenceWithoutAudioTracksDecodesToEmpty() throws {
         let json = """
-        {"id":"s1","name":"S1","phase":"immersive","steps":[],
-         "visibility":{},"onComplete":{"kind":"holdOnLastStep"}}
+        {"id":"s1","name":"S1","phase":"immersive","segments":[],
+         "visibility":{},"onComplete":{"kind":"holdOnLastSegment"}}
         """.data(using: .utf8)!
         let sequence = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json)
         XCTAssertTrue(sequence.audioTracks.isEmpty)

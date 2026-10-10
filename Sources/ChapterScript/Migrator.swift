@@ -53,8 +53,116 @@ public enum Migrator {
     /// Migrations keyed by the source version. The one at key `N` migrates `N → N+1`.
     private static let migrations: [Int: @Sendable ([String: Any]) throws -> [String: Any]] = [
         2: migrateV2ToV3,
-        3: migrateV3ToV4
+        3: migrateV3ToV4,
+        4: migrateV4ToV5
     ]
+
+    // MARK: - v4 → v5   (a Segment has one name, in the file too)
+
+    /// Before v5 the file spelled a Segment with its retired name. v5 renames,
+    /// and changes nothing else:
+    ///
+    ///   1. each Sequence's Segment list key → `segments`
+    ///   2. the completion kind that holds on the last Segment → `holdOnLastSegment`
+    ///   3. the hold interpolation values → `hold` / `held`
+    ///   4. every Segment id and authored-action id the editor generated with
+    ///      the retired word (`LegacyFormat.currentIdentifier`) — and every
+    ///      string in the document EXACTLY equal to one of them, so gates,
+    ///      navigation, Memories and editor metadata follow their Segment
+    ///   5. automatic Segment names ("Segment 3")
+    ///
+    /// Ids come only from Segments and their actions, never from Objects or
+    /// media: an entity id or filename that happens to contain the word is
+    /// someone's chosen name and stays. A renamed id that would collide with
+    /// a string already in the document gets a numeric suffix, so the rename
+    /// stays one-to-one. Deterministic, so two machines migrating the same
+    /// Chapter agree on every id.
+    @Sendable
+    private static func migrateV4ToV5(_ document: [String: Any]) throws -> [String: Any] {
+        var out = document
+        guard let sequences = document["sequences"] as? [[String: Any]] else { return out }
+
+        // (4) Collect the ids to rename, in document order.
+        var ids: [String] = []
+        for sequence in sequences {
+            let segments = sequence[LegacyFormat.segmentListKey] as? [[String: Any]]
+                ?? sequence["segments"] as? [[String: Any]] ?? []
+            for segment in segments {
+                if let id = segment["id"] as? String { ids.append(id) }
+                for action in segment["authoredActions"] as? [[String: Any]] ?? [] {
+                    if let id = action["id"] as? String { ids.append(id) }
+                }
+            }
+        }
+        var taken = Set<String>()
+        collectStrings(document, into: &taken)
+        var renames: [String: String] = [:]
+        for id in ids where renames[id] == nil {
+            guard let renamed = LegacyFormat.currentIdentifier(id) else { continue }
+            var candidate = renamed
+            var suffix = 2
+            while taken.contains(candidate) {
+                candidate = "\(renamed)_\(suffix)"
+                suffix += 1
+            }
+            taken.insert(candidate)
+            renames[id] = candidate
+        }
+
+        // (1), (2), (5) structurally; (3) and (4) by a walk.
+        out["sequences"] = sequences.map { sequence -> [String: Any] in
+            var sequence = sequence
+            if let segments = sequence.removeValue(forKey: LegacyFormat.segmentListKey) as? [[String: Any]] {
+                sequence["segments"] = segments.map { segment -> [String: Any] in
+                    var segment = segment
+                    if let name = segment["name"] as? String {
+                        segment["name"] = LegacyFormat.currentSegmentName(name)
+                    }
+                    return segment
+                }
+            }
+            if var completion = sequence["onComplete"] as? [String: Any],
+               let kind = completion["kind"] as? String {
+                completion["kind"] = LegacyFormat.currentCompletionKind(kind)
+                sequence["onComplete"] = completion
+            }
+            return sequence
+        }
+        return renameV5(in: out, ids: renames) as? [String: Any] ?? out
+    }
+
+    private static func collectStrings(_ node: Any, into set: inout Set<String>) {
+        if let object = node as? [String: Any] {
+            for (key, value) in object { set.insert(key); collectStrings(value, into: &set) }
+        } else if let array = node as? [Any] {
+            for value in array { collectStrings(value, into: &set) }
+        } else if let string = node as? String {
+            set.insert(string)
+        }
+    }
+
+    private static func renameV5(in node: Any, ids: [String: String]) -> Any {
+        if let object = node as? [String: Any] {
+            var result: [String: Any] = [:]
+            result.reserveCapacity(object.count)
+            for (key, value) in object {
+                let newKey = ids[key] ?? key
+                if key == "interpolation", let raw = value as? String {
+                    result[newKey] = LegacyFormat.currentInterpolation(raw)
+                    continue
+                }
+                result[newKey] = renameV5(in: value, ids: ids)
+            }
+            return result
+        }
+        if let array = node as? [Any] {
+            return array.map { renameV5(in: $0, ids: ids) }
+        }
+        if let string = node as? String, let renamed = ids[string] {
+            return renamed
+        }
+        return node
+    }
 
     // MARK: - v3 → v4   (two action buckets → one authored list with stable ids)
 
@@ -90,8 +198,8 @@ public enum Migrator {
 
         out["sequences"] = sequences.map { sequence -> [String: Any] in
             var sequence = sequence
-            guard let segments = sequence["steps"] as? [[String: Any]] else { return sequence }
-            sequence["steps"] = segments.map(unifySegmentActions)
+            guard let segments = sequence[LegacyFormat.segmentListKey] as? [[String: Any]] else { return sequence }
+            sequence[LegacyFormat.segmentListKey] = segments.map(unifySegmentActions)
             return sequence
         }
         return out
@@ -106,7 +214,7 @@ public enum Migrator {
             return segment
         }
 
-        let segmentId = segment["id"] as? String ?? "step"
+        let segmentId = segment["id"] as? String ?? "seg"
         var authored: [[String: Any]] = []
 
         for (index, action) in (segment["actions"] as? [[String: Any]] ?? []).enumerated() {
@@ -160,7 +268,7 @@ public enum Migrator {
     /// under a lenient decoder silently fall back to a different scope and change
     /// when the sound stops.
     ///
-    /// Everything else — ids, names, phase, presentation, the "steps" array and its
+    /// Everything else — ids, names, phase, presentation, the Segment list and its
     /// durations, actions, scheduledActions, gates, animationTracks and their
     /// **absolute key times**, audioTracks, backdropTrack cues, sourceIn /
     /// sourceOut, editorColorIndex, editorMetadata — is copied through byte for
@@ -168,7 +276,7 @@ public enum Migrator {
     /// a curve that peaked at 12.5 s still peaks at 12.5 s.
     ///
     /// The walk is RECURSIVE and keyed on names rather than on a hard-coded path
-    /// through the document. Enumerating document → sequences → "steps" →
+    /// through the document. Enumerating document → sequences → Segments →
     /// actions by hand is how a nesting level gets missed when the format later
     /// grows one; matching the key wherever it appears cannot. It is safe to be
     /// this broad because all four names are unique to this concept in the

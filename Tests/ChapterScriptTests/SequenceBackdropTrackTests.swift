@@ -216,8 +216,8 @@ final class SequenceBackdropTrackTests: XCTestCase {
 
     func testSequenceWithoutBackdropTrackDecodesToEmpty() throws {
         let json = """
-        {"id":"s1","name":"S1","phase":"immersive","steps":[],
-         "visibility":{},"onComplete":{"kind":"holdOnLastStep"}}
+        {"id":"s1","name":"S1","phase":"immersive","segments":[],
+         "visibility":{},"onComplete":{"kind":"holdOnLastSegment"}}
         """.data(using: .utf8)!
         XCTAssertTrue(try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json).backdropTrack.isEmpty)
     }

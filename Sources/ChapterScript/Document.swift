@@ -1478,7 +1478,7 @@ public enum ChapterScriptFormat {
     /// `actions` / `scheduledActions` at all, so a v3-era player reading one
     /// would find a segment with no actions and play silence rather than fail.
     /// The version is what lets it refuse instead.
-    public static let currentFormatVersion: Int = 4
+    public static let currentFormatVersion: Int = 5
 
     /// File name inside a `.chapterscript` directory bundle.
     public static let documentFileName = "chapter.json"

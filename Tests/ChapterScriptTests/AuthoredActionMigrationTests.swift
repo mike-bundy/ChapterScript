@@ -213,11 +213,49 @@ final class AuthoredActionMigrationTests: XCTestCase {
 
     func testSegmentIdsAndDurationsAreUntouched() throws {
         let doc = v3Document(segments: [
-            v3Segment(id: "segment_1_step_3", duration: 17.5, immediate: [], scheduled: [])  // LEGACY-VOCAB, WIRE-FORMAT: an opaque authored id, deliberately never rewritten
+            v3Segment(id: "segment_1_intro", duration: 17.5, immediate: [], scheduled: [])
         ])
         let segment = try migrate(doc).sequences[0].segments[0]
-        XCTAssertEqual(segment.id, "segment_1_step_3", "opaque ids are never rewritten")  // LEGACY-VOCAB, WIRE-FORMAT: the point of the test
+        XCTAssertEqual(segment.id, "segment_1_intro", "a chosen id is never rewritten")
         XCTAssertEqual(segment.duration, 17.5)
+    }
+
+    /// Format 5: an id the editor generated with the retired word is renamed
+    /// with every exact reference to it, and the names follow.
+    func testEditorIdsWithTheRetiredWordAreRenamedEverywhere() throws {
+        var doc = v3Document(segments: [
+            v3Segment(id: "room_step_1", duration: 4, immediate: ["A"], scheduled: [(1, "B")]),
+            v3Segment(id: "step_2", duration: 4, immediate: [], scheduled: [])
+        ])
+        var sequences = doc["sequences"] as! [[String: Any]]
+        var segments = sequences[0]["steps"] as! [[String: Any]]
+        segments[0]["name"] = "Step 1"
+        segments[1]["name"] = "Arrival"
+        sequences[0]["steps"] = segments
+        doc["sequences"] = sequences
+        doc["editorMetadata"] = ["note": ["step_2", "footstep_2"]]
+
+        let migrated = try JSONSerialization.jsonObject(
+            with: Migrator.migrate(JSONSerialization.data(withJSONObject: doc))) as! [String: Any]
+        let sequence = (migrated["sequences"] as! [[String: Any]])[0]
+        XCTAssertNil(sequence["steps"])
+        let out = sequence["segments"] as! [[String: Any]]
+        XCTAssertEqual(out.map { $0["id"] as! String }, ["room_seg_1", "seg_2"])
+        XCTAssertEqual(out.map { $0["name"] as! String }, ["Segment 1", "Arrival"])
+        let actionIDs = (out[0]["authoredActions"] as! [[String: Any]]).map { $0["id"] as! String }
+        XCTAssertEqual(actionIDs, ["act_room_seg_1_i0", "act_room_seg_1_s0"])
+        XCTAssertEqual((sequence["onComplete"] as! [String: Any])["kind"] as? String, "holdOnLastSegment")
+        XCTAssertEqual((migrated["editorMetadata"] as! [String: Any])["note"] as! [String], ["seg_2", "footstep_2"],
+                       "an exact reference follows its Segment; other strings are untouched")
+    }
+
+    func testARenamedIdNeverCollidesWithOneAlreadyThere() throws {
+        let doc = v3Document(segments: [
+            v3Segment(id: "step_1", duration: 4, immediate: [], scheduled: []),
+            v3Segment(id: "seg_1", duration: 4, immediate: [], scheduled: [])
+        ])
+        let ids = try migrate(doc).sequences[0].segments.map(\.id)
+        XCTAssertEqual(ids, ["seg_1_2", "seg_1"])
     }
 
     func testEmptySegmentMigratesToAnEmptyList() throws {

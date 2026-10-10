@@ -163,8 +163,8 @@ final class SequenceAnimationTests: XCTestCase {
     func testLegacySequenceWithoutTracksDecodes() throws {
         let json = """
         {"id":"c1","name":"One","phase":"immersive",
-         "steps":[{"id":"s1","name":"S","duration":3,"actions":[],"scheduledActions":[]}],
-         "visibility":{},"onComplete":{"kind":"holdOnLastStep"}}
+         "segments":[{"id":"s1","name":"S","duration":3,"actions":[],"scheduledActions":[]}],
+         "visibility":{},"onComplete":{"kind":"holdOnLastSegment"}}
         """
         let decoded = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json.data(using: .utf8)!)
         XCTAssertTrue(decoded.animationTracks.isEmpty)

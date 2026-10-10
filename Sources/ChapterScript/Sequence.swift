@@ -249,7 +249,7 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
     // doc explicitly used `phase == "windowed"`, fall back to that.
     private enum CodingKeys: String, CodingKey {
         case id, name, phase, presentation, immersiveBackdrop
-        case segments = "steps", animationTracks, audioTracks, stereoTracks, backdropTrack, visibility, onComplete
+        case segments, animationTracks, audioTracks, stereoTracks, backdropTrack, visibility, onComplete
         case storyRegions
         case restPlacements
         case panelStyles
@@ -276,7 +276,13 @@ public struct SequenceDefinitionDTO: Codable, Sendable, Equatable {
             self.presentation = phase == "windowed" ? .windowed : .immersive
         }
         self.immersiveBackdrop = try c.decodeIfPresent(ImmersiveBackdropSpec.self, forKey: .immersiveBackdrop)
-        self.segments = try c.decode([SegmentDefinitionDTO].self, forKey: .segments)
+        // Pre-v5 JSON reaches this only when it skipped the Migrator (a test
+        // literal, a sync payload from an older build); read its list too.
+        if let segments = try c.decodeIfPresent([SegmentDefinitionDTO].self, forKey: .segments) {
+            self.segments = segments
+        } else {
+            self.segments = try LegacyFormat.decodeSegmentList([SegmentDefinitionDTO].self, from: decoder) ?? []
+        }
         self.animationTracks = try c.decodeIfPresent([EntityAnimationTrack].self, forKey: .animationTracks) ?? []
         // Absent in every document written before audio automation existed —
         // an empty list means "no rides", which mixes to exactly the previous
@@ -830,7 +836,7 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey { case kind, phase, visibility, nextSequenceId, navigation }
     private enum Kind: String, Codable {
-        case holdOnLastSegment = "holdOnLastStep", transitionTo, autoAdvance, dismissToHome, navigate
+        case holdOnLastSegment, transitionTo, autoAdvance, dismissToHome, navigate
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -855,7 +861,12 @@ public enum CompletionActionDTO: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        switch try c.decode(Kind.self, forKey: .kind) {
+        let raw = try c.decode(String.self, forKey: .kind)
+        guard let kind = Kind(rawValue: LegacyFormat.currentCompletionKind(raw)) else {
+            throw DecodingError.dataCorruptedError(forKey: .kind, in: c,
+                                                   debugDescription: "Unknown completion kind \(raw)")
+        }
+        switch kind {
         case .holdOnLastSegment:
             self = .holdOnLastSegment
         case .transitionTo:

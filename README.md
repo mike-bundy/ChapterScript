@@ -55,7 +55,7 @@ A minimal one-sequence experience (`jsonc` only for the two marker comments; the
 
 ```jsonc
 {
-  "formatVersion": 3,
+  "formatVersion": 5,
   "id": "minimal",
   "displayName": "Minimal Experience",
   "entities": [],
@@ -67,21 +67,24 @@ A minimal one-sequence experience (`jsonc` only for the two marker comments; the
       "name": "Only Sequence",
       "phase": "immersive",
       "visibility": {},
-      "onComplete": { "kind": "holdOnLastStep" },   // WIRE-FORMAT
-      "steps": [   // WIRE-FORMAT: the on-disk key for segments
+      "onComplete": { "kind": "holdOnLastSegment" },
+      "segments": [
         {
           "id": "seg_1",
           "name": "Reveal orb",
           "duration": 2.0,
-          "scheduledActions": [],
-          "actions": [
+          "authoredActions": [
             {
-              "kind": "revealEntity",
-              "reveal": {
-                "entity": "orb",
-                "headRelativePosition": { "x": 0, "y": 1.6, "z": -1.5 },
-                "headYOnly": true,
-                "fadeIn": 0.5
+              "id": "act_reveal",
+              "at": 0,
+              "action": {
+                "kind": "revealEntity",
+                "reveal": {
+                  "entity": "orb",
+                  "headRelativePosition": { "x": 0, "y": 1.6, "z": -1.5 },
+                  "headYOnly": true,
+                  "fadeIn": 0.5
+                }
               }
             }
           ]
@@ -92,7 +95,7 @@ A minimal one-sequence experience (`jsonc` only for the two marker comments; the
 }
 ```
 
-Action variants are externally-tagged: each `actions[i]` carries a `"kind"` key and the rest of the keys carry the case-specific payload. See `Tests/ChapterScriptTests/Fixtures/representative.json` for a complete document exercising most action kinds.
+Action variants are externally-tagged: each `authoredActions[i].action` carries a `"kind"` key and the rest of the keys carry the case-specific payload. See `Tests/ChapterScriptTests/Fixtures/representative.json` for a complete document exercising most action kinds.
 
 ---
 
@@ -195,7 +198,7 @@ ChapterScript/
 
 ## 📌 Status
 
-Pre-1.0. The schema may change. `formatVersion` is currently **3**. The first stable release will lock the wire format and start the strict back-compat regime.
+Pre-1.0. The schema may change. `formatVersion` is currently **5** (5 renamed the Segment list and its ids; `Migrator` opens Chapters saved by 2–4). The first stable release will lock the wire format and start the strict back-compat regime.
 
 ### Recent releases
 

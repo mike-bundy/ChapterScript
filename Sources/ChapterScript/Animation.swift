@@ -8,13 +8,25 @@ public enum SegmentTimingFunction: String, Codable, Sendable, Equatable {
 }
 
 public enum InterpolationMode: String, Codable, Sendable, Equatable {
-    case hold = "step"  // WIRE-FORMAT: the saved raw value predates the name
+    case hold
     case linear
     case easeIn
     case easeOut
     case easeInOut
     case bezier
     case spring
+}
+
+extension InterpolationMode {
+    /// Tolerant: an older saved value still reads (`LegacyFormat`).
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        guard let mode = InterpolationMode(rawValue: LegacyFormat.currentInterpolation(raw)) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                                                    debugDescription: "Unknown interpolation \(raw)"))
+        }
+        self = mode
+    }
 }
 
 public struct KeyframePoint: Codable, Sendable, Equatable {

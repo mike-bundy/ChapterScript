@@ -5,7 +5,7 @@ final class LogicalTimelineTrackTests: XCTestCase {
     func testTitleTrackAndOccurrenceMembershipRoundTrip() throws {
         let track = LogicalTimelineTrack(id: "track_titles", kind: .title, name: "Titles")
         let segment = SegmentDefinitionDTO(
-            id: "step", name: "One", duration: 10,
+            id: "seg", name: "One", duration: 10,
             authoredActions: [
                 AuthoredAction(id: "open", at: 1,
                                action: .showEntity(name: "title_a"),
@@ -28,7 +28,7 @@ final class LogicalTimelineTrackTests: XCTestCase {
     }
 
     func testLegacySequenceAndActionsDecodeWithoutLogicalTracks() throws {
-        let json = #"{"id":"seq","name":"S","phase":"immersive","steps":[{"id":"step","name":"One","duration":5,"authoredActions":[{"id":"open","at":0,"action":{"kind":"showEntity","name":"title_a"}}]}],"animationTracks":[],"audioTracks":[],"stereoTracks":[],"backdropTrack":[],"storyRegions":[],"visibility":{},"onComplete":{"kind":"holdOnLastStep"}}"#.data(using: .utf8)!
+        let json = #"{"id":"seq","name":"S","phase":"immersive","segments":[{"id":"seg","name":"One","duration":5,"authoredActions":[{"id":"open","at":0,"action":{"kind":"showEntity","name":"title_a"}}]}],"animationTracks":[],"audioTracks":[],"stereoTracks":[],"backdropTrack":[],"storyRegions":[],"visibility":{},"onComplete":{"kind":"holdOnLastSegment"}}"#.data(using: .utf8)!
         let sequence = try JSONDecoder().decode(SequenceDefinitionDTO.self, from: json)
         XCTAssertNil(sequence.logicalTracks)
         XCTAssertNil(sequence.segments[0].authoredActions[0].logicalTrackId)
@@ -43,7 +43,7 @@ final class LogicalTimelineTrackTests: XCTestCase {
 
     func testCompatibilityViewRewritePreservesMembership() {
         var segment = SegmentDefinitionDTO(
-            id: "step", name: "One", duration: 5,
+            id: "seg", name: "One", duration: 5,
             authoredActions: [AuthoredAction(
                 id: "open", at: 0, action: .showEntity(name: "old"),
                 logicalTrackId: "track_titles")])

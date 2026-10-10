@@ -10,7 +10,7 @@ final class SavePathCheckTests: XCTestCase {
         var doc = ChapterDocument(id: "c", displayName: "Chapter")
         doc.sequences = [SequenceDefinitionDTO(
             id: "s", name: "Intro", phase: "immersive",
-            segments: [SegmentDefinitionDTO(id: "step_1", name: "Segment 1", duration: 5,
+            segments: [SegmentDefinitionDTO(id: "seg_1", name: "Segment 1", duration: 5,
                                       actions: [], scheduledActions: [], gate: nil)],
             visibility: VisibilityStateDTO(), onComplete: .holdOnLastSegment
         )]
