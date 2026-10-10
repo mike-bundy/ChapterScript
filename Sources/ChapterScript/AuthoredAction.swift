@@ -75,3 +75,46 @@ public struct AuthoredAction: Codable, Sendable, Equatable, Identifiable {
         "act_\(segmentId)_\(isScheduled ? "s" : "i")\(index)"
     }
 }
+
+
+// MARK: - Fire order
+
+/// THE ORDER ACTIONS FIRE IN, shared by the editor's Timeline, its playback,
+/// export (through the evaluator) and the runtime.
+///
+/// 1. TIME, to the microsecond. Two instants closer than that are the same
+///    instant: a cut computed two ways (a clip's start plus its length, and
+///    the next clip's landing converted from Sequence time) differs in the
+///    last bits — 52.208333333333336 against 52.20833333333333 — and a
+///    strict `<` then fired the second clip's START before the first clip's
+///    STOP, so that stop silenced the clip that had just started (driven,
+///    2026-10-10: a movie appended on a busy screen was saved and never
+///    drawn or played). Compared as integer microseconds, so the ordering is
+///    well defined for a sort.
+/// 2. At one instant, what ENDS an occurrence goes before what starts one:
+///    a cut ends the old clip, then begins the new one, whichever was
+///    authored first.
+/// 3. Then the authored order, as before.
+public enum FireOrder {
+    public static func instant(_ seconds: Double) -> Int64 {
+        Int64((seconds * 1_000_000).rounded())
+    }
+
+    public static func precedes(at a: Double, closes aCloses: Bool, offset aOffset: Int,
+                                before b: Double, closes bCloses: Bool, offset bOffset: Int) -> Bool {
+        let ia = instant(a), ib = instant(b)
+        if ia != ib { return ia < ib }
+        if aCloses != bCloses { return aCloses }
+        return aOffset < bOffset
+    }
+}
+
+extension SegmentActionDTO {
+    /// Ends an occurrence on its channel or entity (see `FireOrder`).
+    public var endsAnOccurrence: Bool {
+        switch self {
+        case .stopVideo, .stopAudio, .hideEntity: return true
+        default: return false
+        }
+    }
+}
