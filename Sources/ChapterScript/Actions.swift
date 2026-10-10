@@ -195,6 +195,17 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     /// Pitch under retime. Absent means `.followsSpeed`.
     public var pitch: PitchHandling?
 
+    /// CLIP MUTE. This occurrence is silent, everything else about it is
+    /// kept (level, fades, keys, timing). Absent means audible, so every
+    /// document written before this field re-saves byte-identically.
+    public var muted: Bool? = nil
+
+    /// The level every playback path starts from: the authored level, or
+    /// silence for a muted clip. Editor preview, export (through the
+    /// evaluator) and the runtime all read THIS, never `volume` directly, so
+    /// a muted clip cannot be silent in one place and audible in another.
+    public var audibleVolume: Float { muted == true ? 0 : volume }
+
     public init(
         file: String,
         channel: String,
