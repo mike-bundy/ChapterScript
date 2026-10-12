@@ -110,15 +110,10 @@ public enum AudioRuntimeRouting {
     /// For an encoded master that reading is WRONG and destructive: it sends
     /// the asset through the interactive mixer, which flattens it.
     ///
-    /// Maestro Studio therefore no longer ships `nil` to the runtime. Newly
-    /// authored audio persists its resolved model, and a legacy `nil`
-    /// normalizes as soon as the editor identifies the source
-    /// (`AudioOccurrence.resolve` is the one authority; see
-    /// `ProjectManager.normalizeAudioPlaybackModels`). This path exists purely
-    /// so documents written before that keep opening and playing as they
-    /// always did — an old stereo cue is never promoted to ambisonic or
-    /// spatial-mix by guesswork. Do not remove it, and do not treat reaching
-    /// it as normal.
+    /// New placements persist a resolved model when the Source is identified.
+    /// Legacy nil cues retain this routing through open, probe and save until
+    /// the author explicitly chooses a model. Do not remove this compatibility
+    /// path or infer a conversion from a filename or probe callback.
     public static func route(
         playbackModel: AudioPlaybackModel?,
         hasSpatialAttachment: Bool

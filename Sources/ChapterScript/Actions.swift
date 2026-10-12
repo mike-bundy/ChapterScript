@@ -164,10 +164,10 @@ public struct AudioActionDTO: Codable, Sendable, Equatable {
     ///
     /// Authored per OCCURRENCE, not per source, because the same file can
     /// legitimately be head-locked narration in one cue and a positional
-    /// source in another. `nil` means "whatever this source's spatial form
-    /// implies" — see `AudioSpatialForm.defaultPlaybackModel` — which is what
-    /// every document written before this field means, so absent stays absent
-    /// and existing bundles re-save byte-identically.
+    /// source in another. `nil` retains historical runtime routing: an authored
+    /// emitter or position is positional, otherwise playback is head-locked.
+    /// Absent stays absent through open and save; an explicit authoring gesture
+    /// may select an identified Source's model.
     ///
     /// This is the field the Inspector, the Viewer and the runtime branch on.
     /// It is NOT a spatial flag: `.positional` gets an emitter and XYZ keys,
